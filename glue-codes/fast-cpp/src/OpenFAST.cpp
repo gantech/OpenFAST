@@ -205,7 +205,9 @@ void fast::OpenFAST::step() {
        
      }
      
-     FAST_OpFM_Step(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_PredictStates(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_MoveToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
      checkError(ErrStat, ErrMsg);
 
      if ( isDebug() ) {

@@ -630,6 +630,138 @@ subroutine SetOpenFOAM_pointers(iTurb, OpFM_Input_from_FAST, OpFM_Output_to_FAST
       
 end subroutine SetOpenFOAM_pointers
 !==================================================================================================================================
+subroutine FAST_OpFM_Prework(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Prework')
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_Prework
+   IMPLICIT NONE
+#ifndef IMPLICIT_DLLEXPORT
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_Prework
+#endif
+   INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
+   INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+   CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
+                    
+   
+   IF ( n_t_global > Turbine(iTurb)%p_FAST%n_TMax_m1 ) THEN !finish 
+      
+      ! we can't continue because we might over-step some arrays that are allocated to the size of the simulation
+      
+      if (iTurb .eq. (NumTurbines-1) ) then
+         IF (n_t_global == Turbine(iTurb)%p_FAST%n_TMax_m1 + 1) THEN  ! we call update an extra time in Simulink, which we can ignore until the time shift with outputs is solved
+            n_t_global = n_t_global + 1
+            ErrStat_c = ErrID_None
+            ErrMsg = C_NULL_CHAR
+            ErrMsg_c = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+         ELSE     
+            ErrStat_c = ErrID_Info
+            ErrMsg = "Simulation completed."//C_NULL_CHAR
+            ErrMsg_c = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+         END IF
+      end if
+      
+   ELSE
+
+      if(Turbine(iTurb)%SC%p%scOn) then
+         CALL SC_SetOutputs(Turbine(iTurb)%p_FAST, Turbine(iTurb)%SrvD%Input(1), Turbine(iTurb)%SC, ErrStat, ErrMsg)
+      end if
+
+      CALL FAST_Prework_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+
+      ErrStat_c = ErrStat
+      ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
+      ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+   END IF
+   
+      
+end subroutine FAST_OpFM_Prework
+!==================================================================================================================================
+subroutine FAST_OpFM_PredictStates(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_PredictStates')
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_PredictStates
+   IMPLICIT NONE
+#ifndef IMPLICIT_DLLEXPORT
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_PredictStates
+#endif
+   INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
+   INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+   CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
+                    
+   
+   IF ( n_t_global > Turbine(iTurb)%p_FAST%n_TMax_m1 ) THEN !finish 
+      
+      ! we can't continue because we might over-step some arrays that are allocated to the size of the simulation
+      
+      if (iTurb .eq. (NumTurbines-1) ) then
+         IF (n_t_global == Turbine(iTurb)%p_FAST%n_TMax_m1 + 1) THEN  ! we call update an extra time in Simulink, which we can ignore until the time shift with outputs is solved
+            n_t_global = n_t_global + 1
+            ErrStat_c = ErrID_None
+            ErrMsg = C_NULL_CHAR
+            ErrMsg_c = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+         ELSE     
+            ErrStat_c = ErrID_Info
+            ErrMsg = "Simulation completed."//C_NULL_CHAR
+            ErrMsg_c = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+         END IF
+      end if
+      
+   ELSE
+
+      CALL FAST_PredictStates_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+
+      ErrStat_c = ErrStat
+      ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
+      ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+   END IF
+   
+      
+end subroutine FAST_OpFM_PredictStates
+!==================================================================================================================================
+subroutine FAST_OpFM_MoveToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_MoveToNextTimeStep')
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_MoveToNextTimeStep
+   IMPLICIT NONE
+#ifndef IMPLICIT_DLLEXPORT
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_MoveToNextTimeStep
+#endif
+   INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
+   INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+   CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
+                    
+   
+   IF ( n_t_global > Turbine(iTurb)%p_FAST%n_TMax_m1 ) THEN !finish 
+      
+      ! we can't continue because we might over-step some arrays that are allocated to the size of the simulation
+      
+      if (iTurb .eq. (NumTurbines-1) ) then
+         IF (n_t_global == Turbine(iTurb)%p_FAST%n_TMax_m1 + 1) THEN  ! we call update an extra time in Simulink, which we can ignore until the time shift with outputs is solved
+            n_t_global = n_t_global + 1
+            ErrStat_c = ErrID_None
+            ErrMsg = C_NULL_CHAR
+            ErrMsg_c = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+         ELSE     
+            ErrStat_c = ErrID_Info
+            ErrMsg = "Simulation completed."//C_NULL_CHAR
+            ErrMsg_c = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+         END IF
+      end if
+      
+   ELSE
+
+      CALL FAST_MoveToNextTimeStep_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+
+      if(Turbine(iTurb)%SC%p%scOn) then
+         CALL SC_SetInputs(Turbine(iTurb)%p_FAST, Turbine(iTurb)%SrvD%y, Turbine(iTurb)%SC, ErrStat, ErrMsg)
+      end if
+      
+      if (iTurb .eq. (NumTurbines-1) ) then
+         n_t_global = n_t_global + 1
+      end if
+            
+      ErrStat_c = ErrStat
+      ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
+      ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+   END IF
+   
+      
+end subroutine FAST_OpFM_MoveToNextTimeStep
+!==================================================================================================================================
 subroutine FAST_OpFM_Step(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Step')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_Step
    IMPLICIT NONE
