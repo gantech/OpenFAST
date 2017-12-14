@@ -24,7 +24,8 @@ nTurbinesGlob(0),
 nTurbinesProc(0),
 scStatus(false),
 simStart(fast::init),
-timeZero(false)
+timeZero(false),
+first_pass(true)
 {
 }
 
@@ -77,6 +78,16 @@ void fast::OpenFAST::init() {
        int nfpts = get_numForcePtsLoc(iTurb);
        forceNodeVel[iTurb].resize(nfpts);
        for (int k = 0; k < nfpts; k++) forceNodeVel[iTurb][k].resize(3) ;
+
+       int nvelpts = get_numVelPtsLoc(iTurb);
+       for(int k=0; k<3; k++) {
+           velForceNodeData[iTurb][k].x_vel.resize(3*nvelpts) ;
+           velForceNodeData[iTurb][k].xdot_vel.resize(3*nvelpts) ;
+           velForceNodeData[iTurb][k].x_force.resize(3*nfpts) ;
+           velForceNodeData[iTurb][k].xdot_force.resize(3*nfpts) ;
+           velForceNodeData[iTurb][k].orient_force.resize(9*nfpts) ;
+           velForceNodeData[iTurb][k].force.resize(3*nfpts) ;
+       }
       
        if ( isDebug() ) {
        	 for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
@@ -102,6 +113,16 @@ void fast::OpenFAST::init() {
        int nfpts = get_numForcePtsLoc(iTurb);
        forceNodeVel[iTurb].resize(nfpts);
        for (int k = 0; k < nfpts; k++) forceNodeVel[iTurb][k].resize(3) ;
+
+       int nvelpts = get_numVelPtsLoc(iTurb);
+       for(int k=0; k<3; k++) {
+           velForceNodeData[iTurb][k].x_vel.resize(3*nvelpts) ;
+           velForceNodeData[iTurb][k].xdot_vel.resize(3*nvelpts) ;
+           velForceNodeData[iTurb][k].x_force.resize(3*nfpts) ;
+           velForceNodeData[iTurb][k].xdot_force.resize(3*nfpts) ;
+           velForceNodeData[iTurb][k].orient_force.resize(9*nfpts) ;
+           velForceNodeData[iTurb][k].force.resize(3*nfpts) ;
+       }
 
        if ( isDebug() ) {
        	 for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
@@ -163,11 +184,152 @@ void fast::OpenFAST::solution0() {
 
      }
 
+     get_data_from_openfast(fast::n);
+
      timeZero = false;
 
      if (scStatus) {
        fillScInputsGlob(); // Update inputs to super controller
      }
+  }
+
+}
+
+void fast::OpenFAST:: extrapolate_vel_force_node_data() {
+
+    if (first_pass) {
+        for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+            int nvelpts = get_numVelPtsLoc(iTurb);
+            int nfpts = get_numForcePtsLoc(iTurb);
+            for (int i=0; i<nvelpts; i++) {
+                for (int j=0 ; j < 3; j++) {
+                    velForceNodeData[iTurb][fast::np1].x_vel[i*3+j] = velForceNodeData[iTurb][fast::n].x_vel[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j]);
+                    velForceNodeData[iTurb][fast::np1].xdot_vel[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j];
+                }
+            }
+            for (int i=0; i<nfpts; i++) {
+                for (int j=0 ; j < 3; j++) {
+                    velForceNodeData[iTurb][fast::np1].x_force[i*3+j] = velForceNodeData[iTurb][fast::n].x_force[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j]);
+                    velForceNodeData[iTurb][fast::np1].xdot_force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j];
+                    velForceNodeData[iTurb][fast::np1].force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].force[i*3+j] - velForceNodeData[iTurb][fast::nm1].force[i*3+j];
+                }
+                for (int j=0;j<9;j++)
+                    velForceNodeData[iTurb][fast::np1].orient_force[i*9+j] = 2.0*velForceNodeData[iTurb][fast::n].orient_force[i*9+j] - velForceNodeData[iTurb][fast::nm1].orient_force[i*9+j];
+            }
+        }
+    }
+    
+}
+
+void fast::OpenFAST::prework() {
+
+    if(scStatus) {
+        sc->calcOutputs(scOutputsGlob);
+        fillScOutputsLoc();
+    }
+
+    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+        FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
+    }
+
+}
+
+void fast::OpenFAST::predict_states() {
+
+   if (first_pass)
+       prework();
+    
+   for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+     FAST_OpFM_PredictStates(&iTurb, &ErrStat, ErrMsg);
+     checkError(ErrStat, ErrMsg);
+   }
+   
+   get_data_from_openfast(fast::np1);   
+
+}
+
+void fast::OpenFAST::move_to_next_time_step() {
+    
+   for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+
+     writeVelocityData(velNodeDataFile, iTurb, nt_global, cDriver_Input_from_FAST[iTurb], cDriver_Output_to_FAST[iTurb]);
+
+     if ( isDebug() ) {
+
+       std::ofstream fastcpp_velocity_file;
+       fastcpp_velocity_file.open("fastcpp_velocity.csv") ;
+       fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
+       for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
+	 fastcpp_velocity_file << cDriver_Input_from_FAST[iTurb].pxVel[iNode] << ", " << cDriver_Input_from_FAST[iTurb].pyVel[iNode] << ", " << cDriver_Input_from_FAST[iTurb].pzVel[iNode] << ", " << cDriver_Output_to_FAST[iTurb].u[iNode] << ", " << cDriver_Output_to_FAST[iTurb].v[iNode] << ", " << cDriver_Output_to_FAST[iTurb].w[iNode] << " " << std::endl ;           
+       }
+       fastcpp_velocity_file.close() ;
+       
+     }
+     
+     FAST_OpFM_MoveToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+     checkError(ErrStat, ErrMsg);
+
+     if ( isDebug() ) {
+       std::ofstream actuatorForcesFile;
+       actuatorForcesFile.open("actuator_forces.csv") ;
+       actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
+       for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
+	 actuatorForcesFile << cDriver_Input_from_FAST[iTurb].pxForce[iNode] << ", " << cDriver_Input_from_FAST[iTurb].pyForce[iNode] << ", " << cDriver_Input_from_FAST[iTurb].pzForce[iNode] << ", " << cDriver_Input_from_FAST[iTurb].fx[iNode] << ", " << cDriver_Input_from_FAST[iTurb].fy[iNode] << ", " << cDriver_Input_from_FAST[iTurb].fz[iNode] << " " << std::endl ;           
+       }
+       actuatorForcesFile.close() ;
+     }
+
+     int nvelpts = get_numVelPtsLoc(iTurb);
+     int nfpts = get_numForcePtsLoc(iTurb);
+     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+         int nvelpts = get_numVelPtsLoc(iTurb);
+         int nfpts = get_numForcePtsLoc(iTurb);
+         for (int i=0; i<nvelpts; i++) {
+             for (int j=0 ; j < 3; j++) {
+                 velForceNodeData[iTurb][fast::nm1].x_vel[i*3+j] = velForceNodeData[iTurb][fast::n].x_vel[i*3+j];
+                 velForceNodeData[iTurb][fast::n].x_vel[i*3+j] = velForceNodeData[iTurb][fast::np1].x_vel[i*3+j];
+                 velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j] = velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j];
+                 velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] = velForceNodeData[iTurb][fast::np1].xdot_vel[i*3+j];
+             }
+         }
+         for (int i=0; i<nfpts; i++) {
+             for (int j=0 ; j < 3; j++) {
+                 velForceNodeData[iTurb][fast::nm1].x_force[i*3+j] = velForceNodeData[iTurb][fast::n].x_force[i*3+j];
+                 velForceNodeData[iTurb][fast::n].x_force[i*3+j] = velForceNodeData[iTurb][fast::np1].x_force[i*3+j];
+                 velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j] = velForceNodeData[iTurb][fast::n].xdot_force[i*3+j];
+                 velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] = velForceNodeData[iTurb][fast::np1].xdot_force[i*3+j];
+                 velForceNodeData[iTurb][fast::nm1].force[i*3+j] = velForceNodeData[iTurb][fast::n].force[i*3+j];
+                 velForceNodeData[iTurb][fast::n].force[i*3+j] = velForceNodeData[iTurb][fast::np1].force[i*3+j];
+             }
+             for (int j=0;j<9;j++) {
+                 velForceNodeData[iTurb][fast::nm1].orient_force[i*9+j] = velForceNodeData[iTurb][fast::n].orient_force[i*9+j];
+                 velForceNodeData[iTurb][fast::n].orient_force[i*9+j] = velForceNodeData[iTurb][fast::np1].orient_force[i*9+j];
+             }
+         }
+     }
+     
+   }
+
+   if(scStatus) {
+     sc->updateStates(scInputsGlob); // Go from 'n' to 'n+1' based on input at previous time step
+     fillScInputsGlob(); // Update inputs to super controller for 'n+1'
+   }
+
+   nt_global = nt_global + 1;
+  
+  if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
+    //sprintf(CheckpointFileRoot, "../../CertTest/Test18.%d", nt_global);
+    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+      CheckpointFileRoot[iTurb] = " "; // if blank, it will use FAST convention <RootName>.nt_global
+      FAST_CreateCheckpoint(&iTurb, CheckpointFileRoot[iTurb].data(), &ErrStat, ErrMsg);
+      checkError(ErrStat, ErrMsg);
+    }
+    if(scStatus) {
+      if (fastMPIRank == 0) {
+          sc->writeRestartFile(nt_global);
+      }
+    }
   }
 
 }
@@ -355,67 +517,67 @@ void fast::OpenFAST::getApproxHubPos(std::vector<double> & currentCoords, int iT
 
 }
 
-void fast::OpenFAST::getHubPos(std::vector<double> & currentCoords, int iTurbGlob) {
+void fast::OpenFAST::getHubPos(std::vector<double> & currentCoords, int iTurbGlob, fast::timeStep t) {
 
   // Get hub position of Turbine 'iTurbGlob'
   int iTurbLoc = get_localTurbNo(iTurbGlob);
-  currentCoords[0] = cDriver_Input_from_FAST[iTurbLoc].pxVel[0] + TurbineBasePos[iTurbLoc][0] ;
-  currentCoords[1] = cDriver_Input_from_FAST[iTurbLoc].pyVel[0] + TurbineBasePos[iTurbLoc][1] ;
-  currentCoords[2] = cDriver_Input_from_FAST[iTurbLoc].pzVel[0] + TurbineBasePos[iTurbLoc][2] ;
+  currentCoords[0] = velForceNodeData[iTurbLoc][t].x_force[0] + TurbineBasePos[iTurbLoc][0] ;
+  currentCoords[1] = velForceNodeData[iTurbLoc][t].x_force[1] + TurbineBasePos[iTurbLoc][1] ;
+  currentCoords[2] = velForceNodeData[iTurbLoc][t].x_force[2] + TurbineBasePos[iTurbLoc][2] ;
   
 }
 
-void fast::OpenFAST::getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob) {
+void fast::OpenFAST::getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t) {
 
   // Get hub shaft direction of current turbine - pointing downwind
   int iTurbLoc = get_localTurbNo(iTurbGlob);
-  hubShftVec[0] = cDriver_Input_from_FAST[iTurbLoc].pOrientation[0] ;
-  hubShftVec[1] = cDriver_Input_from_FAST[iTurbLoc].pOrientation[3] ;
-  hubShftVec[2] = cDriver_Input_from_FAST[iTurbLoc].pOrientation[6] ;
+  hubShftVec[0] = velForceNodeData[iTurbLoc][t].orient_force[0] ;
+  hubShftVec[1] = velForceNodeData[iTurbLoc][t].orient_force[3] ;
+  hubShftVec[2] = velForceNodeData[iTurbLoc][t].orient_force[6] ;
 
 }
 
 
-void fast::OpenFAST::getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob) {
+void fast::OpenFAST::getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t) {
 
   // Set coordinates at current node of current turbine 
   int iTurbLoc = get_localTurbNo(iTurbGlob);
   for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numVelPtsLoc(iTurbLoc);
-  currentCoords[0] = cDriver_Input_from_FAST[iTurbLoc].pxVel[iNode] + TurbineBasePos[iTurbLoc][0] ;
-  currentCoords[1] = cDriver_Input_from_FAST[iTurbLoc].pyVel[iNode] + TurbineBasePos[iTurbLoc][1] ;
-  currentCoords[2] = cDriver_Input_from_FAST[iTurbLoc].pzVel[iNode] + TurbineBasePos[iTurbLoc][2] ;
+  currentCoords[0] = velForceNodeData[iTurbLoc][t].x_vel[iNode*3+0] + TurbineBasePos[iTurbLoc][0] ;
+  currentCoords[1] = velForceNodeData[iTurbLoc][t].x_vel[iNode*3+1] + TurbineBasePos[iTurbLoc][1] ;
+  currentCoords[2] = velForceNodeData[iTurbLoc][t].x_vel[iNode*3+2] + TurbineBasePos[iTurbLoc][2] ;
   
 }
 
-void fast::OpenFAST::getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob) {
+void fast::OpenFAST::getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t) {
 
   // Set coordinates at current node of current turbine 
   int iTurbLoc = get_localTurbNo(iTurbGlob);
-  currentCoords[0] = cDriver_Input_from_FAST[iTurbLoc].pxForce[iNode] + TurbineBasePos[iTurbLoc][0] ;
-  currentCoords[1] = cDriver_Input_from_FAST[iTurbLoc].pyForce[iNode] + TurbineBasePos[iTurbLoc][1] ;
-  currentCoords[2] = cDriver_Input_from_FAST[iTurbLoc].pzForce[iNode] + TurbineBasePos[iTurbLoc][2] ;
+  currentCoords[0] = velForceNodeData[iTurbLoc][t].x_force[iNode*3+0] + TurbineBasePos[iTurbLoc][0] ;
+  currentCoords[1] = velForceNodeData[iTurbLoc][t].x_force[iNode*3+1] + TurbineBasePos[iTurbLoc][1] ;
+  currentCoords[2] = velForceNodeData[iTurbLoc][t].x_force[iNode*3+2] + TurbineBasePos[iTurbLoc][2] ;
 
 }
 
-void fast::OpenFAST::getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob) {
+void fast::OpenFAST::getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t) {
 
   // Set orientation at current node of current turbine 
   int iTurbLoc = get_localTurbNo(iTurbGlob);
   for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
   for(int i=0;i<9;i++) {
-    currentOrientation[i] = cDriver_Input_from_FAST[iTurbLoc].pOrientation[iNode*9+i] ;
+      currentOrientation[i] = velForceNodeData[iTurbLoc][t].orient_force[iNode*9+i] ;
   }
 
 }
 
-void fast::OpenFAST::getForce(std::vector<double> & currentForce, int iNode, int iTurbGlob) {
+void fast::OpenFAST::getForce(std::vector<double> & currentForce, int iNode, int iTurbGlob, fast::timeStep t) {
 
   // Set forces at current node of current turbine 
   int iTurbLoc = get_localTurbNo(iTurbGlob);
   for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
-  currentForce[0] = -cDriver_Input_from_FAST[iTurbLoc].fx[iNode] ;
-  currentForce[1] = -cDriver_Input_from_FAST[iTurbLoc].fy[iNode] ;
-  currentForce[2] = -cDriver_Input_from_FAST[iTurbLoc].fz[iNode] ;
+  currentForce[0] = -velForceNodeData[iTurbLoc][t].force[iNode*3+0] ;
+  currentForce[1] = -velForceNodeData[iTurbLoc][t].force[iNode*3+1] ;
+  currentForce[2] = -velForceNodeData[iTurbLoc][t].force[iNode*3+2] ;
 
 }
 
@@ -558,7 +720,7 @@ void fast::OpenFAST::computeTorqueThrust(int iTurbGlob, std::vector<double> & to
     torque[0] = 0.0; torque[1] = 0.0; torque[2] = 0.0;    
     
     std::vector<double> hubShftVec(3);
-    getHubShftDir(hubShftVec, iTurbGlob);
+    getHubShftDir(hubShftVec, iTurbGlob, fast::np1);
 
     int iTurbLoc = get_localTurbNo(iTurbGlob) ;
     for (int k=0; k < get_numBladesLoc(iTurbLoc); k++) {
@@ -687,6 +849,7 @@ void fast::OpenFAST::allocateMemory() {
   numVelPtsBlade.resize(nTurbinesProc);
   numVelPtsTwr.resize(nTurbinesProc);
   forceNodeVel.resize(nTurbinesProc);
+  velForceNodeData.resize(nTurbinesProc);
   
   for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
     
@@ -701,6 +864,8 @@ void fast::OpenFAST::allocateMemory() {
     }
     numForcePtsBlade[iTurb] = globTurbineData[globProc].numForcePtsBlade;
     numForcePtsTwr[iTurb] = globTurbineData[globProc].numForcePtsTwr;
+
+    velForceNodeData[iTurb].resize(3); // To hold data for 3 time steps
 
   }
 
@@ -898,6 +1063,35 @@ void fast::OpenFAST::applyVelocityData(int iPrestart, int iTurb, OpFM_OutputType
 
 }
 
+void fast::OpenFAST::get_data_from_openfast(timeStep t) {
+
+    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+        int nvelpts = get_numVelPtsLoc(iTurb);
+        int nfpts = get_numForcePtsLoc(iTurb);
+        for (int i=0; i<nvelpts; i++) {
+            velForceNodeData[iTurb][t].x_vel[i*3+0] = cDriver_Input_from_FAST[iTurb].pxVel[i];
+            velForceNodeData[iTurb][t].x_vel[i*3+1] = cDriver_Input_from_FAST[iTurb].pyVel[i];
+            velForceNodeData[iTurb][t].x_vel[i*3+2] = cDriver_Input_from_FAST[iTurb].pzVel[i];            
+            velForceNodeData[iTurb][t].xdot_vel[i*3+0] = cDriver_Input_from_FAST[iTurb].pxdotVel[i];
+            velForceNodeData[iTurb][t].xdot_vel[i*3+1] = cDriver_Input_from_FAST[iTurb].pydotVel[i];
+            velForceNodeData[iTurb][t].xdot_vel[i*3+2] = cDriver_Input_from_FAST[iTurb].pzdotVel[i];            
+        }
+        for (int i=0; i<nfpts; i++) {
+            velForceNodeData[iTurb][t].x_force[i*3+0] = cDriver_Input_from_FAST[iTurb].pxForce[i];
+            velForceNodeData[iTurb][t].x_force[i*3+1] = cDriver_Input_from_FAST[iTurb].pyForce[i];
+            velForceNodeData[iTurb][t].x_force[i*3+2] = cDriver_Input_from_FAST[iTurb].pzForce[i];            
+            velForceNodeData[iTurb][t].xdot_force[i*3+0] = cDriver_Input_from_FAST[iTurb].pxdotForce[i];
+            velForceNodeData[iTurb][t].xdot_force[i*3+1] = cDriver_Input_from_FAST[iTurb].pydotForce[i];
+            velForceNodeData[iTurb][t].xdot_force[i*3+2] = cDriver_Input_from_FAST[iTurb].pzdotForce[i];
+            for (int j=0;j<9;j++)
+                velForceNodeData[iTurb][t].orient_force[i*9+j] = cDriver_Input_from_FAST[iTurb].pOrientation[i*9+j];
+            velForceNodeData[iTurb][t].force[i*3+0] = cDriver_Input_from_FAST[iTurb].fx[i];
+            velForceNodeData[iTurb][t].force[i*3+1] = cDriver_Input_from_FAST[iTurb].fy[i];
+            velForceNodeData[iTurb][t].force[i*3+2] = cDriver_Input_from_FAST[iTurb].fz[i];
+        }
+    }
+}
+
 void fast::OpenFAST::loadSuperController(const fast::fastInputs & fi) {
 
   if(fi.scStatus) {
@@ -957,7 +1151,6 @@ void fast::OpenFAST::loadSuperController(const fast::fastInputs & fi) {
    }
 
 }
-
 
 void fast::OpenFAST::fillScInputsGlob() {
   

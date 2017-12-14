@@ -48,10 +48,27 @@ enum simStartType {
   simStartType_END    
 };
 
+struct turbVelForceNodeDataType {
+    std::vector<double> x_vel;
+    std::vector<double> xdot_vel;
+    std::vector<double> x_force;
+    std::vector<double> xdot_force;
+    std::vector<double> orient_force;
+    std::vector<double> force;
+};
 
+enum timeStep {
+    nm1 = 0,
+    n = 1,
+    np1 = 2,
+    timeStep_END
+};
+
+    
+    
 class fastInputs {
 
- public: 
+ public:
 
   MPI_Comm comm;
   int nTurbinesGlob;  
@@ -98,7 +115,8 @@ class OpenFAST {
   std::vector<std::string > FASTInputFileName;
   std::vector<std::string > CheckpointFileRoot;
   double tStart;
-  int nt_global;           
+  int nt_global;
+  bool first_pass;  //Is this the first pass through a time step 
   int ntStart;      // The time step to start the FAST simulation
   int nEveryCheckPoint;    // Check point files will be written every 'nEveryCheckPoint' time steps
   std::vector<int> numBlades;           // Number of blades
@@ -114,6 +132,8 @@ class OpenFAST {
   std::vector<std::vector<std::vector<double> > > forceNodeVel; // Velocity at force nodes - Store temporarily to interpolate to the velocity nodes
   std::vector<std::vector<double> > velNodeData; // Position and velocity data at the velocity (aerodyn) nodes - (nTurbines, nTimesteps * nPoints * 6)
   hid_t velNodeDataFile; // HDF-5 tag of file containing velocity (aerodyn) node data file
+    
+  std::vector<std::vector<turbVelForceNodeDataType>> velForceNodeData; // Array containing data at the velocity and force nodes
 
   std::vector<OpFM_InputType_t> cDriver_Input_from_FAST;
   std::vector<OpFM_OutputType_t> cDriver_Output_to_FAST;
@@ -162,6 +182,11 @@ class OpenFAST {
 
   void init();
   void solution0();
+  void prework();
+  void predict_states();
+  void move_to_next_time_step();
+  void get_data_from_openfast(fast::timeStep t);
+  void extrapolate_vel_force_node_data();
   void step();
   void stepNoWrite();
   void end();
@@ -174,18 +199,18 @@ class OpenFAST {
   void setTurbineProcNo(int iTurbGlob, int procNo) { turbineMapGlobToProc[iTurbGlob] = procNo; }
   void allocateTurbinesToProcsSimple();
   void getApproxHubPos(std::vector<double> & currentCoords, int iTurbGlob);
-  void getHubPos(std::vector<double> & currentCoords, int iTurbGlob);
-  void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob);
+  void getHubPos(std::vector<double> & currentCoords, int iTurbGlob, fast::timeStep t);
+  void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t);
 
   ActuatorNodeType getVelNodeType(int iTurbGlob, int iNode);
-  void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob);
+  void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t);
   void setVelocity(std::vector<double> & velocity, int iNode, int iTurbGlob);
   void setVelocityForceNode(std::vector<double> & velocity, int iNode, int iTurbGlob);
   void interpolateVel_ForceToVelNodes();
   ActuatorNodeType getForceNodeType(int iTurbGlob, int iNode);
-  void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob);
-  void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob);
-  void getForce(std::vector<double> & force, int iNode, int iTurbGlob);
+  void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t);
+  void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t);
+  void getForce(std::vector<double> & force, int iNode, int iTurbGlob, fast::timeStep t);
   double getChord(int iNode, int iTurbGlob);
 
   int get_ntStart() { return ntStart; }

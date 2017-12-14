@@ -4464,7 +4464,7 @@ end if
    ELSE IF ( p_FAST%CompInflow == Module_OpFM ) THEN
    ! OpenFOAM is the driver and it sets these inputs outside of this solve; the OpenFOAM inputs and outputs thus don't change 
    !   in this scenario until OpenFOAM takes another step  **this is a source of error, but it is the way the OpenFOAM-FAST7 coupling
-   !   works, so I'm not going to spend time that I don't have now to fix it**
+    !   works, so I'm not going to spend time that I don't have now to fix it**
       CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), SrvD%y, OpFM, ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )        
    END IF
