@@ -183,10 +183,10 @@ class OpenFAST {
   void init();
   void solution0();
   void prework();
-  void predict_states();
-  void move_to_next_time_step();
+  void update_states();
+  void advance_to_next_time_step();
   void get_data_from_openfast(fast::timeStep t);
-  void extrapolate_vel_force_node_data();
+  void predict_states();
   void step();
   void stepNoWrite();
   void end();

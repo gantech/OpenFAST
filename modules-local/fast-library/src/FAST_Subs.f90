@@ -4326,7 +4326,7 @@ END SUBROUTINE FAST_Prework
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine that calls FAST_PredictStates for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
 !! driver programs do not need to change or operate on the individual module level. 
-SUBROUTINE FAST_PredictStates_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
+SUBROUTINE FAST_UpdateStates_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
 
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
    INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
@@ -4334,15 +4334,15 @@ SUBROUTINE FAST_PredictStates_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg 
    INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
    CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
    
-      CALL FAST_PredictStates(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+      CALL FAST_UpdateStates(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
                   Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, Turbine%OpFM, &
                   Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
                   Turbine%IceF, Turbine%IceD, Turbine%MeshMapData, ErrStat, ErrMsg )                  
                   
-END SUBROUTINE FAST_PredictStates_T
+END SUBROUTINE FAST_UpdateStates_T
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine takes data from n_t_global and predicts the states and output  at n_t_global+1
-SUBROUTINE FAST_PredictStates(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
+SUBROUTINE FAST_UpdateStates(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
                          MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
 
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
@@ -4384,7 +4384,7 @@ SUBROUTINE FAST_PredictStates(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED,
    
    INTEGER(IntKi)                          :: ErrStat2
    CHARACTER(ErrMsgLen)                    :: ErrMsg2
-   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_PredictStates'
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_UpdateStates'
 
 
    ErrStat = ErrID_None
@@ -4434,12 +4434,12 @@ SUBROUTINE FAST_PredictStates(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED,
                                     
    enddo ! j_pc
       
-END SUBROUTINE FAST_PredictStates
+END SUBROUTINE FAST_UpdateStates
 
 !----------------------------------------------------------------------------------------------------------------------------------
-!> Routine that calls FAST_MoveToNextTimeStep for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
+!> Routine that calls FAST_AdvanceToNextTimeStep for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
 !! driver programs do not need to change or operate on the individual module level. 
-SUBROUTINE FAST_MoveToNextTimeStep_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
+SUBROUTINE FAST_AdvanceToNextTimeStep_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
 
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
    INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
@@ -4447,15 +4447,15 @@ SUBROUTINE FAST_MoveToNextTimeStep_T(t_initial, n_t_global, Turbine, ErrStat, Er
    INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
    CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
    
-      CALL FAST_MoveToNextTimeStep(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+      CALL FAST_AdvanceToNextTimeStep(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
                   Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, Turbine%OpFM, &
                   Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
                   Turbine%IceF, Turbine%IceD, Turbine%MeshMapData, ErrStat, ErrMsg )                  
                   
-END SUBROUTINE FAST_MoveToNextTimeStep_T
+END SUBROUTINE FAST_AdvanceToNextTimeStep_T
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine advances the time step from n_t_global to n_t_global + 1 and does all the relvant copying of data
-SUBROUTINE FAST_MoveToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
+SUBROUTINE FAST_AdvanceToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
                          MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
 
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
@@ -4497,7 +4497,7 @@ SUBROUTINE FAST_MoveToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_FAST
    
    INTEGER(IntKi)                          :: ErrStat2
    CHARACTER(ErrMsgLen)                    :: ErrMsg2
-   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_MoveToNextTimeStep'
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_AdvanceToNextTimeStep'
 
 
    ErrStat = ErrID_None
@@ -4716,7 +4716,7 @@ SUBROUTINE FAST_MoveToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_FAST
       ENDIF
    ENDIF
      
-END SUBROUTINE FAST_MoveToNextTimeStep
+END SUBROUTINE FAST_AdvanceToNextTimeStep
 !----------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine that calls FAST_Solution for one instance of a Turbine data structure. This is a separate subroutine so that the FAST

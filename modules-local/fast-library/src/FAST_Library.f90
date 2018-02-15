@@ -674,11 +674,11 @@ subroutine FAST_OpFM_Prework(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpF
       
 end subroutine FAST_OpFM_Prework
 !==================================================================================================================================
-subroutine FAST_OpFM_PredictStates(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_PredictStates')
-!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_PredictStates
+subroutine FAST_OpFM_UpdateStates(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_UpdateStates')
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_UpdateStates
    IMPLICIT NONE
 #ifndef IMPLICIT_DLLEXPORT
-!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_PredictStates
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_UpdateStates
 #endif
    INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
    INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
@@ -704,7 +704,7 @@ subroutine FAST_OpFM_PredictStates(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FA
       
    ELSE
 
-      CALL FAST_PredictStates_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+      CALL FAST_UpdateStates_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
 
       ErrStat_c = ErrStat
       ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
@@ -712,9 +712,9 @@ subroutine FAST_OpFM_PredictStates(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FA
    END IF
    
       
-end subroutine FAST_OpFM_PredictStates
+end subroutine FAST_OpFM_UpdateStates
 !==================================================================================================================================
-subroutine FAST_OpFM_MoveToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_MoveToNextTimeStep')
+subroutine FAST_OpFM_AdvanceToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_AdvanceToNextTimeStep')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_MoveToNextTimeStep
    IMPLICIT NONE
 #ifndef IMPLICIT_DLLEXPORT
@@ -744,7 +744,7 @@ subroutine FAST_OpFM_MoveToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAM
       
    ELSE
 
-      CALL FAST_MoveToNextTimeStep_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+      CALL FAST_AdvanceToNextTimeStep_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
 
       if(Turbine(iTurb)%SC%p%scOn) then
          CALL SC_SetInputs(Turbine(iTurb)%p_FAST, Turbine(iTurb)%SrvD%y, Turbine(iTurb)%SC, ErrStat, ErrMsg)
@@ -759,8 +759,8 @@ subroutine FAST_OpFM_MoveToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAM
       ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
    END IF
    
-      
-end subroutine FAST_OpFM_MoveToNextTimeStep
+
+end subroutine FAST_OpFM_AdvanceToNextTimeStep
 !==================================================================================================================================
 subroutine FAST_OpFM_Step(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Step')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_Step

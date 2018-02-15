@@ -17,8 +17,8 @@ EXTERNAL_ROUTINE void FAST_OpFM_Init(int * iTurb, double *TMax, const char *Inpu
    int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Solution0(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Prework(int * iTurb, int *ErrStat, char *ErrMsg);
-EXTERNAL_ROUTINE void FAST_OpFM_PredictStates(int * iTurb, int *ErrStat, char *ErrMsg);
-EXTERNAL_ROUTINE void FAST_OpFM_MoveToNextTimeStep(int * iTurb, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_OpFM_UpdateStates(int * iTurb, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_OpFM_AdvanceToNextTimeStep(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Step(int * iTurb, int *ErrStat, char *ErrMsg);
 
 EXTERNAL_ROUTINE void FAST_Restart(int * iTurb, const char *CheckpointRootName, int *AbortErrLev, int * NumOuts, double * dt, int * n_t_global, int *ErrStat, char *ErrMsg);

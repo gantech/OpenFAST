@@ -195,7 +195,7 @@ void fast::OpenFAST::solution0() {
 
 }
 
-void fast::OpenFAST:: extrapolate_vel_force_node_data() {
+void fast::OpenFAST:: predict_states() {
 
     if (first_pass) {
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
@@ -235,21 +235,21 @@ void fast::OpenFAST::prework() {
 
 }
 
-void fast::OpenFAST::predict_states() {
+void fast::OpenFAST::update_states() {
 
    if (first_pass)
        prework();
     
    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-     FAST_OpFM_PredictStates(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
      checkError(ErrStat, ErrMsg);
    }
    
-   get_data_from_openfast(fast::np1);   
+    get_data_from_openfast(fast::np1);   
 
 }
 
-void fast::OpenFAST::move_to_next_time_step() {
+void fast::OpenFAST::advance_to_next_time_step() {
     
    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
@@ -267,7 +267,7 @@ void fast::OpenFAST::move_to_next_time_step() {
        
      }
      
-     FAST_OpFM_MoveToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
      checkError(ErrStat, ErrMsg);
 
      if ( isDebug() ) {
@@ -368,8 +368,8 @@ void fast::OpenFAST::step() {
      }
      
      FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
-     FAST_OpFM_PredictStates(&iTurb, &ErrStat, ErrMsg);
-     FAST_OpFM_MoveToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+     FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
      checkError(ErrStat, ErrMsg);
 
      if ( isDebug() ) {
