@@ -422,8 +422,8 @@ subroutine FAST_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, NumOuts_c, d
       
 end subroutine FAST_Restart 
 !==================================================================================================================================
-subroutine FAST_OpFM_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, NumCtrl2SC, NumActForcePtsBlade, NumActForcePtsTower, TurbPosn, AbortErrLev_c, dt_c, NumBl_c, NumBlElem_c, &
-                          OpFM_Input_from_FAST, OpFM_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Init')
+subroutine FAST_OpFM_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, NumCtrl2SC, NumActForcePtsBlade, NumActForcePtsTower, TurbPosn, AbortErrLev_c, dt_c, InflowType, NumBl_c, NumBlElem_c, &
+                                                NumTwrElem_c, OpFM_Input_from_FAST, OpFM_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Init')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_Init
    IMPLICIT NONE 
 #ifndef IMPLICIT_DLLEXPORT
@@ -439,9 +439,11 @@ subroutine FAST_OpFM_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, NumC
    INTEGER(C_INT),         INTENT(IN   ) :: NumActForcePtsTower ! number of actuator line force points in tower
    REAL(C_FLOAT),          INTENT(IN   ) :: TurbPosn(3)      
    INTEGER(C_INT),         INTENT(  OUT) :: AbortErrLev_c      
-   REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c      
+   REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c
+   INTEGER(C_INT),         INTENT(  OUT) :: InflowType    ! inflow type - 1 = From Inflow module, 2 = External
    INTEGER(C_INT),         INTENT(  OUT) :: NumBl_c      
-   INTEGER(C_INT),         INTENT(  OUT) :: NumBlElem_c      
+   INTEGER(C_INT),         INTENT(  OUT) :: NumBlElem_c
+   INTEGER(C_INT),         INTENT(  OUT) :: NumTwrElem_c         
    TYPE(OpFM_InputType_C), INTENT(  OUT) :: OpFM_Input_from_FAST
    TYPE(OpFM_OutputType_C),INTENT(  OUT) :: OpFM_Output_to_FAST
    TYPE(SC_InputType_C),   INTENT(INOUT) :: SC_Input_from_FAST
@@ -489,13 +491,18 @@ subroutine FAST_OpFM_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, NumC
    IF (Turbine(iTurb)%p_FAST%CompAero == MODULE_AD14) THEN   
       NumBl_c     = SIZE(Turbine(iTurb)%AD14%Input(1)%InputMarkers)
       NumBlElem_c = Turbine(iTurb)%AD14%Input(1)%InputMarkers(1)%Nnodes
+      NumTwrElem_c = 0 ! Don't care about Aerodyn14 anymore
    ELSEIF (Turbine(iTurb)%p_FAST%CompAero == MODULE_AD) THEN  
       NumBl_c     = SIZE(Turbine(iTurb)%AD%Input(1)%BladeMotion)
       NumBlElem_c = Turbine(iTurb)%AD%Input(1)%BladeMotion(1)%Nnodes
+      NumTwrElem_c = Turbine(iTurb)%AD%y%TowerLoad%Nnodes
    ELSE
       NumBl_c     = 0
       NumBlElem_c = 0
+      NumTwrElem_c = 0
    END IF   
+
+   InflowType = Turbine(iTurb)%p_FAST%CompInflow
    
 end subroutine   
 !==================================================================================================================================
@@ -527,8 +534,9 @@ subroutine FAST_OpFM_Solution0(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_O
                         
 end subroutine FAST_OpFM_Solution0
 !==================================================================================================================================
-subroutine FAST_OpFM_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c, numblades_c, numElementsPerBlade_c, n_t_global_c, &
-                      OpFM_Input_from_FAST, OpFM_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Restart')
+subroutine FAST_OpFM_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c, InflowType, numblades_c, &
+     numElementsPerBlade_c, numElementsTower_c, n_t_global_c, OpFM_Input_from_FAST, OpFM_Output_to_FAST, &
+     SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Restart')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_Restart
    IMPLICIT NONE
 #ifndef IMPLICIT_DLLEXPORT
@@ -539,7 +547,9 @@ subroutine FAST_OpFM_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c, n
    INTEGER(C_INT),         INTENT(  OUT) :: AbortErrLev_c      
    INTEGER(C_INT),         INTENT(  OUT) :: numblades_c
    INTEGER(C_INT),         INTENT(  OUT) :: numElementsPerBlade_c
-   REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c      
+   INTEGER(C_INT),         INTENT(  OUT) :: numElementsTower_c
+   REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c
+   INTEGER(C_INT),         INTENT(  OUT) :: InflowType         
    INTEGER(C_INT),         INTENT(  OUT) :: n_t_global_c      
    TYPE(OpFM_InputType_C), INTENT(  OUT) :: OpFM_Input_from_FAST
    TYPE(OpFM_OutputType_C),INTENT(  OUT) :: OpFM_Output_to_FAST
@@ -575,7 +585,8 @@ subroutine FAST_OpFM_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c, n
    AbortErrLev_c = AbortErrLev   
    NumOuts_c     = min(MAXOUTPUTS, 1 + SUM( Turbine(iTurb)%y_FAST%numOuts )) ! includes time
    numBlades_c   = Turbine(iTurb)%ad%p%numblades
-   numElementsPerBlade_c = Turbine(iTurb)%ad%p%numblnds ! I'm not sure if FASTv8 can handle different number of blade nodes for each blade.
+   numElementsPerBlade_c = Turbine(iTurb)%ad%p%numblnds 
+   numElementsTower_c = Turbine(iTurb)%ad%y%TowerLoad%Nnodes
    dt_c          = Turbine(iTurb)%p_FAST%dt      
       
    ErrStat_c     = ErrStat
@@ -584,8 +595,10 @@ subroutine FAST_OpFM_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c, n
 
 #ifdef CONSOLE_FILE   
    if (ErrStat /= ErrID_None) call wrscr1(trim(ErrMsg))
-#endif   
+#endif
 
+   InflowType = Turbine(iTurb)%p_FAST%CompInflow
+   
    call SetOpenFOAM_pointers(iTurb, OpFM_Input_from_FAST, OpFM_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST)
 
 end subroutine FAST_OpFM_Restart
