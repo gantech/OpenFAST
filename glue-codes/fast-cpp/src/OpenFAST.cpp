@@ -72,6 +72,10 @@ void fast::OpenFAST::init() {
        timeZero = true;
       
        allocateMemory2(iTurb);
+
+       get_data_from_openfast(fast::nm1);
+       get_data_from_openfast(fast::n);
+       get_data_from_openfast(fast::np1);
       
      }
 
@@ -89,6 +93,10 @@ void fast::OpenFAST::init() {
 
        allocateMemory2(iTurb);
 
+       get_data_from_openfast(fast::nm1);
+       get_data_from_openfast(fast::n);
+       get_data_from_openfast(fast::np1);
+       
      }
 
      int nTimesteps;
@@ -126,9 +134,9 @@ void fast::OpenFAST::solution0() {
   if (!dryRun) {
       
     // set wind speeds at initial locations
-    // for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-    //     setOutputsToFAST(i_f_FAST[iTurb], o_t_FAST[iTurb]);
-    // }
+     // for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+     //     setExpLawWindSpeed(iTurb);
+     // }
      
      if(scStatus) {
 
@@ -138,6 +146,9 @@ void fast::OpenFAST::solution0() {
        fillScOutputsLoc();
      }
 
+     // Unfortunately setVelocity only sets the velocity at 'n+1'. Need to copy 'n+1' to 'n'
+     send_data_to_openfast(fast::np1);
+
      for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
        FAST_OpFM_Solution0(&iTurb, &ErrStat, ErrMsg);
@@ -146,6 +157,7 @@ void fast::OpenFAST::solution0() {
      }
 
      get_data_from_openfast(fast::n);
+     get_data_from_openfast(fast::nm1);
 
      timeZero = false;
 
@@ -164,7 +176,7 @@ void fast::OpenFAST:: predict_states() {
             int nfpts = get_numForcePtsLoc(iTurb);
             for (int i=0; i<nvelpts; i++) {
                 for (int j=0 ; j < 3; j++) {
-                    velForceNodeData[iTurb][fast::np1].x_vel[i*3+j] = velForceNodeData[iTurb][fast::n].x_vel[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j]);
+                    velForceNodeData[iTurb][fast::np1].x_vel[i*3+j] = velForceNodeData[iTurb][fast::n].x_vel[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j])*dtFAST;
                     velForceNodeData[iTurb][fast::np1].xdot_vel[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j];
                     velForceNodeData[iTurb][fast::np1].vel_vel[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].vel_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].vel_vel[i*3+j];
                 }
@@ -174,7 +186,7 @@ void fast::OpenFAST:: predict_states() {
             velForceNodeData[iTurb][fast::np1].vel_vel_resid = 0.0;        
             for (int i=0; i<nfpts; i++) {
                 for (int j=0 ; j < 3; j++) {
-                    velForceNodeData[iTurb][fast::np1].x_force[i*3+j] = velForceNodeData[iTurb][fast::n].x_force[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j]);
+                    velForceNodeData[iTurb][fast::np1].x_force[i*3+j] = velForceNodeData[iTurb][fast::n].x_force[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j])*dtFAST;
                     velForceNodeData[iTurb][fast::np1].xdot_force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j];
                     velForceNodeData[iTurb][fast::np1].vel_force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].vel_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].vel_force[i*3+j];
                     velForceNodeData[iTurb][fast::np1].force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].force[i*3+j] - velForceNodeData[iTurb][fast::nm1].force[i*3+j];
@@ -324,7 +336,7 @@ void fast::OpenFAST::step() {
    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
      //  set wind speeds at original locations 
-     //     setOutputsToFAST(i_f_FAST[iTurb], o_t_FAST[iTurb]);
+       // setExpLawWindSpeed(iTurb);
 	 
      // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
      // (note OpenFOAM could do subcycling around this step)
@@ -344,7 +356,9 @@ void fast::OpenFAST::step() {
      }
      
      FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+     send_data_to_openfast(fast::np1);
      FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+     get_data_from_openfast(fast::np1);
      FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
      checkError(ErrStat, ErrMsg);
 
@@ -397,7 +411,7 @@ void fast::OpenFAST::stepNoWrite() {
    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
      //  set wind speeds at original locations 
-     //     setOutputsToFAST(i_f_FAST[iTurb], o_t_FAST[iTurb]);
+       // setExpLawWindSpeed(iTurb);
 
      // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
      // (note OpenFOAM could do subcycling around this step)
@@ -467,29 +481,26 @@ void fast::OpenFAST::checkError(const int ErrStat, const char * ErrMsg){
 
 }
 
-void fast::OpenFAST::setOutputsToFAST(OpFM_InputType_t i_f_FAST, OpFM_OutputType_t o_t_FAST){
+void fast::OpenFAST::setExpLawWindSpeed(int iTurbLoc){
 
    // routine sets the u-v-w wind speeds used in FAST and the SuperController inputs
-
-   for (int j = 0; j < o_t_FAST.u_Len; j++){
-      o_t_FAST.u[j] = (float) 10.0*pow((i_f_FAST.pzVel[j] / 90.0), 0.2); // 0.2 power law wind profile using reference 10 m/s at 90 meters
-      o_t_FAST.v[j] = 0.0;
-      o_t_FAST.w[j] = 0.0;
+   int nVelPts = get_numVelPts(iTurbLoc);
+   int iTurbGlob = turbineMapProcToGlob[iTurbLoc];
+   for (int j = 0; j < nVelPts; j++){
+       std::vector<double> coords(3,0.0);
+       std::vector<double> tmpVel(3,0.0);
+       getVelNodeCoordinates(coords, j, iTurbGlob, fast::np1);
+       tmpVel[0] = (float) 10.0*pow((coords[2] / 90.0), 0.2); // 0.2 power law wind profile using reference 10 m/s at 90 meters
+       setVelocity(tmpVel, j, iTurbGlob);
    }
-
-   // // call supercontroller
-   // for (int j = 0; j < o_t_FAST.SuperController_Len; j++){
-   //    o_t_FAST.SuperController[j] = (float) j; // set it somehow.... (would be set from the SuperController outputs)
-   // }
-
 }
 
 void fast::OpenFAST::getApproxHubPos(std::vector<double> & currentCoords, int iTurbGlob) {
 
   // Get hub position of Turbine 'iTurbGlob'
-  currentCoords[0] = turbineData[iTurbGlob].TurbineHubPos[0];
-  currentCoords[1] = turbineData[iTurbGlob].TurbineHubPos[1];
-  currentCoords[2] = turbineData[iTurbGlob].TurbineHubPos[2];
+  currentCoords[0] = globTurbineData[iTurbGlob].TurbineHubPos[0];
+  currentCoords[1] = globTurbineData[iTurbGlob].TurbineHubPos[1];
+  currentCoords[2] = globTurbineData[iTurbGlob].TurbineHubPos[2];
 
 }
 

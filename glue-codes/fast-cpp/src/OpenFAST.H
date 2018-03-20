@@ -263,7 +263,7 @@ class OpenFAST {
   void fillScInputsGlob() ;
   void fillScOutputsLoc() ;
 
-  void setOutputsToFAST(OpFM_InputType_t i_f_FAST, OpFM_OutputType_t o_t_FAST) ; // An example to set velocities at the Aerodyn nodes
+  void setExpLawWindSpeed(int iTurbLoc) ; // An example to set velocities at the Aerodyn nodes
   void applyVelocityData(int iPrestart, int iTurb, OpFM_OutputType_t o_t_FAST, std::vector<double> & velData) ;
 
 };
