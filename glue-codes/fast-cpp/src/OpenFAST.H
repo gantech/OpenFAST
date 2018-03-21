@@ -195,8 +195,8 @@ class OpenFAST {
   void init();
   void solution0();
   void prework();
-  void update_states();
-  void advance_to_next_time_step();
+  void update_states_driver_time_step();
+  void advance_to_next_driver_time_step();
   void send_data_to_openfast(double ss_time);
   void send_data_to_openfast(fast::timeStep t);
   void get_data_from_openfast(fast::timeStep t);

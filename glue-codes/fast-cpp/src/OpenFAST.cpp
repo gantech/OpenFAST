@@ -227,7 +227,7 @@ void fast::OpenFAST::prework() {
 
 }
 
-void fast::OpenFAST::update_states() {
+void fast::OpenFAST::update_states_driver_time_step() {
 
     if (firstPass_)
         prework();
@@ -261,7 +261,7 @@ void fast::OpenFAST::update_states() {
     }
 }
 
-void fast::OpenFAST::advance_to_next_time_step() {
+void fast::OpenFAST::advance_to_next_driver_time_step() {
 
     if (nSubsteps_ > 1) {
         //Nothing to do here

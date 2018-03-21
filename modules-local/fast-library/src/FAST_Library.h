@@ -16,6 +16,7 @@ EXTERNAL_ROUTINE void FAST_OpFM_Init(int * iTurb, double *TMax, const char *Inpu
                                      int *AbortErrLev, double * dt, int * InflowType, int * NumBl, int * NumBlElem, int * NumTwrElem, OpFM_InputType_t* OpFM_Input, OpFM_OutputType_t* OpFM_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, 
    int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Solution0(int * iTurb, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_OpFM_InitIOarrays_SS(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Prework(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_UpdateStates(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_AdvanceToNextTimeStep(int * iTurb, int *ErrStat, char *ErrMsg);
