@@ -4227,10 +4227,33 @@ SUBROUTINE FAST_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, A
    
 END SUBROUTINE FAST_InitIOarrays
 !----------------------------------------------------------------------------------------------------------------------------------
+!> Routine that calls FAST_InitIOarrays_SS for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
+!! driver programs do not need to change or operate on the individual module level. 
+SUBROUTINE FAST_InitIOarrays_SS_T(t_initial, Turbine, ErrStat, ErrMsg )
+
+  REAL(DbKi),               INTENT(IN   ) :: t_initial           !< start time of the simulation 
+  TYPE(FAST_TurbineType),   INTENT(INOUT) :: Turbine             !< all data for one instance of a turbine
+  INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+  CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+
+  INTEGER(IntKi)                          :: ErrStat2
+  CHARACTER(ErrMsgLen)                    :: ErrMsg2
+  CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_InitIOarrays_SS_T'       
+  
+  CALL FAST_InitIOarrays_SS(t_initial, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+       Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, &
+       Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
+       Turbine%IceF, Turbine%IceD, ErrStat2, ErrMsg2 )
+
+  CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+  
+  
+END SUBROUTINE FAST_InitIOarrays_SS_T
+!----------------------------------------------------------------------------------------------------------------------------------
 !> This routine initializes the input and output arrays stored for extrapolation when used in a sub-timestepping mode with an external driver program. They are initialized after the first input-output solve so that the first
 !! extrapolations are used with values from the solution, not just initial guesses. It also creates new copies of the state variables, which need to 
 !! be stored for the predictor-corrector loop.
-SUBROUTINE FAST_SS_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, HD, SD, ExtPtfm, &
+SUBROUTINE FAST_InitIOarrays_SS( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, HD, SD, ExtPtfm, &
                               MAPp, FEAM, MD, Orca, IceF, IceD, ErrStat, ErrMsg )
 
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< start time of the simulation 
@@ -4261,7 +4284,7 @@ SUBROUTINE FAST_SS_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD
    INTEGER(IntKi)                          :: i, j, k             ! loop counters
    INTEGER(IntKi)                          :: ErrStat2
    CHARACTER(ErrMsgLen)                    :: ErrMsg2
-   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_InitIOarrays'       
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_InitIOarrays_SS'       
    
    
    ErrStat = ErrID_None
@@ -4798,7 +4821,7 @@ SUBROUTINE FAST_SS_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD
    END IF ! CompIce            
    
    
-END SUBROUTINE FAST_SS_InitIOarrays
+END SUBROUTINE FAST_InitIOarrays_SS
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine that calls FAST_Reset_SS for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
 !! driver programs do not need to change or operate on the individual module level. 

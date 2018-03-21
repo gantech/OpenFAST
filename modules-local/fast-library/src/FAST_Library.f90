@@ -534,6 +534,26 @@ subroutine FAST_OpFM_Solution0(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_O
                         
 end subroutine FAST_OpFM_Solution0
 !==================================================================================================================================
+subroutine FAST_OpFM_InitIOarrays_SS(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_InitIOarrays_SS')
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_InitIOarrays_SS
+  IMPLICIT NONE 
+#ifndef IMPLICIT_DLLEXPORT
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_InitIOarrays_SS
+#endif
+   INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
+   INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+   CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)
+
+   call FAST_InitIOarrays_SS_T(t_initial, Turbine(iTurb), ErrStat, ErrMsg ) 
+
+      ! set values for return to OpenFOAM
+   ErrStat_c     = ErrStat
+   ErrMsg        = TRIM(ErrMsg)//C_NULL_CHAR
+   ErrMsg_c      = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+   
+                        
+end subroutine FAST_OpFM_InitIOarrays_SS
+!==================================================================================================================================
 subroutine FAST_OpFM_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c, InflowType, numblades_c, &
      numElementsPerBlade_c, numElementsTower_c, n_t_global_c, OpFM_Input_from_FAST, OpFM_Output_to_FAST, &
      SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Restart')
