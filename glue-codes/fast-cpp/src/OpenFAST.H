@@ -94,7 +94,8 @@ class fastInputs {
   simStartType simStart;
   int nEveryCheckPoint;  
   double tMax;
-  double dtFAST;  
+  double dtFAST;
+  int nSubsteps;
 
   bool scStatus;
   std::string scLibFile;
@@ -123,6 +124,7 @@ class OpenFAST {
   simStartType simStart;
   bool timeZero;
   double dtFAST;
+  int nSubsteps_;  // Number of OpenFAST time steps per unit time step of the driver program
   double tMax;
   double tStart;
   int nt_global;
@@ -195,10 +197,12 @@ class OpenFAST {
   void prework();
   void update_states();
   void advance_to_next_time_step();
+  void send_data_to_openfast(double ss_time);
   void send_data_to_openfast(fast::timeStep t);
   void get_data_from_openfast(fast::timeStep t);
   void predict_states();
   void step();
+  void step(double ss_time); // Step function to be used with sub-stepping fast between time steps of the driver program
   void stepNoWrite();
   void end();
 

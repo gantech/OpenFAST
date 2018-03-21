@@ -832,6 +832,50 @@ subroutine FAST_OpFM_Step(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_S
    
       
 end subroutine FAST_OpFM_Step 
-!==================================================================================================================================   
+!==================================================================================================================================
+subroutine FAST_OpFM_Reset_SS(iTurb, n_timesteps, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Reset_SS')
+  IMPLICIT NONE
+#ifndef IMPLICIT_DLLEXPORT
+  !DEC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_Reset_SS
+  !GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_Reset_SS
+#endif
+  INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number
+  INTEGER(C_INT),         INTENT(IN   ) :: n_timesteps      ! Number of time steps to go back
+  INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+  CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
+
+  CALL FAST_Reset_SS_T(t_initial, n_t_global-n_timesteps, Turbine(iTurb), ErrStat, ErrMsg )
+
+  if (iTurb .eq. (NumTurbines-1) ) then
+     n_t_global = n_t_global - n_timesteps
+  end if
+
+  ErrStat_c = ErrStat
+  ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
+  ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+
+
+end subroutine FAST_OpFM_Reset_SS
+!================================================================================================================================== 
+subroutine FAST_OpFM_Store_SS(iTurb, n_t_global, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Store_SS')
+  IMPLICIT NONE
+#ifndef IMPLICIT_DLLEXPORT
+  !DEC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_Store_SS
+  !GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_Store_SS
+#endif
+  INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number
+  INTEGER(C_INT),         INTENT(IN   ) :: n_t_global       !< loop counter
+  INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+  CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
+
+  CALL FAST_Store_SS_T(t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )
+
+  ErrStat_c = ErrStat
+  ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
+  ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+
+
+end subroutine FAST_OpFM_Store_SS
+!================================================================================================================================== 
 END MODULE FAST_Data
 

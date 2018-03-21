@@ -264,7 +264,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! initialize ElastoDyn (must be done first)
    ! ........................
    
-   ALLOCATE( ED%Input( p_FAST%InterpOrder+1 ), ED%InputTimes( p_FAST%InterpOrder+1 ), ED%Output( p_FAST%InterpOrder+1 ),STAT = ErrStat2 )
+   ALLOCATE( ED%Input( (p_FAST%InterpOrder+1)*2 ), ED%InputTimes( (p_FAST%InterpOrder+1)*2 ), ED%Output( (p_FAST%InterpOrder+1)*2 ),STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating ED%Input, ED%Output, and ED%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -318,7 +318,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       p_FAST%nBeams = 0
    END IF
 
-   ALLOCATE( BD%Input( p_FAST%InterpOrder+1, p_FAST%nBeams ), BD%InputTimes( p_FAST%InterpOrder+1, p_FAST%nBeams ), STAT = ErrStat2 )
+   ALLOCATE( BD%Input( (p_FAST%InterpOrder+1)*2, p_FAST%nBeams ), BD%InputTimes( (p_FAST%InterpOrder+1)*2, p_FAST%nBeams ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating BD%Input and BD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -400,14 +400,14 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ........................
    ! initialize AeroDyn 
    ! ........................
-   ALLOCATE( AD14%Input( p_FAST%InterpOrder+1 ), AD14%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( AD14%Input( (p_FAST%InterpOrder+1)*2 ), AD14%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating AD14%Input and AD14%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
          RETURN
       END IF
      
-   ALLOCATE( AD%Input( p_FAST%InterpOrder+1 ), AD%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( AD%Input( (p_FAST%InterpOrder+1)*2 ), AD%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating AD%Input and AD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -497,7 +497,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ........................
    ! initialize InflowWind
    ! ........................   
-   ALLOCATE( IfW%Input( p_FAST%InterpOrder+1 ), IfW%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( IfW%Input( (p_FAST%InterpOrder+1)*2 ), IfW%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating IfW%Input and IfW%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -640,7 +640,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ........................
    ! initialize ServoDyn 
    ! ........................
-   ALLOCATE( SrvD%Input( p_FAST%InterpOrder+1 ), SrvD%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( SrvD%Input( (p_FAST%InterpOrder+1)*2 ), SrvD%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating SrvD%Input and SrvD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -733,7 +733,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ........................
    ! initialize HydroDyn 
    ! ........................
-   ALLOCATE( HD%Input( p_FAST%InterpOrder+1 ), HD%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( HD%Input( (p_FAST%InterpOrder+1)*2 ), HD%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating HD%Input and HD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -771,14 +771,14 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ........................
    ! initialize SubDyn or ExtPtfm_MCKF
    ! ........................
-   ALLOCATE( SD%Input( p_FAST%InterpOrder+1 ), SD%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( SD%Input( (p_FAST%InterpOrder+1)*2 ), SD%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating SD%Input and SD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
          RETURN
       END IF
 
-   ALLOCATE( ExtPtfm%Input( p_FAST%InterpOrder+1 ), ExtPtfm%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( ExtPtfm%Input( (p_FAST%InterpOrder+1)*2 ), ExtPtfm%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating ExtPtfm%Input and ExtPtfm%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -839,25 +839,25 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ------------------------------
    ! initialize CompMooring modules 
    ! ------------------------------
-   ALLOCATE( MAPp%Input( p_FAST%InterpOrder+1 ), MAPp%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( MAPp%Input( (p_FAST%InterpOrder+1)*2 ), MAPp%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating MAPp%Input and MAPp%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
          RETURN
       END IF
-   ALLOCATE( MD%Input( p_FAST%InterpOrder+1 ), MD%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( MD%Input( (p_FAST%InterpOrder+1)*2 ), MD%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating MD%Input and MD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
          RETURN
       END IF   
-   ALLOCATE( FEAM%Input( p_FAST%InterpOrder+1 ), FEAM%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( FEAM%Input( (p_FAST%InterpOrder+1)*2 ), FEAM%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating FEAM%Input and FEAM%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
          RETURN
       END IF   
-   ALLOCATE( Orca%Input( p_FAST%InterpOrder+1 ), Orca%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( Orca%Input( (p_FAST%InterpOrder+1)*2 ), Orca%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating Orca%Input and Orca%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -974,7 +974,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ------------------------------
    ! initialize CompIce modules 
    ! ------------------------------
-   ALLOCATE( IceF%Input( p_FAST%InterpOrder+1 ), IceF%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
+   ALLOCATE( IceF%Input( (p_FAST%InterpOrder+1)*2 ), IceF%InputTimes( (p_FAST%InterpOrder+1)*2 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating IceF%Input and IceF%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -991,7 +991,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       
       ! because there may be multiple instances of IceDyn, we'll allocate arrays for that here
       ! we could allocate these after 
-   ALLOCATE( IceD%Input( p_FAST%InterpOrder+1, IceDim ), IceD%InputTimes( p_FAST%InterpOrder+1, IceDim ), STAT = ErrStat2 )
+   ALLOCATE( IceD%Input( (p_FAST%InterpOrder+1)*2, IceDim ), IceD%InputTimes( (p_FAST%InterpOrder+1)*2, IceDim ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating IceD%Input and IceD%InputTimes.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -3855,7 +3855,6 @@ SUBROUTINE FAST_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, A
          END DO
          CALL BD_CopyInput (BD%Input(1,k),  BD%u(k),  MESH_NEWCOPY, Errstat2, ErrMsg2) ! do this to initialize meshes/allocatable arrays for output of ExtrapInterp routine
             CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
-                               
                      
             ! Initialize predicted states for j_pc loop:
          CALL BD_CopyContState   (BD%x( k,STATE_CURR), BD%x( k,STATE_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
@@ -4227,6 +4226,1709 @@ SUBROUTINE FAST_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, A
    
    
 END SUBROUTINE FAST_InitIOarrays
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This routine initializes the input and output arrays stored for extrapolation when used in a sub-timestepping mode with an external driver program. They are initialized after the first input-output solve so that the first
+!! extrapolations are used with values from the solution, not just initial guesses. It also creates new copies of the state variables, which need to 
+!! be stored for the predictor-corrector loop.
+SUBROUTINE FAST_SS_InitIOarrays( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, HD, SD, ExtPtfm, &
+                              MAPp, FEAM, MD, Orca, IceF, IceD, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< start time of the simulation 
+   TYPE(FAST_ParameterType), INTENT(IN   ) :: p_FAST              !< Parameters for the glue code
+   TYPE(FAST_OutputFileType),INTENT(IN   ) :: y_FAST              !< Output variables for the glue code
+   TYPE(FAST_MiscVarType),   INTENT(IN   ) :: m_FAST              !< Miscellaneous variables
+     
+   TYPE(ElastoDyn_Data),     INTENT(INOUT) :: ED                  !< ElastoDyn data
+   TYPE(BeamDyn_Data),       INTENT(INOUT) :: BD                  !< BeamDyn data
+   TYPE(ServoDyn_Data),      INTENT(INOUT) :: SrvD                !< ServoDyn data
+   TYPE(AeroDyn14_Data),     INTENT(INOUT) :: AD14                !< AeroDyn v14 data
+   TYPE(AeroDyn_Data),       INTENT(INOUT) :: AD                  !< AeroDyn data
+   TYPE(InflowWind_Data),    INTENT(INOUT) :: IfW                 !< InflowWind data
+   TYPE(HydroDyn_Data),      INTENT(INOUT) :: HD                  !< HydroDyn data
+   TYPE(SubDyn_Data),        INTENT(INOUT) :: SD                  !< SubDyn data
+   TYPE(ExtPtfm_Data),       INTENT(INOUT) :: ExtPtfm             !< ExtPtfm_MCKF data
+   TYPE(MAP_Data),           INTENT(INOUT) :: MAPp                !< MAP data
+   TYPE(FEAMooring_Data),    INTENT(INOUT) :: FEAM                !< FEAMooring data
+   TYPE(MoorDyn_Data),       INTENT(INOUT) :: MD                  !< MoorDyn data
+   TYPE(OrcaFlex_Data),      INTENT(INOUT) :: Orca                !< OrcaFlex interface data
+   TYPE(IceFloe_Data),       INTENT(INOUT) :: IceF                !< IceFloe data
+   TYPE(IceDyn_Data),        INTENT(INOUT) :: IceD                !< All the IceDyn data used in time-step loop
+      
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+
+   ! local variables
+   INTEGER(IntKi)                          :: i, j, k             ! loop counters
+   INTEGER(IntKi)                          :: ErrStat2
+   CHARACTER(ErrMsgLen)                    :: ErrMsg2
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_InitIOarrays'       
+   
+   
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+   
+   ! We fill ED%InputTimes with negative times, but the ED%Input values are identical for each of those times; this allows
+   ! us to use, e.g., quadratic interpolation that effectively acts as a zeroth-order extrapolation and first-order extrapolation
+   ! for the first and second time steps.  (The interpolation order in the ExtrapInput routines are determined as
+   ! order = SIZE(ED%Input)
+
+   DO j = 1, p_FAST%InterpOrder + 1
+      ED%InputTimes(p_FAST%InterpOrder + 1 + j) = t_initial - (j - 1) * p_FAST%dt
+      !ED_OutputTimes(p_FAST%InterpOrder + 1 + j) = t_initial - (j - 1) * dt
+   END DO
+
+   DO j = p_FAST%InterpOrder + 1 + 1, (p_FAST%InterpOrder + 1)*2
+      CALL ED_CopyInput (ED%Input(1),  ED%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      CALL ED_CopyOutput (ED%Output(1), ED%Output(j), MESH_NEWCOPY, Errstat2, ErrMsg2) !BJJ: THIS IS REALLY ONLY NECESSARY FOR ED-HD COUPLING AT THE MOMENT
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   END DO
+
+   CALL ED_CopyContState   (ED%x( STATE_CURR), ED%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyDiscState   (ED%xd(STATE_CURR), ED%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyConstrState (ED%z( STATE_CURR), ED%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+   CALL ED_CopyOtherState (ED%OtherSt( STATE_CURR), ED%OtherSt( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+      
+   CALL ED_CopyContState   (ED%x( STATE_PRED), ED%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyDiscState   (ED%xd(STATE_PRED), ED%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyConstrState (ED%z( STATE_PRED), ED%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyOtherState (ED%OtherSt( STATE_PRED), ED%OtherSt( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+   
+   IF  (p_FAST%CompElast == Module_BD ) THEN      
+
+      DO k = 1,p_FAST%nBeams
+         
+            ! Copy values for interpolation/extrapolation:
+         DO j = 1, p_FAST%InterpOrder + 1
+            BD%InputTimes(p_FAST%InterpOrder + 1 + j,k) = t_initial - (j - 1) * p_FAST%dt
+         END DO
+
+         DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+            CALL BD_CopyInput (BD%Input(1,k),  BD%Input(j,k),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+               CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         END DO
+                     
+            ! Initialize predicted states for j_pc loop:
+         CALL BD_CopyContState   (BD%x( k,STATE_CURR), BD%x( k,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyDiscState   (BD%xd(k,STATE_CURR), BD%xd(k,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyConstrState (BD%z( k,STATE_CURR), BD%z( k,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyOtherState (BD%OtherSt( k,STATE_CURR), BD%OtherSt( k,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+            ! Initialize predicted states for j_pc loop:
+         CALL BD_CopyContState   (BD%x( k,STATE_PRED), BD%x( k,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyDiscState   (BD%xd(k,STATE_PRED), BD%xd(k,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyConstrState (BD%z( k,STATE_PRED), BD%z( k,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyOtherState (BD%OtherSt( k,STATE_PRED), BD%OtherSt( k,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+            
+      END DO ! nBeams
+      
+   END IF ! CompElast            
+      
+   
+   IF ( p_FAST%CompServo == Module_SrvD ) THEN      
+      ! Initialize Input-Output arrays for interpolation/extrapolation:
+         
+      DO j = 1, p_FAST%InterpOrder + 1
+         SrvD%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !SrvD_OutputTimes(j) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL SrvD_CopyInput (SrvD%Input(1),  SrvD%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+   
+         ! Initialize predicted states for j_pc loop:
+      CALL SrvD_CopyContState   (SrvD%x( STATE_CURR), SrvD%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyDiscState   (SrvD%xd(STATE_CURR), SrvD%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyConstrState (SrvD%z( STATE_CURR), SrvD%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyOtherState( SrvD%OtherSt(STATE_CURR), SrvD%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL SrvD_CopyContState   (SrvD%x( STATE_PRED), SrvD%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyDiscState   (SrvD%xd(STATE_PRED), SrvD%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyConstrState (SrvD%z( STATE_PRED), SrvD%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyOtherState( SrvD%OtherSt(STATE_PRED), SrvD%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+            
+   END IF ! CompServo
+   
+   
+   IF ( p_FAST%CompAero == Module_AD14 ) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         AD14%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL AD14_CopyInput (AD14%Input(1),  AD14%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+         ! Initialize predicted states for j_pc loop:
+      CALL AD14_CopyContState   (AD14%x( STATE_CURR), AD14%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyDiscState   (AD14%xd(STATE_CURR), AD14%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyConstrState (AD14%z( STATE_CURR), AD14%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      CALL AD14_CopyOtherState( AD14%OtherSt(STATE_CURR), AD14%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL AD14_CopyContState   (AD14%x( STATE_PRED), AD14%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyDiscState   (AD14%xd(STATE_PRED), AD14%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyConstrState (AD14%z( STATE_PRED), AD14%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      CALL AD14_CopyOtherState( AD14%OtherSt(STATE_PRED), AD14%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+         
+   ELSEIF ( p_FAST%CompAero == Module_AD ) THEN      
+         ! Copy values for interpolation/extrapolation:
+   
+      DO j = 1, p_FAST%InterpOrder + 1
+         AD%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+      END DO
+   
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL AD_CopyInput (AD%Input(1),  AD%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+   
+         ! Initialize predicted states for j_pc loop:
+      CALL AD_CopyContState(AD%x(STATE_CURR), AD%x(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyDiscState(AD%xd(STATE_CURR), AD%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyConstrState(AD%z(STATE_CURR), AD%z(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      CALL AD_CopyOtherState(AD%OtherSt(STATE_CURR), AD%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL AD_CopyContState(AD%x(STATE_PRED), AD%x(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyDiscState(AD%xd(STATE_PRED), AD%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyConstrState(AD%z(STATE_PRED), AD%z(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      CALL AD_CopyOtherState(AD%OtherSt(STATE_PRED), AD%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+         
+   END IF ! CompAero == Module_AD    
+   
+   
+   
+   IF ( p_FAST%CompInflow == Module_IfW ) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         IfW%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !IfW%OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL InflowWind_CopyInput (IfW%Input(1),  IfW%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+         ! Initialize predicted states for j_pc loop:
+      CALL InflowWind_CopyContState   (IfW%x( STATE_CURR), IfW%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyDiscState   (IfW%xd(STATE_CURR), IfW%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyConstrState (IfW%z( STATE_CURR), IfW%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      CALL InflowWind_CopyOtherState( IfW%OtherSt(STATE_CURR), IfW%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL InflowWind_CopyContState   (IfW%x( STATE_PRED), IfW%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyDiscState   (IfW%xd(STATE_PRED), IfW%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyConstrState (IfW%z( STATE_PRED), IfW%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      CALL InflowWind_CopyOtherState( IfW%OtherSt(STATE_PRED), IfW%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+            
+   END IF ! CompInflow == Module_IfW 
+      
+   
+   IF ( p_FAST%CompHydro == Module_HD ) THEN      
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         HD%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !HD_OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL HydroDyn_CopyInput (HD%Input(1),  HD%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+         ! Initialize predicted states for j_pc loop:
+      CALL HydroDyn_CopyContState   (HD%x( STATE_CURR), HD%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyDiscState   (HD%xd(STATE_CURR), HD%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyConstrState (HD%z( STATE_CURR), HD%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyOtherState( HD%OtherSt(STATE_CURR), HD%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL HydroDyn_CopyContState   (HD%x( STATE_PRED), HD%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyDiscState   (HD%xd(STATE_PRED), HD%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyConstrState (HD%z( STATE_PRED), HD%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyOtherState( HD%OtherSt(STATE_PRED), HD%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+         
+   END IF !CompHydro
+         
+   
+   IF  (p_FAST%CompSub == Module_SD ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         SD%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !SD_OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL SD_CopyInput (SD%Input(1),  SD%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+         
+         ! Initialize predicted states for j_pc loop:
+      CALL SD_CopyContState   (SD%x( STATE_CURR), SD%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyDiscState   (SD%xd(STATE_CURR), SD%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyConstrState (SD%z( STATE_CURR), SD%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyOtherState( SD%OtherSt(STATE_CURR), SD%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL SD_CopyContState   (SD%x( STATE_PRED), SD%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyDiscState   (SD%xd(STATE_PRED), SD%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyConstrState (SD%z( STATE_PRED), SD%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyOtherState( SD%OtherSt(STATE_PRED), SD%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+         
+   ELSE IF (p_FAST%CompSub == Module_ExtPtfm ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         ExtPtfm%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL ExtPtfm_CopyInput (ExtPtfm%Input(1),  ExtPtfm%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+         
+         ! Initialize predicted states for j_pc loop:
+      CALL ExtPtfm_CopyContState   (ExtPtfm%x( STATE_CURR), ExtPtfm%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyDiscState   (ExtPtfm%xd(STATE_CURR), ExtPtfm%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyConstrState (ExtPtfm%z( STATE_CURR), ExtPtfm%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyOtherState( ExtPtfm%OtherSt(STATE_CURR), ExtPtfm%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      ! Initialize predicted states for j_pc loop:
+      CALL ExtPtfm_CopyContState   (ExtPtfm%x( STATE_PRED), ExtPtfm%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyDiscState   (ExtPtfm%xd(STATE_PRED), ExtPtfm%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyConstrState (ExtPtfm%z( STATE_PRED), ExtPtfm%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyOtherState( ExtPtfm%OtherSt(STATE_PRED), ExtPtfm%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+      
+   END IF ! CompSub         
+      
+   
+   IF (p_FAST%CompMooring == Module_MAP) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         MAPp%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !MAP_OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL MAP_CopyInput (MAPp%Input(1),  MAPp%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+               
+         ! Initialize predicted states for j_pc loop:
+      CALL MAP_CopyContState   (MAPp%x( STATE_CURR), MAPp%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyDiscState   (MAPp%xd(STATE_CURR), MAPp%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyConstrState (MAPp%z( STATE_CURR), MAPp%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      IF ( p_FAST%n_substeps( MODULE_MAP ) > 1 ) THEN
+         CALL MAP_CopyOtherState( MAPp%OtherSt, MAPp%OtherSt_old, MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+      END IF
+
+         ! Initialize predicted states for j_pc loop:
+      CALL MAP_CopyContState   (MAPp%x( STATE_PRED), MAPp%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyDiscState   (MAPp%xd(STATE_PRED), MAPp%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyConstrState (MAPp%z( STATE_PRED), MAPp%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      IF ( p_FAST%n_substeps( MODULE_MAP ) > 1 ) THEN
+         CALL MAP_CopyOtherState( MAPp%OtherSt, MAPp%OtherSt_old, MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+      END IF
+      
+   ELSEIF (p_FAST%CompMooring == Module_MD) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         MD%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !MD_OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL MD_CopyInput (MD%Input(1),  MD%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+               
+         ! Initialize predicted states for j_pc loop:
+      CALL MD_CopyContState   (MD%x( STATE_CURR), MD%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyDiscState   (MD%xd(STATE_CURR), MD%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyConstrState (MD%z( STATE_CURR), MD%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyOtherState( MD%OtherSt(STATE_CURR), MD%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+         ! Initialize predicted states for j_pc loop:
+      CALL MD_CopyContState   (MD%x( STATE_PRED), MD%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyDiscState   (MD%xd(STATE_PRED), MD%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyConstrState (MD%z( STATE_PRED), MD%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyOtherState( MD%OtherSt(STATE_PRED), MD%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+         
+      
+      
+   ELSEIF (p_FAST%CompMooring == Module_FEAM) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         FEAM%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !FEAM_OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL FEAM_CopyInput (FEAM%Input(1),  FEAM%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+               
+         ! Initialize predicted states for j_pc loop:
+      CALL FEAM_CopyContState   (FEAM%x( STATE_CURR), FEAM%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyDiscState   (FEAM%xd(STATE_CURR), FEAM%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyConstrState (FEAM%z( STATE_CURR), FEAM%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyOtherState( FEAM%OtherSt(STATE_CURR), FEAM%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+         ! Initialize predicted states for j_pc loop:
+      CALL FEAM_CopyContState   (FEAM%x( STATE_PRED), FEAM%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyDiscState   (FEAM%xd(STATE_PRED), FEAM%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyConstrState (FEAM%z( STATE_PRED), FEAM%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyOtherState( FEAM%OtherSt(STATE_PRED), FEAM%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+      
+   ELSEIF (p_FAST%CompMooring == Module_Orca) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         Orca%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL Orca_CopyInput (Orca%Input(1),  Orca%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+               
+         ! Initialize predicted states for j_pc loop:
+      CALL Orca_CopyContState   (Orca%x( STATE_CURR), Orca%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyDiscState   (Orca%xd(STATE_CURR), Orca%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyConstrState (Orca%z( STATE_CURR), Orca%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyOtherState( Orca%OtherSt(STATE_CURR), Orca%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL Orca_CopyContState   (Orca%x( STATE_PRED), Orca%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyDiscState   (Orca%xd(STATE_PRED), Orca%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyConstrState (Orca%z( STATE_PRED), Orca%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyOtherState( Orca%OtherSt(STATE_PRED), Orca%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+   END IF ! CompMooring
+                 
+   
+   IF  (p_FAST%CompIce == Module_IceF ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         IceF%InputTimes(j) = t_initial - (j - 1) * p_FAST%dt
+         !IceF_OutputTimes(i) = t_initial - (j - 1) * dt
+      END DO
+
+      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         CALL IceFloe_CopyInput (IceF%Input(1),  IceF%Input(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+         
+         ! Initialize predicted states for j_pc loop:
+      CALL IceFloe_CopyContState   (IceF%x( STATE_CURR), IceF%x( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyDiscState   (IceF%xd(STATE_CURR), IceF%xd(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyConstrState (IceF%z( STATE_CURR), IceF%z( STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyOtherState( IceF%OtherSt(STATE_CURR), IceF%OtherSt(STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+         ! Initialize predicted states for j_pc loop:
+      CALL IceFloe_CopyContState   (IceF%x( STATE_PRED), IceF%x( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyDiscState   (IceF%xd(STATE_PRED), IceF%xd(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyConstrState (IceF%z( STATE_PRED), IceF%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyOtherState( IceF%OtherSt(STATE_PRED), IceF%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+         
+   ELSEIF  (p_FAST%CompIce == Module_IceD ) THEN      
+
+      DO i = 1,p_FAST%numIceLegs
+         
+            ! Copy values for interpolation/extrapolation:
+         DO j = 1, p_FAST%InterpOrder + 1
+            IceD%InputTimes(j,i) = t_initial - (j - 1) * p_FAST%dt
+            !IceD%OutputTimes(j,i) = t_initial - (j - 1) * dt
+         END DO
+
+         DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+            CALL IceD_CopyInput (IceD%Input(1,i),  IceD%Input(j,i),  MESH_NEWCOPY, Errstat2, ErrMsg2)
+               CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         END DO
+         
+            ! Initialize predicted states for j_pc loop:
+         CALL IceD_CopyContState   (IceD%x( i,STATE_CURR), IceD%x( i,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyDiscState   (IceD%xd(i,STATE_CURR), IceD%xd(i,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyConstrState (IceD%z( i,STATE_CURR), IceD%z( i,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyOtherState( IceD%OtherSt(i,STATE_CURR), IceD%OtherSt(i,STATE_SS_CURR), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+
+            ! Initialize predicted states for j_pc loop:
+         CALL IceD_CopyContState   (IceD%x( i,STATE_PRED), IceD%x( i,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyDiscState   (IceD%xd(i,STATE_PRED), IceD%xd(i,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)  
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyConstrState (IceD%z( i,STATE_PRED), IceD%z( i,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyOtherState( IceD%OtherSt(i,STATE_PRED), IceD%OtherSt(i,STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+            
+      END DO ! numIceLegs
+      
+   END IF ! CompIce            
+   
+   
+END SUBROUTINE FAST_SS_InitIOarrays
+!----------------------------------------------------------------------------------------------------------------------------------
+!> Routine that calls FAST_Reset_SS for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
+!! driver programs do not need to change or operate on the individual module level. 
+SUBROUTINE FAST_Reset_SS_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
+   INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+   TYPE(FAST_TurbineType),   INTENT(INOUT) :: Turbine             !< all data for one instance of a turbine
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+   
+      CALL FAST_Reset_SS(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+                  Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, Turbine%OpFM, &
+                  Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
+                  Turbine%IceF, Turbine%IceD, Turbine%MeshMapData, ErrStat, ErrMsg )                  
+                  
+END SUBROUTINE FAST_Reset_SS_T
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This routine resets the states, inputs and output data from n_t_global to n_t_global - 1
+SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
+                         MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
+   INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+
+   TYPE(FAST_ParameterType), INTENT(IN   ) :: p_FAST              !< Parameters for the glue code
+   TYPE(FAST_OutputFileType),INTENT(INOUT) :: y_FAST              !< Output variables for the glue code
+   TYPE(FAST_MiscVarType),   INTENT(INOUT) :: m_FAST              !< Miscellaneous variables
+     
+   TYPE(ElastoDyn_Data),     INTENT(INOUT) :: ED                  !< ElastoDyn data
+   TYPE(BeamDyn_Data),       INTENT(INOUT) :: BD                  !< BeamDyn data
+   TYPE(ServoDyn_Data),      INTENT(INOUT) :: SrvD                !< ServoDyn data
+   TYPE(AeroDyn14_Data),     INTENT(INOUT) :: AD14                !< AeroDyn14 data
+   TYPE(AeroDyn_Data),       INTENT(INOUT) :: AD                  !< AeroDyn data
+   TYPE(InflowWind_Data),    INTENT(INOUT) :: IfW                 !< InflowWind data
+   TYPE(OpenFOAM_Data),      INTENT(INOUT) :: OpFM                !< OpenFOAM data
+   TYPE(HydroDyn_Data),      INTENT(INOUT) :: HD                  !< HydroDyn data
+   TYPE(SubDyn_Data),        INTENT(INOUT) :: SD                  !< SubDyn data
+   TYPE(ExtPtfm_Data),       INTENT(INOUT) :: ExtPtfm             !< ExtPtfm_MCKF data
+   TYPE(MAP_Data),           INTENT(INOUT) :: MAPp                !< MAP data
+   TYPE(FEAMooring_Data),    INTENT(INOUT) :: FEAM                !< FEAMooring data
+   TYPE(MoorDyn_Data),       INTENT(INOUT) :: MD                  !< Data for the MoorDyn module
+   TYPE(OrcaFlex_Data),      INTENT(INOUT) :: Orca                !< OrcaFlex interface data
+   TYPE(IceFloe_Data),       INTENT(INOUT) :: IceF                !< IceFloe data
+   TYPE(IceDyn_Data),        INTENT(INOUT) :: IceD                !< All the IceDyn data used in time-step loop
+
+   TYPE(FAST_ModuleMapType), INTENT(INOUT) :: MeshMapData         !< Data for mapping between modules
+      
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+   
+   ! local variables
+   INTEGER(IntKi)                          :: j_pc                ! predictor-corrector loop counter 
+   INTEGER(IntKi)                          :: NumCorrections      ! number of corrections for this time step 
+   
+   INTEGER(IntKi)                          :: i, j, k             ! generic loop counters
+   REAL(DbKi)                              :: t_global            ! the time to which states, inputs and outputs are reset  
+   
+   INTEGER(IntKi)                          :: ErrStat2
+   CHARACTER(ErrMsgLen)                    :: ErrMsg2
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_Solution'
+
+
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+   
+
+   t_global = t_initial + n_t_global * p_FAST%DT
+   
+   !----------------------------------------------------------------------------------------
+   !! copy the stored states and inputs from n_t_global the current states and inputs
+   !----------------------------------------------------------------------------------------
+
+   DO j = 1, p_FAST%InterpOrder + 1
+      ED%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+      !ED_OutputTimes(j) = t_global - (j - 1) * dt
+   END DO
+
+   DO j = 1, p_FAST%InterpOrder + 1
+      CALL ED_CopyInput (ED%Input(p_FAST%InterpOrder + 1 + j), ED%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL ED_CopyOutput (ED%Output(p_FAST%InterpOrder + 1 + j), ED%Output(j), MESH_UPDATECOPY, Errstat2, ErrMsg2) 
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   END DO
+
+   ! ElastoDyn: copy final predictions to actual states
+   CALL ED_CopyContState   (ED%x( STATE_SS_PRED), ED%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyDiscState   (ED%xd(STATE_SS_PRED), ED%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyConstrState (ED%z( STATE_SS_PRED), ED%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyOtherState (ED%OtherSt( STATE_SS_PRED), ED%OtherSt( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   CALL ED_CopyContState   (ED%x( STATE_SS_CURR), ED%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyDiscState   (ED%xd(STATE_SS_CURR), ED%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyConstrState (ED%z( STATE_SS_CURR), ED%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyOtherState (ED%OtherSt( STATE_SS_CURR), ED%OtherSt( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   
+
+   IF  (p_FAST%CompElast == Module_BD ) THEN      
+
+      DO k = 1,p_FAST%nBeams
+
+         ! Copy values for interpolation/extrapolation:
+         DO j = 1, p_FAST%InterpOrder + 1
+            BD%InputTimes(j,k) = t_global - (j - 1) * p_FAST%dt
+         END DO
+
+         DO j = 1, p_FAST%InterpOrder + 1
+            CALL BD_CopyInput (BD%Input(p_FAST%InterpOrder + 1 + j,k),  BD%Input(j,k),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         END DO
+         
+         CALL BD_CopyContState   (BD%x( k,STATE_SS_PRED), BD%x( k,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyDiscState   (BD%xd(k,STATE_SS_PRED), BD%xd(k,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyConstrState (BD%z( k,STATE_SS_PRED), BD%z( k,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyOtherState (BD%OtherSt( k,STATE_SS_PRED), BD%OtherSt( k,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+         CALL BD_CopyContState   (BD%x( k,STATE_SS_CURR), BD%x( k,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyDiscState   (BD%xd(k,STATE_SS_CURR), BD%xd(k,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyConstrState (BD%z( k,STATE_SS_CURR), BD%z( k,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyOtherState (BD%OtherSt( k,STATE_SS_CURR), BD%OtherSt( k,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+      
+   END IF
+
+   IF ( p_FAST%CompServo == Module_SrvD ) THEN      
+      ! Initialize Input-Output arrays for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         SrvD%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL SrvD_CopyInput (SrvD%Input(p_FAST%InterpOrder + 1 + j),  SrvD%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL SrvD_CopyContState   (SrvD%x( STATE_SS_PRED), SrvD%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyDiscState   (SrvD%xd(STATE_SS_PRED), SrvD%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyConstrState (SrvD%z( STATE_SS_PRED), SrvD%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyOtherState (SrvD%OtherSt( STATE_SS_PRED), SrvD%OtherSt( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      CALL SrvD_CopyContState   (SrvD%x( STATE_SS_CURR), SrvD%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyDiscState   (SrvD%xd(STATE_SS_CURR), SrvD%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyConstrState (SrvD%z( STATE_SS_CURR), SrvD%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyOtherState (SrvD%OtherSt( STATE_SS_CURR), SrvD%OtherSt( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   END IF
+
+   IF ( p_FAST%CompAero == Module_AD14 ) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         AD14%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL AD14_CopyInput (AD14%Input(p_FAST%InterpOrder + 1 + j),  AD14%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL AD14_CopyContState   (AD14%x( STATE_SS_PRED), AD14%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyDiscState   (AD14%xd(STATE_SS_PRED), AD14%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyConstrState (AD14%z( STATE_SS_PRED), AD14%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyOtherState (AD14%OtherSt(STATE_SS_PRED), AD14%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL AD14_CopyContState   (AD14%x( STATE_SS_CURR), AD14%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyDiscState   (AD14%xd(STATE_SS_CURR), AD14%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyConstrState (AD14%z( STATE_SS_CURR), AD14%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyOtherState (AD14%OtherSt(STATE_SS_CURR), AD14%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+
+   ELSEIF ( p_FAST%CompAero == Module_AD ) THEN      
+         ! Copy values for interpolation/extrapolation:
+   
+      DO j = 1, p_FAST%InterpOrder + 1
+         AD%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+      END DO
+   
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL AD_CopyInput (AD%Input(p_FAST%InterpOrder + 1 + j),  AD%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL AD_CopyContState   (AD%x( STATE_SS_PRED), AD%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyDiscState   (AD%xd(STATE_SS_PRED), AD%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyConstrState (AD%z( STATE_SS_PRED), AD%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyOtherState (AD%OtherSt(STATE_SS_PRED), AD%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL AD_CopyContState   (AD%x( STATE_SS_CURR), AD%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyDiscState   (AD%xd(STATE_SS_CURR), AD%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyConstrState (AD%z( STATE_SS_CURR), AD%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyOtherState (AD%OtherSt(STATE_SS_CURR), AD%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   END IF ! CompAero == Module_AD    
+
+   IF ( p_FAST%CompInflow == Module_IfW ) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         IfW%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !IfW%OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL InflowWind_CopyInput (IfW%Input(p_FAST%InterpOrder + 1 + j),  IfW%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL InflowWind_CopyContState   (IfW%x( STATE_SS_PRED), IfW%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyDiscState   (IfW%xd(STATE_SS_PRED), IfW%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyConstrState (IfW%z( STATE_SS_PRED), IfW%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyOtherState (IfW%OtherSt( STATE_SS_PRED), IfW%OtherSt( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL InflowWind_CopyContState   (IfW%x( STATE_SS_CURR), IfW%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyDiscState   (IfW%xd(STATE_SS_CURR), IfW%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyConstrState (IfW%z( STATE_SS_CURR), IfW%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyOtherState (IfW%OtherSt( STATE_SS_CURR), IfW%OtherSt( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+         
+   END IF ! CompInflow == Module_IfW
+
+   
+   IF ( p_FAST%CompHydro == Module_HD ) THEN      
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         HD%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !HD_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL HydroDyn_CopyInput (HD%Input(p_FAST%InterpOrder + 1 + j),  HD%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL HydroDyn_CopyContState   (HD%x( STATE_SS_PRED), HD%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyDiscState   (HD%xd(STATE_SS_PRED), HD%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyConstrState (HD%z( STATE_SS_PRED), HD%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyOtherState (HD%OtherSt(STATE_SS_PRED), HD%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL HydroDyn_CopyContState   (HD%x( STATE_SS_CURR), HD%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyDiscState   (HD%xd(STATE_SS_CURR), HD%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyConstrState (HD%z( STATE_SS_CURR), HD%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyOtherState (HD%OtherSt(STATE_SS_CURR), HD%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   END IF !CompHydro
+         
+   
+   IF  (p_FAST%CompSub == Module_SD ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         SD%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !SD_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL SD_CopyInput (SD%Input(p_FAST%InterpOrder + 1 + j),  SD%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL SD_CopyContState   (SD%x( STATE_SS_PRED), SD%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyDiscState   (SD%xd(STATE_SS_PRED), SD%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyConstrState (SD%z( STATE_SS_PRED), SD%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyOtherState (SD%OtherSt(STATE_SS_PRED), SD%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL SD_CopyContState   (SD%x( STATE_SS_CURR), SD%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyDiscState   (SD%xd(STATE_SS_CURR), SD%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyConstrState (SD%z( STATE_SS_CURR), SD%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyOtherState (SD%OtherSt(STATE_SS_CURR), SD%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   ELSE IF (p_FAST%CompSub == Module_ExtPtfm ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         ExtPtfm%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL ExtPtfm_CopyInput (ExtPtfm%Input(p_FAST%InterpOrder + 1 + j),  ExtPtfm%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL ExtPtfm_CopyContState   (ExtPtfm%x( STATE_SS_PRED), ExtPtfm%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyDiscState   (ExtPtfm%xd(STATE_SS_PRED), ExtPtfm%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyConstrState (ExtPtfm%z( STATE_SS_PRED), ExtPtfm%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyOtherState (ExtPtfm%OtherSt(STATE_SS_PRED), ExtPtfm%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL ExtPtfm_CopyContState   (ExtPtfm%x( STATE_SS_CURR), ExtPtfm%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyDiscState   (ExtPtfm%xd(STATE_SS_CURR), ExtPtfm%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyConstrState (ExtPtfm%z( STATE_SS_CURR), ExtPtfm%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyOtherState (ExtPtfm%OtherSt(STATE_SS_CURR), ExtPtfm%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+         
+   END IF ! CompSub         
+      
+   
+   IF (p_FAST%CompMooring == Module_MAP) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         MAPp%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !MAP_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL MAP_CopyInput (MAPp%Input(p_FAST%InterpOrder + 1 + j),  MAPp%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL MAP_CopyContState   (MAPp%x( STATE_SS_PRED), MAPp%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyDiscState   (MAPp%xd(STATE_SS_PRED), MAPp%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyConstrState (MAPp%z( STATE_SS_PRED), MAPp%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      !CALL MAP_CopyOtherState (MAPp%OtherSt(STATE_SS_PRED), MAPp%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      !   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL MAP_CopyContState   (MAPp%x( STATE_SS_CURR), MAPp%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyDiscState   (MAPp%xd(STATE_SS_CURR), MAPp%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyConstrState (MAPp%z( STATE_SS_CURR), MAPp%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      !CALL MAP_CopyOtherState (MAPp%OtherSt(STATE_SS_CURR), MAPp%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      !   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      
+   ELSEIF (p_FAST%CompMooring == Module_MD) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         MD%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !MD_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL MD_CopyInput (MD%Input(p_FAST%InterpOrder + 1 + j),  MD%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL MD_CopyContState   (MD%x( STATE_SS_PRED), MD%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyDiscState   (MD%xd(STATE_SS_PRED), MD%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyConstrState (MD%z( STATE_SS_PRED), MD%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyOtherState (MD%OtherSt(STATE_SS_PRED), MD%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL MD_CopyContState   (MD%x( STATE_SS_CURR), MD%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyDiscState   (MD%xd(STATE_SS_CURR), MD%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyConstrState (MD%z( STATE_SS_CURR), MD%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyOtherState (MD%OtherSt(STATE_SS_CURR), MD%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+   ELSEIF (p_FAST%CompMooring == Module_FEAM) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         FEAM%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !FEAM_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL FEAM_CopyInput (FEAM%Input(p_FAST%InterpOrder + 1 + j),  FEAM%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL FEAM_CopyContState   (FEAM%x( STATE_SS_PRED), FEAM%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyDiscState   (FEAM%xd(STATE_SS_PRED), FEAM%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyConstrState (FEAM%z( STATE_SS_PRED), FEAM%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyOtherState (FEAM%OtherSt( STATE_SS_PRED), FEAM%OtherSt( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL FEAM_CopyContState   (FEAM%x( STATE_SS_CURR), FEAM%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyDiscState   (FEAM%xd(STATE_SS_CURR), FEAM%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyConstrState (FEAM%z( STATE_SS_CURR), FEAM%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyOtherState (FEAM%OtherSt( STATE_SS_CURR), FEAM%OtherSt( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+   ELSEIF (p_FAST%CompMooring == Module_Orca) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         Orca%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL Orca_CopyInput (Orca%Input(p_FAST%InterpOrder + 1 + j),  Orca%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+         
+      CALL Orca_CopyContState   (Orca%x( STATE_SS_PRED), Orca%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyDiscState   (Orca%xd(STATE_SS_PRED), Orca%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyConstrState (Orca%z( STATE_SS_PRED), Orca%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyOtherState (Orca%OtherSt( STATE_SS_PRED), Orca%OtherSt( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL Orca_CopyContState   (Orca%x( STATE_SS_CURR), Orca%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyDiscState   (Orca%xd(STATE_SS_CURR), Orca%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyConstrState (Orca%z( STATE_SS_CURR), Orca%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyOtherState (Orca%OtherSt( STATE_SS_CURR), Orca%OtherSt( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+   END IF ! CompMooring
+                 
+   
+   IF  (p_FAST%CompIce == Module_IceF ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         IceF%InputTimes(j) = t_global - (j - 1) * p_FAST%dt
+         !IceF_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL IceFloe_CopyInput (IceF%Input(p_FAST%InterpOrder + 1 + j),  IceF%Input(j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL IceFloe_CopyContState   (IceF%x( STATE_SS_PRED), IceF%x( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyDiscState   (IceF%xd(STATE_SS_PRED), IceF%xd(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyConstrState (IceF%z( STATE_SS_PRED), IceF%z( STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyOtherState (IceF%OtherSt(STATE_SS_PRED), IceF%OtherSt(STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      CALL IceFloe_CopyContState   (IceF%x( STATE_SS_CURR), IceF%x( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyDiscState   (IceF%xd(STATE_SS_CURR), IceF%xd(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyConstrState (IceF%z( STATE_SS_CURR), IceF%z( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyOtherState (IceF%OtherSt(STATE_SS_CURR), IceF%OtherSt(STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   ELSEIF  (p_FAST%CompIce == Module_IceD ) THEN      
+
+      DO i = 1,p_FAST%numIceLegs
+         
+            ! Copy values for interpolation/extrapolation:
+         DO j = 1, p_FAST%InterpOrder + 1
+            IceD%InputTimes(j,i) = t_global - (j - 1) * p_FAST%dt
+            !IceD%OutputTimes(j,i) = t_global - (j - 1) * dt
+         END DO
+
+         DO j = 1, p_FAST%InterpOrder + 1
+            CALL IceD_CopyInput (IceD%Input(p_FAST%InterpOrder + 1 + j,i),  IceD%Input(j,i),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+               CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         END DO
+
+         CALL IceD_CopyContState   (IceD%x( i,STATE_SS_PRED), IceD%x( i,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyDiscState   (IceD%xd(i,STATE_SS_PRED), IceD%xd(i,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyConstrState (IceD%z( i,STATE_SS_PRED), IceD%z( i,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyOtherState (IceD%OtherSt( i,STATE_SS_PRED), IceD%OtherSt( i,STATE_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+         CALL IceD_CopyContState   (IceD%x( i,STATE_SS_CURR), IceD%x( i,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyDiscState   (IceD%xd(i,STATE_SS_CURR), IceD%xd(i,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyConstrState (IceD%z( i,STATE_SS_CURR), IceD%z( i,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyOtherState (IceD%OtherSt( i,STATE_SS_CURR), IceD%OtherSt( i,STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+      END DO ! numIceLegs
+      
+   END IF ! CompIce            
+   
+   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   !! We've moved everything back to the initial time step: 
+   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++                     
+   !! update the global time 
+  
+   m_FAST%t_global = t_global
+     
+END SUBROUTINE FAST_Reset_SS
+!----------------------------------------------------------------------------------------------------------------------------------
+!> Routine that calls FAST_Store_SS for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
+!! driver programs do not need to change or operate on the individual module level. 
+SUBROUTINE FAST_Store_SS_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
+   INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+   TYPE(FAST_TurbineType),   INTENT(INOUT) :: Turbine             !< all data for one instance of a turbine
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+   
+      CALL FAST_Store_SS(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+                  Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, Turbine%OpFM, &
+                  Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
+                  Turbine%IceF, Turbine%IceD, Turbine%MeshMapData, ErrStat, ErrMsg )                  
+                  
+END SUBROUTINE FAST_Store_SS_T
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This routine resets the states, inputs and output data from n_t_global to n_t_global - 1
+SUBROUTINE FAST_Store_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
+                         MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
+   INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+
+   TYPE(FAST_ParameterType), INTENT(IN   ) :: p_FAST              !< Parameters for the glue code
+   TYPE(FAST_OutputFileType),INTENT(INOUT) :: y_FAST              !< Output variables for the glue code
+   TYPE(FAST_MiscVarType),   INTENT(INOUT) :: m_FAST              !< Miscellaneous variables
+     
+   TYPE(ElastoDyn_Data),     INTENT(INOUT) :: ED                  !< ElastoDyn data
+   TYPE(BeamDyn_Data),       INTENT(INOUT) :: BD                  !< BeamDyn data
+   TYPE(ServoDyn_Data),      INTENT(INOUT) :: SrvD                !< ServoDyn data
+   TYPE(AeroDyn14_Data),     INTENT(INOUT) :: AD14                !< AeroDyn14 data
+   TYPE(AeroDyn_Data),       INTENT(INOUT) :: AD                  !< AeroDyn data
+   TYPE(InflowWind_Data),    INTENT(INOUT) :: IfW                 !< InflowWind data
+   TYPE(OpenFOAM_Data),      INTENT(INOUT) :: OpFM                !< OpenFOAM data
+   TYPE(HydroDyn_Data),      INTENT(INOUT) :: HD                  !< HydroDyn data
+   TYPE(SubDyn_Data),        INTENT(INOUT) :: SD                  !< SubDyn data
+   TYPE(ExtPtfm_Data),       INTENT(INOUT) :: ExtPtfm             !< ExtPtfm_MCKF data
+   TYPE(MAP_Data),           INTENT(INOUT) :: MAPp                !< MAP data
+   TYPE(FEAMooring_Data),    INTENT(INOUT) :: FEAM                !< FEAMooring data
+   TYPE(MoorDyn_Data),       INTENT(INOUT) :: MD                  !< Data for the MoorDyn module
+   TYPE(OrcaFlex_Data),      INTENT(INOUT) :: Orca                !< OrcaFlex interface data
+   TYPE(IceFloe_Data),       INTENT(INOUT) :: IceF                !< IceFloe data
+   TYPE(IceDyn_Data),        INTENT(INOUT) :: IceD                !< All the IceDyn data used in time-step loop
+
+   TYPE(FAST_ModuleMapType), INTENT(INOUT) :: MeshMapData         !< Data for mapping between modules
+      
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+   
+   ! local variables
+   INTEGER(IntKi)                          :: j_pc                ! predictor-corrector loop counter 
+   INTEGER(IntKi)                          :: NumCorrections      ! number of corrections for this time step 
+   
+   INTEGER(IntKi)                          :: i, j, k             ! generic loop counters
+   REAL(DbKi)                              :: t_global            ! the time to which states, inputs and outputs are reset  
+   
+   INTEGER(IntKi)                          :: ErrStat2
+   CHARACTER(ErrMsgLen)                    :: ErrMsg2
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_Solution'
+
+
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+   
+
+   t_global = t_initial + n_t_global * p_FAST%DT
+   
+   !----------------------------------------------------------------------------------------
+   !! copy the stored states and inputs from n_t_global the current states and inputs
+   !----------------------------------------------------------------------------------------
+
+   DO j = 1, p_FAST%InterpOrder + 1
+      ED%InputTimes(p_FAST%InterpOrder + 1 + j) = ED%InputTimes(j)
+   END DO
+
+   DO j = 1, p_FAST%InterpOrder + 1
+      CALL ED_CopyInput (ED%Input(j), ED%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL ED_CopyOutput (ED%Output(j), ED%Output(p_FAST%InterpOrder + 1 + j), MESH_UPDATECOPY, Errstat2, ErrMsg2) 
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   END DO
+
+   ! ElastoDyn: copy final predictions to actual states
+   CALL ED_CopyContState   (ED%x( STATE_PRED), ED%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyDiscState   (ED%xd(STATE_PRED), ED%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyConstrState (ED%z( STATE_PRED), ED%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyOtherState (ED%OtherSt( STATE_PRED), ED%OtherSt( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   CALL ED_CopyContState   (ED%x( STATE_CURR), ED%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyDiscState   (ED%xd(STATE_CURR), ED%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyConstrState (ED%z( STATE_CURR), ED%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL ED_CopyOtherState (ED%OtherSt( STATE_CURR), ED%OtherSt( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   
+   IF  (p_FAST%CompElast == Module_BD ) THEN      
+
+      DO k = 1,p_FAST%nBeams
+
+         ! Copy values for interpolation/extrapolation:
+         DO j = 1, p_FAST%InterpOrder + 1
+            BD%InputTimes(p_FAST%InterpOrder + 1 + j,k) = BD%InputTimes(j,k)
+         END DO
+
+         DO j = 1, p_FAST%InterpOrder + 1
+            CALL BD_CopyInput (BD%Input(j,k),  BD%Input(p_FAST%InterpOrder + 1 + j,k),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         END DO
+         
+         CALL BD_CopyContState   (BD%x( k,STATE_PRED), BD%x( k,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyDiscState   (BD%xd(k,STATE_PRED), BD%xd(k,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyConstrState (BD%z( k,STATE_PRED), BD%z( k,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyOtherState (BD%OtherSt( k,STATE_PRED), BD%OtherSt( k,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+         CALL BD_CopyContState   (BD%x( k,STATE_CURR), BD%x( k,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyDiscState   (BD%xd(k,STATE_CURR), BD%xd(k,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyConstrState (BD%z( k,STATE_CURR), BD%z( k,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL BD_CopyOtherState (BD%OtherSt( k,STATE_CURR), BD%OtherSt( k,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+      
+   END IF
+
+   IF ( p_FAST%CompServo == Module_SrvD ) THEN      
+      ! Initialize Input-Output arrays for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         SrvD%InputTimes(p_FAST%InterpOrder + 1 + j) = SrvD%InputTimes(j)
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL SrvD_CopyInput (SrvD%Input(j),  SrvD%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL SrvD_CopyContState   (SrvD%x( STATE_PRED), SrvD%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyDiscState   (SrvD%xd(STATE_PRED), SrvD%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyConstrState (SrvD%z( STATE_PRED), SrvD%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyOtherState (SrvD%OtherSt( STATE_PRED), SrvD%OtherSt( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      CALL SrvD_CopyContState   (SrvD%x( STATE_CURR), SrvD%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyDiscState   (SrvD%xd(STATE_CURR), SrvD%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyConstrState (SrvD%z( STATE_CURR), SrvD%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SrvD_CopyOtherState (SrvD%OtherSt( STATE_CURR), SrvD%OtherSt( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   END IF
+
+   IF ( p_FAST%CompAero == Module_AD14 ) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         AD14%InputTimes(p_FAST%InterpOrder + 1 + j) = AD14%InputTimes(j)
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL AD14_CopyInput (AD14%Input(j),  AD14%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL AD14_CopyContState   (AD14%x( STATE_PRED), AD14%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyDiscState   (AD14%xd(STATE_PRED), AD14%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyConstrState (AD14%z( STATE_PRED), AD14%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyOtherState (AD14%OtherSt(STATE_PRED), AD14%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL AD14_CopyContState   (AD14%x( STATE_CURR), AD14%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyDiscState   (AD14%xd(STATE_CURR), AD14%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyConstrState (AD14%z( STATE_CURR), AD14%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD14_CopyOtherState (AD14%OtherSt(STATE_CURR), AD14%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+
+   ELSEIF ( p_FAST%CompAero == Module_AD ) THEN      
+         ! Copy values for interpolation/extrapolation:
+   
+      DO j = 1, p_FAST%InterpOrder + 1
+         AD%InputTimes(p_FAST%InterpOrder + 1 + j) = AD%InputTimes(j)
+      END DO
+   
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL AD_CopyInput (AD%Input(j),  AD%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL AD_CopyContState   (AD%x( STATE_PRED), AD%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyDiscState   (AD%xd(STATE_PRED), AD%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyConstrState (AD%z( STATE_PRED), AD%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyOtherState (AD%OtherSt(STATE_PRED), AD%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL AD_CopyContState   (AD%x( STATE_CURR), AD%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyDiscState   (AD%xd(STATE_CURR), AD%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyConstrState (AD%z( STATE_CURR), AD%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL AD_CopyOtherState (AD%OtherSt(STATE_CURR), AD%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   END IF ! CompAero == Module_AD    
+
+   IF ( p_FAST%CompInflow == Module_IfW ) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         IfW%InputTimes(p_FAST%InterpOrder + 1 + j) = IfW%InputTimes(j)
+         !IfW%OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL InflowWind_CopyInput (IfW%Input(j),  IfW%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL InflowWind_CopyContState   (IfW%x( STATE_PRED), IfW%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyDiscState   (IfW%xd(STATE_PRED), IfW%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyConstrState (IfW%z( STATE_PRED), IfW%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyOtherState (IfW%OtherSt( STATE_PRED), IfW%OtherSt( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL InflowWind_CopyContState   (IfW%x( STATE_CURR), IfW%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyDiscState   (IfW%xd(STATE_CURR), IfW%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyConstrState (IfW%z( STATE_CURR), IfW%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL InflowWind_CopyOtherState (IfW%OtherSt( STATE_CURR), IfW%OtherSt( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)      
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+         
+   END IF ! CompInflow == Module_IfW
+
+   
+   IF ( p_FAST%CompHydro == Module_HD ) THEN      
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         HD%InputTimes(p_FAST%InterpOrder + 1 + j) = HD%InputTimes(j)
+         !HD_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL HydroDyn_CopyInput (HD%Input(j),  HD%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL HydroDyn_CopyContState   (HD%x( STATE_PRED), HD%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyDiscState   (HD%xd(STATE_PRED), HD%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyConstrState (HD%z( STATE_PRED), HD%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyOtherState (HD%OtherSt(STATE_PRED), HD%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL HydroDyn_CopyContState   (HD%x( STATE_CURR), HD%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyDiscState   (HD%xd(STATE_CURR), HD%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyConstrState (HD%z( STATE_CURR), HD%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL HydroDyn_CopyOtherState (HD%OtherSt(STATE_CURR), HD%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   END IF !CompHydro
+         
+   
+   IF  (p_FAST%CompSub == Module_SD ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         SD%InputTimes(p_FAST%InterpOrder + 1 + j) = SD%InputTimes(j)
+         !SD_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL SD_CopyInput (SD%Input(j),  SD%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL SD_CopyContState   (SD%x( STATE_PRED), SD%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyDiscState   (SD%xd(STATE_PRED), SD%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyConstrState (SD%z( STATE_PRED), SD%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyOtherState (SD%OtherSt(STATE_PRED), SD%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL SD_CopyContState   (SD%x( STATE_CURR), SD%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyDiscState   (SD%xd(STATE_CURR), SD%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyConstrState (SD%z( STATE_CURR), SD%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL SD_CopyOtherState (SD%OtherSt(STATE_CURR), SD%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+   ELSE IF (p_FAST%CompSub == Module_ExtPtfm ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         ExtPtfm%InputTimes(p_FAST%InterpOrder + 1 + j) = ExtPtfm%InputTimes(j)
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL ExtPtfm_CopyInput (ExtPtfm%Input(j),  ExtPtfm%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL ExtPtfm_CopyContState   (ExtPtfm%x( STATE_PRED), ExtPtfm%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyDiscState   (ExtPtfm%xd(STATE_PRED), ExtPtfm%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyConstrState (ExtPtfm%z( STATE_PRED), ExtPtfm%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyOtherState (ExtPtfm%OtherSt(STATE_PRED), ExtPtfm%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL ExtPtfm_CopyContState   (ExtPtfm%x( STATE_CURR), ExtPtfm%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyDiscState   (ExtPtfm%xd(STATE_CURR), ExtPtfm%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyConstrState (ExtPtfm%z( STATE_CURR), ExtPtfm%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL ExtPtfm_CopyOtherState (ExtPtfm%OtherSt(STATE_CURR), ExtPtfm%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+         
+   END IF ! CompSub         
+      
+   
+   IF (p_FAST%CompMooring == Module_MAP) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         MAPp%InputTimes(p_FAST%InterpOrder + 1 + j) = MAPp%InputTimes(j)
+         !MAP_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL MAP_CopyInput (MAPp%Input(j),  MAPp%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL MAP_CopyContState   (MAPp%x( STATE_PRED), MAPp%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyDiscState   (MAPp%xd(STATE_PRED), MAPp%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyConstrState (MAPp%z( STATE_PRED), MAPp%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      !CALL MAP_CopyOtherState (MAPp%OtherSt(STATE_PRED), MAPp%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      !   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL MAP_CopyContState   (MAPp%x( STATE_CURR), MAPp%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyDiscState   (MAPp%xd(STATE_CURR), MAPp%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MAP_CopyConstrState (MAPp%z( STATE_CURR), MAPp%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      !CALL MAP_CopyOtherState (MAPp%OtherSt(STATE_CURR), MAPp%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      !   CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )      
+      
+   ELSEIF (p_FAST%CompMooring == Module_MD) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         MD%InputTimes(p_FAST%InterpOrder + 1 + j) = MD%InputTimes(j)
+         !MD_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL MD_CopyInput (MD%Input(j),  MD%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL MD_CopyContState   (MD%x( STATE_PRED), MD%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyDiscState   (MD%xd(STATE_PRED), MD%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyConstrState (MD%z( STATE_PRED), MD%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyOtherState (MD%OtherSt(STATE_PRED), MD%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL MD_CopyContState   (MD%x( STATE_CURR), MD%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyDiscState   (MD%xd(STATE_CURR), MD%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyConstrState (MD%z( STATE_CURR), MD%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL MD_CopyOtherState (MD%OtherSt(STATE_CURR), MD%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+   ELSEIF (p_FAST%CompMooring == Module_FEAM) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         FEAM%InputTimes(p_FAST%InterpOrder + 1 + j) = FEAM%InputTimes(j)
+         !FEAM_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL FEAM_CopyInput (FEAM%Input(j),  FEAM%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL FEAM_CopyContState   (FEAM%x( STATE_PRED), FEAM%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyDiscState   (FEAM%xd(STATE_PRED), FEAM%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyConstrState (FEAM%z( STATE_PRED), FEAM%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyOtherState (FEAM%OtherSt( STATE_PRED), FEAM%OtherSt( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL FEAM_CopyContState   (FEAM%x( STATE_CURR), FEAM%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyDiscState   (FEAM%xd(STATE_CURR), FEAM%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyConstrState (FEAM%z( STATE_CURR), FEAM%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL FEAM_CopyOtherState (FEAM%OtherSt( STATE_CURR), FEAM%OtherSt( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+   ELSEIF (p_FAST%CompMooring == Module_Orca) THEN      
+         ! Copy values for interpolation/extrapolation:
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         Orca%InputTimes(p_FAST%InterpOrder + 1 + j) = Orca%InputTimes(j)
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL Orca_CopyInput (Orca%Input(j),  Orca%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+         
+      CALL Orca_CopyContState   (Orca%x( STATE_PRED), Orca%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyDiscState   (Orca%xd(STATE_PRED), Orca%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyConstrState (Orca%z( STATE_PRED), Orca%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyOtherState (Orca%OtherSt( STATE_PRED), Orca%OtherSt( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL Orca_CopyContState   (Orca%x( STATE_CURR), Orca%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyDiscState   (Orca%xd(STATE_CURR), Orca%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyConstrState (Orca%z( STATE_CURR), Orca%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL Orca_CopyOtherState (Orca%OtherSt( STATE_CURR), Orca%OtherSt( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+   END IF ! CompMooring
+                 
+   
+   IF  (p_FAST%CompIce == Module_IceF ) THEN      
+
+         ! Copy values for interpolation/extrapolation:
+      DO j = 1, p_FAST%InterpOrder + 1
+         IceF%InputTimes(p_FAST%InterpOrder + 1 + j) = IceF%InputTimes(j)
+         !IceF_OutputTimes(i) = t_global - (j - 1) * dt
+      END DO
+
+      DO j = 1, p_FAST%InterpOrder + 1
+         CALL IceFloe_CopyInput (IceF%Input(j),  IceF%Input(p_FAST%InterpOrder + 1 + j),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END DO
+
+      CALL IceFloe_CopyContState   (IceF%x( STATE_PRED), IceF%x( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyDiscState   (IceF%xd(STATE_PRED), IceF%xd(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyConstrState (IceF%z( STATE_PRED), IceF%z( STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyOtherState (IceF%OtherSt(STATE_PRED), IceF%OtherSt(STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      CALL IceFloe_CopyContState   (IceF%x( STATE_CURR), IceF%x( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyDiscState   (IceF%xd(STATE_CURR), IceF%xd(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyConstrState (IceF%z( STATE_CURR), IceF%z( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      CALL IceFloe_CopyOtherState (IceF%OtherSt(STATE_CURR), IceF%OtherSt(STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   ELSEIF  (p_FAST%CompIce == Module_IceD ) THEN      
+
+      DO i = 1,p_FAST%numIceLegs
+         
+            ! Copy values for interpolation/extrapolation:
+         DO j = 1, p_FAST%InterpOrder + 1
+            IceD%InputTimes(p_FAST%InterpOrder + 1 + j,i) = IceD%InputTimes(j,i)
+            !IceD%OutputTimes(j,i) = t_global - (j - 1) * dt
+         END DO
+
+         DO j = 1, p_FAST%InterpOrder + 1
+            CALL IceD_CopyInput (IceD%Input(j,i),  IceD%Input(p_FAST%InterpOrder + 1 + j,i),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
+               CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         END DO
+
+         CALL IceD_CopyContState   (IceD%x( i,STATE_PRED), IceD%x( i,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyDiscState   (IceD%xd(i,STATE_PRED), IceD%xd(i,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyConstrState (IceD%z( i,STATE_PRED), IceD%z( i,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyOtherState (IceD%OtherSt( i,STATE_PRED), IceD%OtherSt( i,STATE_SS_PRED), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+         CALL IceD_CopyContState   (IceD%x( i,STATE_CURR), IceD%x( i,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyDiscState   (IceD%xd(i,STATE_CURR), IceD%xd(i,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)  
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyConstrState (IceD%z( i,STATE_CURR), IceD%z( i,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         CALL IceD_CopyOtherState (IceD%OtherSt( i,STATE_CURR), IceD%OtherSt( i,STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+      END DO ! numIceLegs
+      
+   END IF ! CompIce            
+   
+     
+END SUBROUTINE FAST_Store_SS
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine that calls FAST_Prework for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
 !! driver programs do not need to change or operate on the individual module level. 

@@ -20,6 +20,8 @@ EXTERNAL_ROUTINE void FAST_OpFM_Prework(int * iTurb, int *ErrStat, char *ErrMsg)
 EXTERNAL_ROUTINE void FAST_OpFM_UpdateStates(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_AdvanceToNextTimeStep(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Step(int * iTurb, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_OpFM_Reset_SS(int * iTurb, int * n_timesteps, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_OpFM_Store_SS(int * iTurb, int * n_t_global,  int *ErrStat, char *ErrMsg);
 
 EXTERNAL_ROUTINE void FAST_Restart(int * iTurb, const char *CheckpointRootName, int *AbortErrLev, int * NumOuts, double * dt, int * n_t_global, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_Sizes(int * iTurb, double *TMax, double *InitInputAry, const char *InputFileName, int *AbortErrLev, int * NumOuts, double * dt, int *ErrStat, char *ErrMsg, char *ChannelNames);
