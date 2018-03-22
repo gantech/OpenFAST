@@ -137,7 +137,6 @@ class OpenFAST {
   std::vector<std::vector<std::vector<double> > > forceNodeVel; // Velocity at force nodes - Store temporarily to interpolate to the velocity nodes
   std::vector<std::vector<double> > velNodeData; // Position and velocity data at the velocity (aerodyn) nodes - (nTurbines, nTimesteps * nPoints * 6)
   hid_t velNodeDataFile; // HDF-5 tag of file containing velocity (aerodyn) node data file
-    
   std::vector<std::vector<turbVelForceNodeDataType>> velForceNodeData; // Array containing data at the velocity and force nodes
 
   std::vector<OpFM_InputType_t> i_f_FAST; // Input from OpenFAST
@@ -206,6 +205,9 @@ class OpenFAST {
   void stepNoWrite();
   void end();
 
+  int readRestartFile(int iTurbLoc, int n_t_global);
+  int writeRestartFile(int iTurbLoc, int n_t_global);
+    
   hid_t openVelocityDataFile(bool createFile);
   void readVelocityData(int nTimesteps);
   void writeVelocityData(hid_t h5file, int iTurb, int iTimestep, OpFM_InputType_t iData, OpFM_OutputType_t oData);
@@ -258,10 +260,10 @@ class OpenFAST {
   int get_numBladesLoc(int iTurbLoc) { return turbineData[iTurbLoc].numBlades; }
   int get_numVelPtsBladeLoc(int iTurbLoc) { return turbineData[iTurbLoc].numVelPtsBlade; }
   int get_numVelPtsTwrLoc(int iTurbLoc) { return turbineData[iTurbLoc].numVelPtsTwr; }
-  int get_numVelPtsLoc(int iTurbLoc) { return 1 + turbineData[iTurbLoc].numVelPts; }
+  int get_numVelPtsLoc(int iTurbLoc) { return turbineData[iTurbLoc].numVelPts; }
   int get_numForcePtsBladeLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePtsBlade; }
   int get_numForcePtsTwrLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePtsTwr; }
-  int get_numForcePtsLoc(int iTurbLoc) { return 1 + turbineData[iTurbLoc].numForcePts; }
+  int get_numForcePtsLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePts; }
 
   void loadSuperController(const fastInputs & fi);
   void fillScInputsGlob() ;

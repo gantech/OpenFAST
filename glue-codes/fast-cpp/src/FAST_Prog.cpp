@@ -25,7 +25,7 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
 
 }
 
-void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd) {
+void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd, int * couplingMode) {
 
   fi.comm = MPI_COMM_WORLD;
 
@@ -44,8 +44,19 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
       
       if(cDriverInp["debug"]) {
 	fi.debug = cDriverInp["debug"].as<bool>();
-      } 
+      }
 
+      *couplingMode = 0; //CLASSIC is default
+      if(cDriverInp["coupling_mode"]) {
+          if ( cDriverInp["coupling_mode"].as<std::string>() == "strong" ) {
+              *couplingMode = 1;
+          } else if ( cDriverInp["coupling_mode"].as<std::string>() == "classic" ) {
+              *couplingMode = 0;
+          } else {
+              throw std::runtime_error("coupling_mode is not well defined in the input file");
+          }
+      }
+      
       if(cDriverInp["simStart"]) {
 	if (cDriverInp["simStart"].as<std::string>() == "init") {
 	  fi.simStart = fast::init;
@@ -101,43 +112,60 @@ int main() {
   iErr = MPI_Comm_size( MPI_COMM_WORLD, &nProcs);
   iErr = MPI_Comm_rank( MPI_COMM_WORLD, &rank);
 
+  int couplingMode ; //CLASSIC (SOWFA style = 0) or STRONG (Conventional Serial Staggered - allow for outer iterations = 1)
   double tEnd ; // This doesn't belong in the FAST - C++ interface 
-  int ntEnd ; // This doesn't belong in the FAST - C++ interface
+  int ntStart, ntEnd ; // This doesn't belong in the FAST - C++ interface
 
   std::string cDriverInputFile="cDriver.i";
   fast::OpenFAST FAST;
   fast::fastInputs fi ;
   try {
-    readInputFile(fi, cDriverInputFile, &tEnd);
+      readInputFile(fi, cDriverInputFile, &tEnd, &couplingMode);
   }
   catch( const std::runtime_error & ex) {
     std::cerr << ex.what() << std::endl ;
     std::cerr << "Program quitting now" << std::endl ;
     return 1;
   }
-  ntEnd = tEnd/fi.dtFAST;  //Calculate the last time step
 
   FAST.setInputs(fi);
   FAST.allocateTurbinesToProcsSimple(); 
   // Or allocate turbines to procs by calling "setTurbineProcNo(iTurbGlob, procId)" for turbine.
 
   FAST.init();
+
+  ntStart = fi.tStart/fi.dtFAST/fi.nSubsteps;  //Calculate the first time step
+  ntEnd = tEnd/fi.dtFAST;  //Calculate the last time step
+
   if (FAST.isTimeZero()) {
     FAST.solution0();
   }
-
+  
   if( !FAST.isDryRun() ) {
     for (int nt = FAST.get_ntStart(); nt < ntEnd; nt++) {
-      FAST.step();
-      if (FAST.isDebug()) {
-	FAST.computeTorqueThrust(0,torque,thrust);
-	std::cout.precision(16);
-	std::cout << "Torque = " << torque[0] << " " << torque[1] << " " << torque[2] << std::endl ;
-	std::cout << "Thrust = " << thrust[0] << " " << thrust[1] << " " << thrust[2] << std::endl ;      
-      }
+        if (couplingMode == 0) {
+            // If running with a CFD solver, sample velocities at the actuator/velocity nodes here
+            FAST.step();
+            // Get forces at actuator nodes and advance CFD solve by one time step here
+        } else {
+            for (int j=0; j < 2; j++) {
+                // If running with a CFD solver, use 'FAST.predict_states()' to predict position and force at actuator nodes at the next time step on the first pass
+                // Run a CFD time step as a 'predictor' to get velocity at the next time step
+                // Sample and set velocity at the actuator/velocity nodes after the first cfd predictor 
+                FAST.update_states_driver_time_step();
+            }
+            // Call this after enough outer iterations have been done
+            FAST.advance_to_next_driver_time_step();
+        }
+        if (FAST.isDebug()) {
+            FAST.computeTorqueThrust(0,torque,thrust);
+            std::cout.precision(16);
+            std::cout << "Torque = " << torque[0] << " " << torque[1] << " " << torque[2] << std::endl ;
+            std::cout << "Thrust = " << thrust[0] << " " << thrust[1] << " " << thrust[2] << std::endl ;      
+        }
     }
   }
-
+  
   FAST.end() ;
   MPI_Finalize() ;
 
