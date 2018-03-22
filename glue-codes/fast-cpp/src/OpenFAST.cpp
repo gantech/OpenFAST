@@ -154,6 +154,8 @@ void fast::OpenFAST::solution0() {
        FAST_OpFM_Solution0(&iTurb, &ErrStat, ErrMsg);
        checkError(ErrStat, ErrMsg);
 
+       FAST_OpFM_InitIOarrays_SS(&iTurb, &ErrStat, ErrMsg);
+       checkError(ErrStat, ErrMsg);       
      }
 
      get_data_from_openfast(fast::n);
@@ -176,7 +178,7 @@ void fast::OpenFAST:: predict_states() {
             int nfpts = get_numForcePtsLoc(iTurb);
             for (int i=0; i<nvelpts; i++) {
                 for (int j=0 ; j < 3; j++) {
-                    velForceNodeData[iTurb][fast::np1].x_vel[i*3+j] = velForceNodeData[iTurb][fast::n].x_vel[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j])*dtFAST;
+                    velForceNodeData[iTurb][fast::np1].x_vel[i*3+j] = velForceNodeData[iTurb][fast::n].x_vel[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j])*dtFAST*nSubsteps_;
                     velForceNodeData[iTurb][fast::np1].xdot_vel[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].xdot_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_vel[i*3+j];
                     velForceNodeData[iTurb][fast::np1].vel_vel[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].vel_vel[i*3+j] - velForceNodeData[iTurb][fast::nm1].vel_vel[i*3+j];
                 }
@@ -186,7 +188,7 @@ void fast::OpenFAST:: predict_states() {
             velForceNodeData[iTurb][fast::np1].vel_vel_resid = 0.0;        
             for (int i=0; i<nfpts; i++) {
                 for (int j=0 ; j < 3; j++) {
-                    velForceNodeData[iTurb][fast::np1].x_force[i*3+j] = velForceNodeData[iTurb][fast::n].x_force[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j])*dtFAST;
+                    velForceNodeData[iTurb][fast::np1].x_force[i*3+j] = velForceNodeData[iTurb][fast::n].x_force[i*3+j] + 0.5*(3.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j])*dtFAST*nSubsteps_;
                     velForceNodeData[iTurb][fast::np1].xdot_force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].xdot_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].xdot_force[i*3+j];
                     velForceNodeData[iTurb][fast::np1].vel_force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].vel_force[i*3+j] - velForceNodeData[iTurb][fast::nm1].vel_force[i*3+j];
                     velForceNodeData[iTurb][fast::np1].force[i*3+j] = 2.0*velForceNodeData[iTurb][fast::n].force[i*3+j] - velForceNodeData[iTurb][fast::nm1].force[i*3+j];

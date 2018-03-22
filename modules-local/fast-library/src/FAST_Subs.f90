@@ -4436,7 +4436,7 @@ SUBROUTINE FAST_InitIOarrays_SS( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD
             BD%InputTimes_bak(j,k) = t_initial - (j - 1) * p_FAST%dt
          END DO
 
-         DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+         DO j = 1, p_FAST%InterpOrder + 1
             CALL BD_CopyInput (BD%Input(1,k),  BD%Input_bak(j,k),  MESH_NEWCOPY, Errstat2, ErrMsg2)
                CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
          END DO
@@ -4474,7 +4474,7 @@ SUBROUTINE FAST_InitIOarrays_SS( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD
          !SrvD_OutputTimes(j) = t_initial - (j - 1) * dt
       END DO
 
-      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+      DO j = 1, p_FAST%InterpOrder + 1
          CALL SrvD_CopyInput (SrvD%Input(1),  SrvD%Input_bak(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
             CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       END DO
@@ -4509,7 +4509,7 @@ SUBROUTINE FAST_InitIOarrays_SS( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD
          AD14%InputTimes_bak(j) = t_initial - (j - 1) * p_FAST%dt
       END DO
 
-      DO j = 1 + p_FAST%InterpOrder + 1, 2*(p_FAST%InterpOrder + 1)
+      DO j = 1, p_FAST%InterpOrder + 1
          CALL AD14_CopyInput (AD14%Input(1),  AD14%Input_bak(j),  MESH_NEWCOPY, Errstat2, ErrMsg2)
             CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       END DO
