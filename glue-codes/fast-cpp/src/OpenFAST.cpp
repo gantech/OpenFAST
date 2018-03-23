@@ -165,7 +165,7 @@ void fast::OpenFAST::solution0() {
         get_data_from_openfast(fast::nm1);
         
         timeZero = false;
-        
+
         if (scStatus) {
             fillScInputsGlob(); // Update inputs to super controller
         }
@@ -238,7 +238,7 @@ void fast::OpenFAST::update_states_driver_time_step() {
         prework();
     
     if (nSubsteps_ > 1) {
-        
+
         if (!firstPass_) {
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
                 FAST_OpFM_Reset_SS(&iTurb, &nSubsteps_, &ErrStat, ErrMsg);
@@ -247,11 +247,12 @@ void fast::OpenFAST::update_states_driver_time_step() {
             nt_global = nt_global - nSubsteps_;
         }
         
-        for (int iSubstep=0; iSubstep < nSubsteps_; iSubstep++) {
+        for (int iSubstep=1; iSubstep < nSubsteps_+1; iSubstep++) {
             double ss_time = double(iSubstep)/double(nSubsteps_);
             step(ss_time);
         }
         get_data_from_openfast(fast::np1);
+        firstPass_ = false;
         
     } else {
         
@@ -274,7 +275,9 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
     } else {
         
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            writeVelocityData(velNodeDataFile, iTurb, nt_global, i_f_FAST[iTurb], o_t_FAST[iTurb]);
+            
+            if (turbineData[iTurb].inflowType == 2)
+                writeVelocityData(velNodeDataFile, iTurb, nt_global, i_f_FAST[iTurb], o_t_FAST[iTurb]);
             
             if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
                 
@@ -358,6 +361,8 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
             }
         }
     }
+
+    firstPass_ = true ; // Set firstPass_ to true for the next time step
     
 }
 
@@ -419,7 +424,7 @@ void fast::OpenFAST::step(double ss_time) {
     }
     
     nt_global = nt_global + 1;
-    
+
     if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
         //sprintf(FASTRestartFileName, "../../CertTest/Test18.%d", nt_global);
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {

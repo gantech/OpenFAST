@@ -73,6 +73,7 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
       *tEnd = cDriverInp["tEnd"].as<double>();
       fi.nEveryCheckPoint = cDriverInp["nEveryCheckPoint"].as<int>();
       fi.dtFAST = cDriverInp["dtFAST"].as<double>();
+      fi.nSubsteps = cDriverInp["nSubsteps"].as<int>();
       fi.tMax = cDriverInp["tMax"].as<double>(); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
       
       if(cDriverInp["superController"]) {
@@ -135,14 +136,14 @@ int main() {
   FAST.init();
 
   ntStart = fi.tStart/fi.dtFAST/fi.nSubsteps;  //Calculate the first time step
-  ntEnd = tEnd/fi.dtFAST;  //Calculate the last time step
+  ntEnd = tEnd/fi.dtFAST/fi.nSubsteps;  //Calculate the last time step
 
   if (FAST.isTimeZero()) {
     FAST.solution0();
   }
   
   if( !FAST.isDryRun() ) {
-    for (int nt = FAST.get_ntStart(); nt < ntEnd; nt++) {
+    for (int nt = ntStart; nt < ntEnd; nt++) {
         if (couplingMode == 0) {
             // If running with a CFD solver, sample velocities at the actuator/velocity nodes here
             FAST.step();
