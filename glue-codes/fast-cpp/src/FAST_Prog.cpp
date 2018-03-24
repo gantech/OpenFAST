@@ -146,7 +146,8 @@ int main() {
     for (int nt = ntStart; nt < ntEnd; nt++) {
         if (couplingMode == 0) {
             // If running with a CFD solver, sample velocities at the actuator/velocity nodes here
-            FAST.step();
+            for (int iSubstep=1; iSubstep < fi.nSubsteps+1; iSubstep++)
+                FAST.step();
             // Get forces at actuator nodes and advance CFD solve by one time step here
         } else {
             for (int j=0; j < 2; j++) {

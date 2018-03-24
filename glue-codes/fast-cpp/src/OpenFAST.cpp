@@ -312,22 +312,21 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
         }
         
         nt_global = nt_global + 1;
+    }
         
-        if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
-            //sprintf(CheckpointFileRoot, "../../CertTest/Test18.%d", nt_global);
-            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-                turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
-                FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
-                checkError(ErrStat, ErrMsg);
-                writeRestartFile(iTurb, nt_global);
-            }
-            if(scStatus) {
-                if (fastMPIRank == 0) {
-                    sc->writeRestartFile(nt_global);
-                }
+    if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
+        //sprintf(CheckpointFileRoot, "../../CertTest/Test18.%d", nt_global);
+        for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+            turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
+            FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
+            checkError(ErrStat, ErrMsg);
+            writeRestartFile(iTurb, nt_global);
+        }
+        if(scStatus) {
+            if (fastMPIRank == 0) {
+                sc->writeRestartFile(nt_global);
             }
         }
-        
     }
     
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
@@ -424,20 +423,6 @@ void fast::OpenFAST::step(double ss_time) {
     }
     
     nt_global = nt_global + 1;
-
-    if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
-        //sprintf(FASTRestartFileName, "../../CertTest/Test18.%d", nt_global);
-        for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
-            FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
-            checkError(ErrStat, ErrMsg);
-        }
-        if(scStatus) {
-            if (fastMPIRank == 0) {
-                sc->writeRestartFile(nt_global);
-            }
-        }
-    }
     
 }
 
@@ -506,6 +491,7 @@ void fast::OpenFAST::step() {
             turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
             FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
+            writeRestartFile(iTurb, nt_global);
         }
         if(scStatus) {
             if (fastMPIRank == 0) {
@@ -1309,7 +1295,7 @@ int fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
         herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &nvelpts_file) ;
         H5Aclose(attr);
         
-        attr = H5Aopen(restartFile, "nfpts_file", H5P_DEFAULT);
+        attr = H5Aopen(restartFile, "nfpts", H5P_DEFAULT);
         ret = H5Aread(attr, H5T_NATIVE_INT, &nfpts_file) ;
         H5Aclose(attr);
     }
