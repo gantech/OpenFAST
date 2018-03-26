@@ -864,7 +864,7 @@ subroutine FAST_OpFM_Reset_SS(iTurb, n_timesteps, ErrStat_c, ErrMsg_c) BIND (C, 
   INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
   CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
 
-  CALL FAST_Reset_SS_T(t_initial, n_t_global-n_timesteps, Turbine(iTurb), ErrStat, ErrMsg )
+  CALL FAST_Reset_SS_T(t_initial, n_t_global-n_timesteps, n_timesteps, Turbine(iTurb), ErrStat, ErrMsg )
 
   if (iTurb .eq. (NumTurbines-1) ) then
      n_t_global = n_t_global - n_timesteps

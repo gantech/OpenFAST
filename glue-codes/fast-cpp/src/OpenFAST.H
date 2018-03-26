@@ -205,8 +205,8 @@ class OpenFAST {
   void stepNoWrite();
   void end();
 
-  int readRestartFile(int iTurbLoc, int n_t_global);
-  int writeRestartFile(int iTurbLoc, int n_t_global);
+  void readRestartFile(int iTurbLoc, int n_t_global);
+  void writeRestartFile(int iTurbLoc, int n_t_global);
     
   hid_t openVelocityDataFile(bool createFile);
   void readVelocityData(int nTimesteps);

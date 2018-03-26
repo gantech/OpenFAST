@@ -4497,8 +4497,11 @@ SUBROUTINE FAST_InitIOarrays_SS( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD
       CALL SrvD_CopyConstrState (SrvD%z( STATE_PRED), SrvD%z( STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
             CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       CALL SrvD_CopyOtherState( SrvD%OtherSt(STATE_PRED), SrvD%OtherSt(STATE_SS_PRED), MESH_NEWCOPY, Errstat2, ErrMsg2)
-            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
-            
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL SrvD_CopyMisc( SrvD%m, SrvD%m_bak, MESH_NEWCOPY, Errstat2, ErrMsg2)
+            CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
    END IF ! CompServo
    
    
@@ -4926,15 +4929,16 @@ END SUBROUTINE FAST_InitIOarrays_SS
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine that calls FAST_Reset_SS for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
 !! driver programs do not need to change or operate on the individual module level. 
-SUBROUTINE FAST_Reset_SS_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
+SUBROUTINE FAST_Reset_SS_T(t_initial, n_t_global, n_timesteps, Turbine, ErrStat, ErrMsg )
 
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
    INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+   INTEGER(IntKi),           INTENT(IN   ) :: n_timesteps         !< number of time steps to go back   
    TYPE(FAST_TurbineType),   INTENT(INOUT) :: Turbine             !< all data for one instance of a turbine
    INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
    CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
    
-      CALL FAST_Reset_SS(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+      CALL FAST_Reset_SS(t_initial, n_t_global, n_timesteps, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
                   Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, Turbine%OpFM, &
                   Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
                   Turbine%IceF, Turbine%IceD, Turbine%MeshMapData, ErrStat, ErrMsg )                  
@@ -4942,12 +4946,15 @@ SUBROUTINE FAST_Reset_SS_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
 END SUBROUTINE FAST_Reset_SS_T
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine resets the states, inputs and output data from n_t_global to n_t_global - 1
-SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
+SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, n_timesteps, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
                          MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
 
+   USE BladedInterface, ONLY: CallBladedDLL  ! Hack for Bladed-style DLL
+  
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
    INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
-
+   INTEGER(IntKi),           INTENT(IN   ) :: n_timesteps         !< number of time steps to go back
+   
    TYPE(FAST_ParameterType), INTENT(IN   ) :: p_FAST              !< Parameters for the glue code
    TYPE(FAST_OutputFileType),INTENT(INOUT) :: y_FAST              !< Output variables for the glue code
    TYPE(FAST_MiscVarType),   INTENT(INOUT) :: m_FAST              !< Miscellaneous variables
@@ -4980,6 +4987,7 @@ SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
    
    INTEGER(IntKi)                          :: i, j, k             ! generic loop counters
    REAL(DbKi)                              :: t_global            ! the time to which states, inputs and outputs are reset  
+   INTEGER(IntKi)                          :: old_avrSwap1        ! previous value of avrSwap(1) !hack for Bladed DLL checkpoint/restore
    
    INTEGER(IntKi)                          :: ErrStat2
    CHARACTER(ErrMsgLen)                    :: ErrMsg2
@@ -5064,7 +5072,21 @@ SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
       
    END IF
 
-   IF ( p_FAST%CompServo == Module_SrvD ) THEN      
+   IF ( p_FAST%CompServo == Module_SrvD ) THEN
+
+      ! A hack to restore Bladed-style DLL data
+      if (SrvD%p%UseBladedInterface) then
+         if (SrvD%m%dll_data%avrSWAP( 1) > 0   ) then ! this isn't allocated if UseBladedInterface is FALSE
+            ! store value to be overwritten
+            old_avrSwap1 = SrvD%m%dll_data%avrSWAP( 1) 
+            SrvD%m%dll_data%avrSWAP( 1) = -10
+            CALL CallBladedDLL(SrvD%Input(1), SrvD%p%DLL_Trgt,  SrvD%m%dll_data, SrvD%p, ErrStat2, ErrMsg2)
+            CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )                           
+            ! put values back:
+            SrvD%m%dll_data%avrSWAP( 1) = old_avrSwap1
+         end if
+      end if
+      
       ! Initialize Input-Output arrays for interpolation/extrapolation:
 
       DO j = 1, p_FAST%InterpOrder + 1
@@ -5093,6 +5115,9 @@ SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
       CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       CALL SrvD_CopyOtherState (SrvD%OtherSt( STATE_SS_CURR), SrvD%OtherSt( STATE_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
       CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL SrvD_CopyMisc( SrvD%m_bak, SrvD%m, MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       
    END IF
 
@@ -5483,13 +5508,14 @@ SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
       END DO ! numIceLegs
       
    END IF ! CompIce            
-   
+
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    !! We've moved everything back to the initial time step: 
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++                     
    !! update the global time 
   
    m_FAST%t_global = t_global
+   y_FAST%n_Out = y_FAST%n_Out - n_timesteps
      
 END SUBROUTINE FAST_Reset_SS
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -5514,6 +5540,8 @@ END SUBROUTINE FAST_Store_SS_T
 SUBROUTINE FAST_Store_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
                          MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
 
+   USE BladedInterface, ONLY: CallBladedDLL  ! Hack for Bladed-style DLL
+  
    REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
    INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
 
@@ -5549,6 +5577,7 @@ SUBROUTINE FAST_Store_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
    
    INTEGER(IntKi)                          :: i, j, k             ! generic loop counters
    REAL(DbKi)                              :: t_global            ! the time to which states, inputs and outputs are reset  
+   INTEGER(IntKi)                          :: old_avrSwap1        ! previous value of avrSwap(1) !hack for Bladed DLL checkpoint/restore
    
    INTEGER(IntKi)                          :: ErrStat2
    CHARACTER(ErrMsgLen)                    :: ErrMsg2
@@ -5660,6 +5689,9 @@ SUBROUTINE FAST_Store_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
       CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       CALL SrvD_CopyOtherState (SrvD%OtherSt( STATE_CURR), SrvD%OtherSt( STATE_SS_CURR), MESH_UPDATECOPY, Errstat2, ErrMsg2)
       CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL SrvD_CopyMisc( SrvD%m, SrvD%m_bak, MESH_UPDATECOPY, Errstat2, ErrMsg2)
+      CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       
    END IF
 
@@ -6049,8 +6081,20 @@ SUBROUTINE FAST_Store_SS(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
          
       END DO ! numIceLegs
       
-   END IF ! CompIce            
-   
+   END IF ! CompIce
+
+      ! A hack to store Bladed-style DLL data
+   if (SrvD%p%UseBladedInterface) then
+      if (SrvD%m%dll_data%avrSWAP( 1) > 0   ) then ! this isn't allocated if UseBladedInterface is FALSE
+            ! store value to be overwritten
+         old_avrSwap1 = SrvD%m%dll_data%avrSWAP( 1) 
+         SrvD%m%dll_data%avrSWAP( 1) = -11
+         CALL CallBladedDLL(SrvD%Input(1), SrvD%p%DLL_Trgt,  SrvD%m%dll_data, SrvD%p, ErrStat2, ErrMsg2)
+            CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )                           
+            ! put values back:
+         SrvD%m%dll_data%avrSWAP( 1) = old_avrSwap1      
+      end if
+   end if
      
 END SUBROUTINE FAST_Store_SS
 !----------------------------------------------------------------------------------------------------------------------------------

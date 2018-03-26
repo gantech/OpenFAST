@@ -252,7 +252,6 @@ void fast::OpenFAST::update_states_driver_time_step() {
             step(ss_time);
         }
         get_data_from_openfast(fast::np1);
-        firstPass_ = false;
         
     } else {
         
@@ -262,9 +261,11 @@ void fast::OpenFAST::update_states_driver_time_step() {
             FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
         }
-        
+      
         get_data_from_openfast(fast::np1);
+
     }
+    firstPass_ = false;    
 }
 
 void fast::OpenFAST::advance_to_next_driver_time_step() {
@@ -1280,7 +1281,7 @@ void fast::OpenFAST::get_data_from_openfast(timeStep t) {
     }
 }
 
-int fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
+void fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
     
     int nvelpts = get_numVelPtsLoc(iTurbLoc);
     int nfpts = get_numForcePtsLoc(iTurbLoc);
@@ -1354,7 +1355,7 @@ int fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
 }
 
 
-int fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
+void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
     
     /* // HDF5 stuff to write states to restart file or read back from it */
     
@@ -1448,8 +1449,6 @@ int fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
     }
     
     herr_t status = H5Fclose(restartFile);
-    
-    return 0;
     
 }
 

@@ -153,7 +153,7 @@ int main() {
             for (int j=0; j < 2; j++) {
                 // If running with a CFD solver, use 'FAST.predict_states()' to predict position and force at actuator nodes at the next time step on the first pass
                 // Run a CFD time step as a 'predictor' to get velocity at the next time step
-                // Sample and set velocity at the actuator/velocity nodes after the first cfd predictor 
+                // Sample and set velocity at the actuator/velocity nodes after the first cfd predictor
                 FAST.update_states_driver_time_step();
             }
             // Call this after enough outer iterations have been done
