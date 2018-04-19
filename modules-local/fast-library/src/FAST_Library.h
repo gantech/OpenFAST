@@ -20,6 +20,7 @@ EXTERNAL_ROUTINE void FAST_OpFM_InitIOarrays_SS(int * iTurb, int *ErrStat, char 
 EXTERNAL_ROUTINE void FAST_OpFM_Prework(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_UpdateStates(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_AdvanceToNextTimeStep(int * iTurb, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_OpFM_WriteOutput(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Step(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Reset_SS(int * iTurb, int * n_timesteps, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_OpFM_Store_SS(int * iTurb, int * n_t_global,  int *ErrStat, char *ErrMsg);

@@ -5515,7 +5515,7 @@ SUBROUTINE FAST_Reset_SS(t_initial, n_t_global, n_timesteps, p_FAST, y_FAST, m_F
    !! update the global time 
   
    m_FAST%t_global = t_global
-   y_FAST%n_Out = y_FAST%n_Out - n_timesteps
+!   y_FAST%n_Out = y_FAST%n_Out - n_timesteps
      
 END SUBROUTINE FAST_Reset_SS
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -6553,7 +6553,6 @@ SUBROUTINE FAST_AdvanceToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_F
             CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       END DO
    END IF
-
             
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    !! We've advanced everything to the next time step: 
@@ -6563,7 +6562,69 @@ SUBROUTINE FAST_AdvanceToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_F
   
    m_FAST%t_global = t_global_next 
       
+END SUBROUTINE FAST_AdvanceToNextTimeStep
+!----------------------------------------------------------------------------------------------------------------------------------
+!> Routine that calls FAST_WriteOutput for one instance of a Turbine data structure. This is a separate subroutine so that the FAST
+!! driver programs do not need to change or operate on the individual module level. 
+SUBROUTINE FAST_WriteOutput_T(t_initial, n_t_global, Turbine, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
+   INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+   TYPE(FAST_TurbineType),   INTENT(INOUT) :: Turbine             !< all data for one instance of a turbine
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+   
+      CALL FAST_WriteOutput(t_initial, n_t_global, Turbine%p_FAST, Turbine%y_FAST, Turbine%m_FAST, &
+                  Turbine%ED, Turbine%BD, Turbine%SrvD, Turbine%AD14, Turbine%AD, Turbine%IfW, Turbine%OpFM, &
+                  Turbine%HD, Turbine%SD, Turbine%ExtPtfm, Turbine%MAP, Turbine%FEAM, Turbine%MD, Turbine%Orca, &
+                  Turbine%IceF, Turbine%IceD, Turbine%MeshMapData, ErrStat, ErrMsg )                  
       
+END SUBROUTINE FAST_WriteOutput_T
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This routine advances the time step from n_t_global to n_t_global + 1 and does all the relvant copying of data
+SUBROUTINE FAST_WriteOutput(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, AD14, AD, IfW, OpFM, HD, SD, ExtPtfm, &
+                         MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg )
+
+   REAL(DbKi),               INTENT(IN   ) :: t_initial           !< initial time
+   INTEGER(IntKi),           INTENT(IN   ) :: n_t_global          !< loop counter
+
+   TYPE(FAST_ParameterType), INTENT(IN   ) :: p_FAST              !< Parameters for the glue code
+   TYPE(FAST_OutputFileType),INTENT(INOUT) :: y_FAST              !< Output variables for the glue code
+   TYPE(FAST_MiscVarType),   INTENT(INOUT) :: m_FAST              !< Miscellaneous variables
+     
+   TYPE(ElastoDyn_Data),     INTENT(INOUT) :: ED                  !< ElastoDyn data
+   TYPE(BeamDyn_Data),       INTENT(INOUT) :: BD                  !< BeamDyn data
+   TYPE(ServoDyn_Data),      INTENT(INOUT) :: SrvD                !< ServoDyn data
+   TYPE(AeroDyn14_Data),     INTENT(INOUT) :: AD14                !< AeroDyn14 data
+   TYPE(AeroDyn_Data),       INTENT(INOUT) :: AD                  !< AeroDyn data
+   TYPE(InflowWind_Data),    INTENT(INOUT) :: IfW                 !< InflowWind data
+   TYPE(OpenFOAM_Data),      INTENT(INOUT) :: OpFM                !< OpenFOAM data
+   TYPE(HydroDyn_Data),      INTENT(INOUT) :: HD                  !< HydroDyn data
+   TYPE(SubDyn_Data),        INTENT(INOUT) :: SD                  !< SubDyn data
+   TYPE(ExtPtfm_Data),       INTENT(INOUT) :: ExtPtfm             !< ExtPtfm_MCKF data
+   TYPE(MAP_Data),           INTENT(INOUT) :: MAPp                !< MAP data
+   TYPE(FEAMooring_Data),    INTENT(INOUT) :: FEAM                !< FEAMooring data
+   TYPE(MoorDyn_Data),       INTENT(INOUT) :: MD                  !< Data for the MoorDyn module
+   TYPE(OrcaFlex_Data),      INTENT(INOUT) :: Orca                !< OrcaFlex interface data
+   TYPE(IceFloe_Data),       INTENT(INOUT) :: IceF                !< IceFloe data
+   TYPE(IceDyn_Data),        INTENT(INOUT) :: IceD                !< All the IceDyn data used in time-step loop
+
+   TYPE(FAST_ModuleMapType), INTENT(INOUT) :: MeshMapData         !< Data for mapping between modules
+      
+   INTEGER(IntKi),           INTENT(  OUT) :: ErrStat             !< Error status of the operation
+   CHARACTER(*),             INTENT(  OUT) :: ErrMsg              !< Error message if ErrStat /= ErrID_None
+   
+   ! local variables
+   INTEGER(IntKi)                          :: I, k                ! generic loop counters
+   
+   INTEGER(IntKi)                          :: ErrStat2
+   CHARACTER(ErrMsgLen)                    :: ErrMsg2
+   CHARACTER(*), PARAMETER                 :: RoutineName = 'FAST_WriteOutput'
+
+
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+
    !----------------------------------------------------------------------------------------
    !! Check to see if we should output data this time step:
    !----------------------------------------------------------------------------------------
@@ -6585,8 +6646,8 @@ SUBROUTINE FAST_AdvanceToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_F
       
       ENDIF
    ENDIF
-     
-END SUBROUTINE FAST_AdvanceToNextTimeStep
+   
+END SUBROUTINE FAST_WriteOutput
 !----------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine that calls FAST_Solution for one instance of a Turbine data structure. This is a separate subroutine so that the FAST

@@ -193,6 +193,7 @@ class OpenFAST {
 
   void init();
   void solution0();
+  void init_velForceNodeData();
   void prework();
   void update_states_driver_time_step();
   void advance_to_next_driver_time_step();

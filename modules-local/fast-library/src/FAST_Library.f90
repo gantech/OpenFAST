@@ -754,10 +754,10 @@ subroutine FAST_OpFM_UpdateStates(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAS
 end subroutine FAST_OpFM_UpdateStates
 !==================================================================================================================================
 subroutine FAST_OpFM_AdvanceToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_AdvanceToNextTimeStep')
-!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_MoveToNextTimeStep
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_AdvanceToNextTimeStep
    IMPLICIT NONE
 #ifndef IMPLICIT_DLLEXPORT
-!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_MoveToNextTimeStep
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_AdvanceToNextTimeStep
 #endif
    INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
    INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
@@ -800,6 +800,20 @@ subroutine FAST_OpFM_AdvanceToNextTimeStep(iTurb, ErrStat_c, ErrMsg_c) BIND (C, 
    
 
 end subroutine FAST_OpFM_AdvanceToNextTimeStep
+!==================================================================================================================================
+subroutine FAST_OpFM_WriteOutput(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_WriteOutput')
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_WriteOutput
+   IMPLICIT NONE
+#ifndef IMPLICIT_DLLEXPORT
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_OpFM_WriteOutput
+#endif
+   INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
+   INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
+   CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
+   
+   CALL FAST_WriteOutput_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+
+end subroutine FAST_OpFM_WriteOutput 
 !==================================================================================================================================
 subroutine FAST_OpFM_Step(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_OpFM_Step')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_OpFM_Step
