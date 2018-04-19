@@ -46,7 +46,7 @@ MODULE OpenFOAM
 
 CONTAINS
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, y_ED, OpFM, InitOut, ErrStat, ErrMsg )
+SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, y_ED, y_BD, OpFM, InitOut, ErrStat, ErrMsg )
 !..................................................................................................................................
 
    TYPE(OpFM_InitInputType),        INTENT(IN   )  :: InitInp     ! Input data for initialization routine
@@ -57,6 +57,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
    TYPE(AD_OutputType),             INTENT(IN   )  :: y_AD        ! AeroDyn output data (for mesh mapping)
    TYPE(AD_InitOutputType),         INTENT(IN   )  :: initOut_AD  ! AeroDyn InitOutput data (for BladeProps)
    TYPE(ED_OutputType),             INTENT(IN)     :: y_ED        ! The outputs of the structural dynamics module
+   TYPE(BD_OutputType),             INTENT(IN)     :: y_BD(:)     ! The outputs of the structural dynamics module   
    TYPE(OpenFOAM_Data),             INTENT(INOUT)  :: OpFM        ! data for the OpenFOAM integration module
    TYPE(OpFM_InitOutputType),       INTENT(INOUT)  :: InitOut     ! Output for initialization routine
    INTEGER(IntKi),                  INTENT(  OUT)  :: ErrStat     ! Error status of the operation
@@ -178,7 +179,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
       ! initialize the arrays:
    call OpFM_CreateActForceBladeTowerNodes(OpFM%p, ErrStat2, ErrMsg2) !Creates the blade and tower nodes in radial and tower height co-ordinates
    call OpFM_InterpolateForceNodesChord(initOut_AD, OpFM%p, OpFM%u, ErrStat2, ErrMsg2) !Interpolates the chord distribution to the force nodes 
-   call OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, InitInp, OpFM, ErrStat2, ErrMsg2)
+   call OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, y_BD, InitInp, OpFM, ErrStat2, ErrMsg2)
 
       !............................................................................................
    ! Allocate arrays and set up mappings to point loads (for AD15 only):
@@ -223,7 +224,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
       IF (p_FAST%CompElast == Module_ED ) THEN
          call MeshMapCreate( y_ED%BladeLn2Mesh(k), OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Line2_Motions(k),  ErrStat2, ErrMsg2 );
       ELSEIF (p_FAST%CompElast == Module_BD ) THEN
-         !            call MeshMapCreate( BD%y(k)%BldMotion, OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Line2_Motions(k),  ErrStat2, ErrMsg2 );
+         call MeshMapCreate( y_BD(k)%BldMotion, OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Line2_Motions(k),  ErrStat2, ErrMsg2 );
       END IF
       call MeshMapCreate( y_AD%BladeLoad(k), OpFM%m%ActForceLoads(k), OpFM%m%Line2_to_Line2_Loads(k),  ErrStat2, ErrMsg2 );
 
@@ -244,7 +245,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
       
    end do
    
-   call SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, OpFM)
+   call SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, y_BD, OpFM)
    OpFM%u%fx = 0.0_ReKi
    OpFM%u%fy = 0.0_ReKi
    OpFM%u%fz = 0.0_ReKi
@@ -297,7 +298,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
 
 END SUBROUTINE Init_OpFM
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE OpFM_SetInputs( p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_SrvD, OpFM, ErrStat, ErrMsg )
+SUBROUTINE OpFM_SetInputs( p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_BD, y_SrvD, OpFM, ErrStat, ErrMsg )
 !..................................................................................................................................
 
    TYPE(FAST_ParameterType),       INTENT(IN    )  :: p_FAST      ! Parameters for the glue code
@@ -307,6 +308,7 @@ SUBROUTINE OpFM_SetInputs( p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_S
    TYPE(AD_InputType),             INTENT(IN)      :: u_AD        ! The input meshes (already calculated) from AeroDyn
    TYPE(AD_OutputType),            INTENT(IN)      :: y_AD        ! The output meshes (already calculated) from AeroDyn
    TYPE(ED_OutputType),            INTENT(IN)      :: y_ED        ! The outputs of the structural dynamics module
+   TYPE(BD_OutputType),            INTENT(IN)      :: y_BD(:)     ! The outputs of the structural dynamics module   
    TYPE(SrvD_OutputType),          INTENT(IN)      :: y_SrvD      ! The outputs of the ServoDyn module (control)
    TYPE(OpenFOAM_Data),            INTENT(INOUT)   :: OpFM        ! data for the OpenFOAM integration module
    INTEGER(IntKi),                 INTENT(  OUT)   :: ErrStat     ! Error status of the operation
@@ -323,10 +325,10 @@ SUBROUTINE OpFM_SetInputs( p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_S
    ErrMsg  = ""
 
       ! set the positions
-   call SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, OpFM)
+   call SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, y_BD, OpFM)
 
       ! set the forces
-   call SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, OpFM, ErrStat2, ErrMsg2)
+   call SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_BD, OpFM, ErrStat2, ErrMsg2)
       call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
       ! set SuperController inputs
@@ -337,12 +339,13 @@ SUBROUTINE OpFM_SetInputs( p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_S
 
 END SUBROUTINE OpFM_SetInputs
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, OpFM)
+SUBROUTINE SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, y_BD, OpFM)
 
    TYPE(OpenFOAM_Data),            INTENT(INOUT)   :: OpFM        ! data for the OpenFOAM integration module
    TYPE(AD14_InputType),           INTENT(IN)      :: u_AD14      ! The input meshes (already calculated) from AeroDyn14
    TYPE(AD_InputType),             INTENT(IN)      :: u_AD        ! The input meshes (already calculated) from AeroDyn
    TYPE(ED_OutputType),            INTENT(IN)      :: y_ED        ! The outputs of the structural dynamics module
+   TYPE(BD_OutputType),            INTENT(IN)      :: y_BD(:)     ! The outputs of the structural dynamics module   
    TYPE(FAST_ParameterType),       INTENT(IN   )   :: p_FAST      ! FAST parameter data
 
 
@@ -416,7 +419,7 @@ SUBROUTINE SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, OpFM)
       IF (p_FAST%CompElast == Module_ED ) THEN
          call Transfer_Line2_to_Line2( y_ED%BladeLn2Mesh(k), OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Line2_Motions(k), ErrStat2, ErrMsg2 )
       ELSEIF (p_FAST%CompElast == Module_BD ) THEN
-         !            call Transfer_Line2_to_Point( BD%y(k)%BldMotion, OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Line2_Motions(k), ErrStat2, ErrMsg2 )
+         call Transfer_Line2_to_Point( y_BD(k)%BldMotion, OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Line2_Motions(k), ErrStat2, ErrMsg2 )
       END IF
       call Transfer_Line2_to_Point( OpFM%m%ActForceMotions(k), OpFM%m%ActForceMotionsPoints(k), OpFM%m%Line2_to_Point_Motions(k), ErrStat2, ErrMsg2 )
          
@@ -472,7 +475,7 @@ SUBROUTINE SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, OpFM)
 
 END SUBROUTINE SetOpFMPositions
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, OpFM, ErrStat, ErrMsg)
+SUBROUTINE SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_BD, OpFM, ErrStat, ErrMsg)
 
    TYPE(OpenFOAM_Data),            INTENT(INOUT)   :: OpFM        ! data for the OpenFOAM integration module
    TYPE(AD14_ParameterType),       INTENT(IN)      :: p_AD14      ! The input meshes (already calculated) from AeroDyn14
@@ -481,6 +484,7 @@ SUBROUTINE SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, OpFM,
    TYPE(AD_InputType),             INTENT(IN)      :: u_AD        ! The input meshes (already calculated) from AeroDyn
    TYPE(AD_OutputType),            INTENT(IN)      :: y_AD        ! The output meshes (already calculated) from AeroDyn
    TYPE(ED_OutputType),            INTENT(IN)      :: y_ED        ! The outputs of the structural dynamics module
+   TYPE(BD_OutputType),            INTENT(IN)      :: y_BD(:)     ! The outputs of the structural dynamics module   
    TYPE(FAST_ParameterType),       INTENT(IN   )   :: p_FAST      ! FAST parameter data
    !TYPE(FAST_MiscVarType),         INTENT(IN   )   :: m_FAST      ! misc FAST data, including inputs from external codes like Simulink
    INTEGER(IntKi),                 INTENT(  OUT)   :: ErrStat     ! Error status of the operation
@@ -609,12 +613,13 @@ SUBROUTINE OpFM_SetWriteOutput( OpFM )
 
 END SUBROUTINE OpFM_SetWriteOutput
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, InitIn_OpFM, OpFM, ErrStat, ErrMsg )
+SUBROUTINE OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, y_BD, InitIn_OpFM, OpFM, ErrStat, ErrMsg )
 !..................................................................................................................................
 
    TYPE(FAST_ParameterType),        INTENT(IN   )  :: p_FAST      ! Parameters for the glue code
    TYPE(ED_OutputType),             INTENT(IN)     :: y_ED        ! The outputs of the structural dynamics module
-   TYPE(OpFM_InitInputType),          INTENT(IN   )  :: InitIn_OpFM ! InitInp data for the OpenFOAM integration module
+   TYPE(BD_OutputType),             INTENT(IN)     :: y_BD(:)     ! The outputs of the structural dynamics module   
+   TYPE(OpFM_InitInputType),        INTENT(IN   )  :: InitIn_OpFM ! InitInp data for the OpenFOAM integration module
    TYPE(OpenFOAM_Data),             INTENT(INOUT)  :: OpFM        ! data for the OpenFOAM integration module
    INTEGER(IntKi),                  INTENT(  OUT)  :: ErrStat     ! Error status of the operation
    CHARACTER(*),                    INTENT(  OUT)  :: ErrMsg      ! Error message if ErrStat /= ErrID_None
@@ -640,7 +645,7 @@ SUBROUTINE OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, InitIn_OpFM, OpFM, ErrS
          CALL SetErrStat(ErrID_Fatal, 'Error allocating force nodes mesh mapping types', ErrStat, ErrMsg, RoutineName)
          RETURN
       END IF
-      CALL OpFM_CreateTmpActForceMotionsMesh( p_FAST, y_ED, OpFM%p, InitIn_OpFM, tmpActForceMotionsMesh, ErrStat2, ErrMsg2 )
+      CALL OpFM_CreateTmpActForceMotionsMesh( p_FAST, y_ED, y_BD, OpFM%p, InitIn_OpFM, tmpActForceMotionsMesh, ErrStat2, ErrMsg2 )
            call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
            if (errStat >= AbortErrLev) return
 
@@ -783,11 +788,12 @@ SUBROUTINE OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, InitIn_OpFM, OpFM, ErrS
 
 END SUBROUTINE OpFM_CreateActForceMotionsMesh
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE OpFM_CreateTmpActForceMotionsMesh( p_FAST, y_ED, p_OpFM, InitIn_OpFM, tmpActForceMotions, ErrStat, ErrMsg )
+SUBROUTINE OpFM_CreateTmpActForceMotionsMesh( p_FAST, y_ED, y_BD, p_OpFM, InitIn_OpFM, tmpActForceMotions, ErrStat, ErrMsg )
 !..................................................................................................................................
 
-   TYPE(FAST_ParameterType),        INTENT(IN   )  :: p_FAST      ! Parameters for the glue code
-   TYPE(ED_OutputType),             INTENT(IN   )  :: y_ED        ! The outputs of the structural dynamics module
+   TYPE(FAST_ParameterType),        INTENT(IN   )  :: p_FAST        ! Parameters for the glue code
+   TYPE(ED_OutputType),             INTENT(IN   )  :: y_ED          ! The outputs of the structural dynamics module
+   TYPE(BD_OutputType),             INTENT(IN   )  :: y_BD(:)       ! The outputs of the structural dynamics module   
    TYPE(OpFM_ParameterType),        INTENT(IN   )  :: p_OpFM        ! data for the OpenFOAM integration module
    TYPE(OpFM_InitInputType),        INTENT(IN   )  :: InitIn_OpFM   ! InitInp data for the OpenFOAM integration module
    TYPE(MeshType),                  INTENT(INOUT)  :: tmpActForceMotions(:) ! temporary mesh to create the actuator force nodes
@@ -818,7 +824,7 @@ SUBROUTINE OpFM_CreateTmpActForceMotionsMesh( p_FAST, y_ED, p_OpFM, InitIn_OpFM,
       CALL SetErrStat(ErrID_Fatal, 'Error allocating temporary copy of ElastoDyn mesh type', ErrStat, ErrMsg, RoutineName)
       RETURN
    END IF
-   CALL CreateTmpStructModelMesh(p_FAST, y_ED, p_OpFM, tmp_StructModelMesh, ErrStat2, ErrMsg2 )
+   CALL CreateTmpStructModelMesh(p_FAST, y_ED, y_BD, p_OpFM, tmp_StructModelMesh, ErrStat2, ErrMsg2 )
    CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    IF (ErrStat >= AbortErrLev) RETURN
  
@@ -925,10 +931,11 @@ SUBROUTINE OpFM_CreateTmpActForceMotionsMesh( p_FAST, y_ED, p_OpFM, InitIn_OpFM,
 
 END SUBROUTINE OpFM_CreateTmpActForceMotionsMesh
 !----------------------------------------------------------------------------------------------------------------------------------
-SUBROUTINE CreateTmpStructModelMesh(p_FAST, y_ED, p_OpFM, tmpStructModelMesh, ErrStat, ErrMsg )
+SUBROUTINE CreateTmpStructModelMesh(p_FAST, y_ED, y_BD, p_OpFM, tmpStructModelMesh, ErrStat, ErrMsg )
 
   TYPE(FAST_ParameterType),        INTENT(IN   )  :: p_FAST      ! Parameters for the glue code
   TYPE(ED_OutputType),             INTENT(IN   )  :: y_ED        ! The outputs of the structural dynamics module
+  TYPE(BD_OutputType),             INTENT(IN   )  :: y_BD(:)     ! The outputs of the structural dynamics module  
   TYPE(OpFM_ParameterType),        INTENT(IN   )  :: p_OpFM      ! Parameters of the OpenFOAM integration module
   TYPE(MeshType),                  INTENT(INOUT)  :: tmpStructModelMesh(:) ! temporary copy of structural model mesh
   INTEGER(IntKi),                  INTENT(  OUT)  :: ErrStat     ! Error status of the operation
@@ -947,7 +954,6 @@ SUBROUTINE CreateTmpStructModelMesh(p_FAST, y_ED, p_OpFM, tmpStructModelMesh, Er
   
 
   IF (p_FAST%CompElast == Module_ED ) THEN
-
 
      DO K = 1,p_OpFM%NumBl
 
@@ -989,23 +995,26 @@ SUBROUTINE CreateTmpStructModelMesh(p_FAST, y_ED, p_OpFM, tmpStructModelMesh, Er
         END DO
         
      END DO
-     
-     DO K = p_OpFM%NumBl+1, p_OpFM%NMappings
-        
-        nNodesStructModel = SIZE(y_ED%TowerLn2Mesh%position(1,:))
 
-        CALL MeshCreate( BlankMesh       = tmpStructModelMesh(K)      &
-                       , NNodes          = nNodesStructModel          &
-                       , IOS             = COMPONENT_OUTPUT           &
+  ELSEIF (p_FAST%CompElast == Module_BD ) THEN
+
+     DO K = 1,p_OpFM%NumBl
+
+        nNodesStructModel = SIZE(y_BD(K)%BldMotion%position(1,:))
+         
+        CALL MeshCreate( BlankMesh       = tmpStructModelMesh(K)  &
+                       , NNodes          = nNodesStructModel      &
+                       , IOS             = COMPONENT_OUTPUT       &
                        , Orientation     = .TRUE.                 &
                        , ErrStat         = ErrStat2               &
                        , ErrMess         = ErrMsg2                )
+        IF (ErrStat >= AbortErrLev) RETURN
 
-        tmpStructModelMesh(K)%RemapFlag = .false.        
-        !For some reason, ElastoDyn keeps the last point as the blade/tower root        
-        CALL MeshPositionNode ( tmpStructModelMesh(K), 1, y_ED%TowerLn2Mesh%Position(:,nNodesStructModel), ErrStat2, ErrMsg2 )
+         tmpStructModelMesh(K)%RemapFlag = .false.        
+        !For some reason, BeamDyn keeps the last point as the blade root   
+        CALL MeshPositionNode ( tmpStructModelMesh(K), 1, y_BD(K)%BldMotion%Position(:,nNodesStructModel), ErrStat2, ErrMsg2 )        
         DO J = 1,nNodesStructModel-1
-           CALL MeshPositionNode ( tmpStructModelMesh(K), J+1, y_ED%TowerLn2Mesh%Position(:,J), ErrStat2, ErrMsg2 )
+           CALL MeshPositionNode ( tmpStructModelMesh(K), J+1, y_BD(K)%BldMotion%Position(:,J), ErrStat2, ErrMsg2 )
         END DO
         
         ! create elements:      
@@ -1017,27 +1026,62 @@ SUBROUTINE CreateTmpStructModelMesh(p_FAST, y_ED, p_OpFM, tmpStructModelMesh, Er
                                                  , P2       = J                  &   ! node2 number
                                                  , ErrStat  = ErrStat2           &
                                                  , ErrMess  = ErrMsg2            )
-           
         END DO ! J (blade nodes)
         
         ! that's our entire mesh:
-        CALL MeshCommit ( tmpStructModelMesh(K), ErrStat2, ErrMsg2 )
-
+        CALL MeshCommit ( tmpStructModelMesh(K), ErrStat2, ErrMsg2 )   
+        
         ! Copy the orientation
-        tmpStructModelMesh(K)%Orientation(:,:,1) = y_ED%TowerLn2Mesh%RefOrientation(:,:,nNodesStructModel)
+        tmpStructModelMesh(K)%Orientation(:,:,1) = y_BD(K)%BldMotion%RefOrientation(:,:,nNodesStructModel)
         DO J=1,nNodesStructModel-1
-           tmpStructModelMesh(K)%Orientation(:,:,J+1) = y_ED%TowerLn2Mesh%RefOrientation(:,:,J)           
+           tmpStructModelMesh(K)%Orientation(:,:,J+1) = y_BD(K)%BldMotion%RefOrientation(:,:,J)           
         END DO
+        
+     END DO     
 
+  END IF
+     
+     
+  DO K = p_OpFM%NumBl+1, p_OpFM%NMappings
+     
+     nNodesStructModel = SIZE(y_ED%TowerLn2Mesh%position(1,:))
+     
+     CALL MeshCreate( BlankMesh       = tmpStructModelMesh(K)      &
+          , NNodes          = nNodesStructModel          &
+          , IOS             = COMPONENT_OUTPUT           &
+          , Orientation     = .TRUE.                 &
+          , ErrStat         = ErrStat2               &
+          , ErrMess         = ErrMsg2                )
+     
+     tmpStructModelMesh(K)%RemapFlag = .false.        
+     !For some reason, ElastoDyn keeps the last point as the blade/tower root        
+     CALL MeshPositionNode ( tmpStructModelMesh(K), 1, y_ED%TowerLn2Mesh%Position(:,nNodesStructModel), ErrStat2, ErrMsg2 )
+     DO J = 1,nNodesStructModel-1
+        CALL MeshPositionNode ( tmpStructModelMesh(K), J+1, y_ED%TowerLn2Mesh%Position(:,J), ErrStat2, ErrMsg2 )
      END DO
      
+     ! create elements:      
+     DO J = 2,nNodesStructModel
+        
+        CALL MeshConstructElement ( Mesh      = tmpStructModelMesh(K)  &
+             , Xelement = ELEMENT_LINE2      &
+             , P1       = J-1                &   ! node1 number
+             , P2       = J                  &   ! node2 number
+             , ErrStat  = ErrStat2           &
+             , ErrMess  = ErrMsg2            )
+        
+     END DO ! J (blade nodes)
      
-  ELSEIF (p_FAST%CompElast == Module_BD ) THEN
-
-     CALL SetErrStat(ErrID_Fatal, 'Error BeamDyn is not supported yet with OpenFOAM module', ErrStat, ErrMsg, RoutineName)
-     RETURN
+     ! that's our entire mesh:
+     CALL MeshCommit ( tmpStructModelMesh(K), ErrStat2, ErrMsg2 )
      
-  END IF
+     ! Copy the orientation
+     tmpStructModelMesh(K)%Orientation(:,:,1) = y_ED%TowerLn2Mesh%RefOrientation(:,:,nNodesStructModel)
+     DO J=1,nNodesStructModel-1
+        tmpStructModelMesh(K)%Orientation(:,:,J+1) = y_ED%TowerLn2Mesh%RefOrientation(:,:,J)           
+     END DO
+     
+  END DO     
 
   RETURN 
 END SUBROUTINE CreateTmpStructModelMesh

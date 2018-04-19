@@ -4465,7 +4465,7 @@ end if
    ! OpenFOAM is the driver and it sets these inputs outside of this solve; the OpenFOAM inputs and outputs thus don't change 
    !   in this scenario until OpenFOAM takes another step  **this is a source of error, but it is the way the OpenFOAM-FAST7 coupling
     !   works, so I'm not going to spend time that I don't have now to fix it**
-      CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), SrvD%y, OpFM, ErrStat2, ErrMsg2 )
+      CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), BD%y, SrvD%y, OpFM, ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )        
    END IF
    
@@ -4757,7 +4757,7 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
    ! ! OpenFOAM is the driver and it computes outputs outside of this solve; the OpenFOAM inputs and outputs thus don't change 
    ! !   in this scenario until OpenFOAM takes another step  **this is a source of error, but it is the way the OpenFOAM-FAST7 coupling
    ! !   works, so I'm not going to spend time that I don't have now to fix it**
-   !   CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), SrvD%y, OpFM, ErrStat2, ErrMsg2 )
+   !   CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), BD%y, SrvD%y, OpFM, ErrStat2, ErrMsg2 )
    !      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
    !   CALL OpFM_SetWriteOutput(OpFM)
       
@@ -4805,7 +4805,7 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
    !   in this scenario until OpenFOAM takes another step  **this is a source of error, but it is the way the OpenFOAM-FAST7 coupling
    !   works, so I'm not going to spend time that I don't have now to fix it** 
    ! note that I'm setting these inputs AFTER the call to ServoDyn so OpenFOAM gets all the inputs updated at the same step
-      CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), SrvD%y, OpFM, ErrStat2, ErrMsg2 )
+      CALL OpFM_SetInputs( p_FAST, AD14%p, AD14%Input(1), AD14%y, AD%Input(1), AD%y, ED%Output(1), BD%y, SrvD%y, OpFM, ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
       CALL OpFM_SetWriteOutput(OpFM)
       
