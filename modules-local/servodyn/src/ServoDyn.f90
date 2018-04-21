@@ -33,7 +33,7 @@ MODULE ServoDyn
 
    PRIVATE
 
-   TYPE(ProgDesc), PARAMETER            :: SrvD_Ver = ProgDesc( 'ServoDyn', 'v1.06.00a-bjj', '26-Jul-2016' )
+   TYPE(ProgDesc), PARAMETER            :: SrvD_Ver = ProgDesc( 'ServoDyn', '', '' )
    
 #ifdef COMPILE_SIMULINK
    LOGICAL, PARAMETER, PUBLIC           :: Cmpl4SFun  = .TRUE.                            ! Is the module being compiled as an S-Function for Simulink?
@@ -316,38 +316,38 @@ SUBROUTINE SrvD_Init( InitInp, u, p, x, xd, z, OtherState, y, m, Interval, InitO
       IF (ErrStat >= AbortErrLev) RETURN
 
    IF ( (InitInp%NumSC2CtrlGlob > 0) .or. (InitInp%NumSC2Ctrl > 0) .or. (InitInp%NumCtrl2SC > 0) ) THEN
-      p%ScOn = .TRUE.
+      p%UseSC = .TRUE.
    ElSE
-      p%ScOn = .FALSE.
+      p%UseSC = .FALSE.
    END IF
         
    IF (InitInp%NumSC2Ctrl > 0 .and. p%UseBladedInterface) THEN
-      CALL AllocAry( u%SuperControllerTurbine, InitInp%NumSC2Ctrl, 'u%SuperController', ErrStat2, ErrMsg2 )
+      CALL AllocAry( u%fromSC, InitInp%NumSC2Ctrl, 'u%fromSC', ErrStat2, ErrMsg2 )
          CALL CheckError( ErrStat2, ErrMsg2 )
          IF (ErrStat >= AbortErrLev) RETURN
-      u%SuperControllerTurbine = InitInp%InitScOutputsTurbine
+      u%fromSC = InitInp%fromSC
 
       p%ScInAlpha = exp( -TwoPi*p%DT*InputFileData%ScInCutoff )
       if (InputFileData%ScInCutOff < EPSILON( InputFileData%ScInCutOff )) CALL CheckError( ErrID_Fatal, 'ScInCutoff must be greater than 0.')       
-      CALL AllocAry( xd%ScInFilter, InitInp%NumSC2Ctrl, 'xd%ScInFilter', ErrStat2, ErrMsg2 )
+      CALL AllocAry( xd%filt_fromSC, InitInp%NumSC2Ctrl, 'xd%filt_fromSC', ErrStat2, ErrMsg2 )
       CALL CheckError( ErrStat2, ErrMsg2 )
       IF (ErrStat >= AbortErrLev) RETURN
-      xd%ScInFilter = InitInp%InitScOutputsTurbine
+      xd%filt_fromSC = InitInp%fromSC
 
    END IF
                   
    IF (InitInp%NumSC2CtrlGlob > 0 .and. p%UseBladedInterface) THEN
-      CALL AllocAry( u%SuperControllerGlob, InitInp%NumSC2CtrlGlob, 'u%SuperControllerGlob', ErrStat2, ErrMsg2 )
+      CALL AllocAry( u%fromSCglob, InitInp%NumSC2CtrlGlob, 'u%fromSCglob', ErrStat2, ErrMsg2 )
       CALL CheckError( ErrStat2, ErrMsg2 )
       IF (ErrStat >= AbortErrLev) RETURN
-      u%SuperControllerGlob = InitInp%InitScOutputsGlob
+      u%fromSCglob = InitInp%fromSCGlob
 
       p%ScInAlpha = exp( -TwoPi*p%DT*InputFileData%ScInCutoff )
       if (InputFileData%ScInCutOff < EPSILON( InputFileData%ScInCutOff )) CALL CheckError( ErrID_Fatal, 'ScInCutoff must be greater than 0.')       
-      CALL AllocAry( xd%ScInGlobFilter, InitInp%NumSC2CtrlGlob, 'xd%ScInGlobFilter', ErrStat2, ErrMsg2 )
+      CALL AllocAry( xd%filt_fromSCglob, InitInp%NumSC2CtrlGlob, 'xd%filt_fromSCglob', ErrStat2, ErrMsg2 )
       CALL CheckError( ErrStat2, ErrMsg2 )
       IF (ErrStat >= AbortErrLev) RETURN
-      xd%ScInGlobFilter = InitInp%InitScOutputsGlob
+      xd%filt_fromSCglob = InitInp%fromSCGlob
 
    END IF
       
@@ -419,10 +419,10 @@ SUBROUTINE SrvD_Init( InitInp, u, p, x, xd, z, OtherState, y, m, Interval, InitO
 
    
    IF (InitInp%NumCtrl2SC > 0 .and. p%UseBladedInterface) THEN
-      CALL AllocAry( y%SuperController, InitInp%NumCtrl2SC, 'y%SuperController', ErrStat2, ErrMsg2 )
+      CALL AllocAry( y%toSC, InitInp%NumCtrl2SC, 'y%toSC', ErrStat2, ErrMsg2 )
          CALL CheckError( ErrStat2, ErrMsg2 )
          IF (ErrStat >= AbortErrLev) RETURN
-      y%SuperController = 0.0_SiKi
+      y%toSC = 0.0_SiKi
    END IF
       
       
@@ -955,8 +955,8 @@ SUBROUTINE SrvD_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg
             CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       END IF
       
-      IF (ALLOCATED(y%SuperController)) THEN
-         y%SuperController = m%dll_data%SCoutput
+      IF (ALLOCATED(y%toSC)) THEN
+         y%toSC = m%dll_data%toSC
       END IF
       
    END IF      
@@ -1086,14 +1086,14 @@ SUBROUTINE SrvD_UpdateDiscState( t, u, p, x, xd, z, OtherState, m, ErrStat, ErrM
       ErrMsg  = ""
 
 
-      if( allocated(u%SuperControllerTurbine) ) then
+      if( allocated(u%fromSC) ) then
          ! Filter the inputs from the Supercontroller to ServoDyn
-         xd%ScInFilter = p%ScInAlpha * xd%ScInFilter + (1.0_SiKi - p%ScInAlpha) * u%SuperControllerTurbine         
+         xd%filt_fromSC = p%ScInAlpha * xd%filt_fromSC + (1.0_SiKi - p%ScInAlpha) * u%fromSC         
       end if
 
-      if( allocated(u%SuperControllerGlob) ) then
+      if( allocated(u%fromSCglob) ) then
          ! Filter the global inputs from the Supercontroller to ServoDyn
-         xd%ScInGlobFilter = p%ScInAlpha * xd%ScInGlobFilter + (1.0_SiKi - p%ScInAlpha) * u%SuperControllerGlob
+         xd%filt_fromSCglob = p%ScInAlpha * xd%filt_fromSCglob + (1.0_SiKi - p%ScInAlpha) * u%fromSCglob
       end if
       
       
@@ -2246,12 +2246,12 @@ SUBROUTINE ReadPrimaryFile( InputFile, InputFileData, OutFileRoot, UnEc, ErrStat
                      
    !---------------------- SUPERCONTROLLER -------------
    CALL ReadCom( UnIn, InputFile, 'Section Header: Supercontroller', ErrStat2, ErrMsg2, UnEc )
-   CALL CheckError( ErrStat2, ErrMsg2 )
-   IF ( ErrStat >= AbortErrLev ) RETURN
+      CALL CheckError( ErrStat2, ErrMsg2 )
+      IF ( ErrStat >= AbortErrLev ) RETURN
 
-   CALL ReadVar( UnIn, InputFile, InputFileData%ScInCutoff, "ScInCutoff", "Cuttoff frequency for low-pass filter on Supercontroller Inputs (Hz)", ErrStat2, ErrMsg2, UnEc)
-   CALL CheckError( ErrStat2, ErrMsg2 )
-   IF ( ErrStat >= AbortErrLev ) RETURN
+   CALL ReadVar( UnIn, InputFile, InputFileData%ScInCutoff, "ScInCutoff", "Cut-off frequency for low-pass filter on Supercontroller Inputs (Hz)", ErrStat2, ErrMsg2, UnEc)
+      CALL CheckError( ErrStat2, ErrMsg2 )
+      IF ( ErrStat >= AbortErrLev ) RETURN
    
    !---------------------- OUTPUT --------------------------------------------------         
    CALL ReadCom( UnIn, InputFile, 'Section Header: Output', ErrStat2, ErrMsg2, UnEc )
@@ -3199,9 +3199,9 @@ SUBROUTINE SetOutParam(OutList, p, ErrStat, ErrMsg )
                                  NTMD_XQD ,   NTMD_YQ ,  NTMD_YQD ,   TTMD_XQ ,  TTMD_XQD ,   TTMD_YQ ,  TTMD_YQD , &
                                 YawMomCom , YawMomCom /)
    CHARACTER(ChanLen), PARAMETER :: ParamUnitsAry(16) =  (/ &                     ! This lists the units corresponding to the allowed parameters
-                               "(deg)     ","(deg)     ","(deg)     ","(kW)      ","(kN·m)    ","(kN·m)    ","(m)       ", &
+                               "(deg)     ","(deg)     ","(deg)     ","(kW)      ","(kN-m)    ","(kN-m)    ","(m)       ", &
                                "(m/s)     ","(m)       ","(m/s)     ","(m)       ","(m/s)     ","(m)       ","(m/s)     ", &
-                               "(kN·m)    ","(kN·m)    "/)
+                               "(kN-m)    ","(kN-m)    "/)
 
 
       ! Initialize values
