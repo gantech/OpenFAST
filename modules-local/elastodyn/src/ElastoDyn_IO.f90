@@ -26,7 +26,7 @@ MODULE ElastoDyn_Parameters
 
    USE NWTC_Library
 
-   TYPE(ProgDesc), PARAMETER  :: ED_Ver = ProgDesc( 'ElastoDyn', 'v1.04.00a-bjj', '26-Jul-2016' )
+   TYPE(ProgDesc), PARAMETER  :: ED_Ver = ProgDesc( 'ElastoDyn', '', '' )
    
    REAL(ReKi), PARAMETER      :: SmallAngleLimit_Deg  =  15.0                     ! Largest input angle considered "small" (used as a check on input data), degrees
 
@@ -3617,7 +3617,7 @@ SUBROUTINE ReadPrimaryFile( InputFile, InputFileData, BldFile, FurlFile, TwrFile
    InputFileData%RotSpeed = InputFileData%RotSpeed*RPM2RPS
 
       ! NacYaw - Initial nacelle-yaw angle (deg) (read from file in degrees and converted to radians here):
-   CALL ReadVar( UnIn, InputFile, InputFileData%NacYaw, "RotSpeed", "Initial nacelle-yaw angle (deg)", ErrStat2, ErrMsg2, UnEc)
+   CALL ReadVar( UnIn, InputFile, InputFileData%NacYaw, "NacYaw", "Initial nacelle-yaw angle (deg)", ErrStat2, ErrMsg2, UnEc)
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       IF ( ErrStat >= AbortErrLev ) THEN
          CALL Cleanup()

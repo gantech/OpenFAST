@@ -27,9 +27,14 @@
 *.exe
 *.out
 *.app
+*.pyc
 
-# CMake specific files
-build/**/*
+# Build specific files
+build/
+install/
+vs-build/
 
-vs-build
-build
+# OS and IDE specific files
+.DS_Store
+.vscode
+.atom
