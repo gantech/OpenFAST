@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-generate_f90_types(src/SC_DataEx_Registry.txt SC_DataEx_Types.f90 -ccode)
+generate_f90_types(src/SC_DataEx_Registry.txt SCDataEx_Types.f90 -ccode)
 
 add_library(sctypeslib
   SCDataEx_Types.f90)
