@@ -74,9 +74,10 @@ struct turbVelForceNodeDataType {
 };
 
 enum timeStep {
-    nm1 = 0,
-    n = 1,
-    np1 = 2,
+    nm2 = 0,
+    nm1 = 1,
+    n = 2,
+    np1 = 3,
     timeStep_END
 };
 
