@@ -19,13 +19,10 @@ typedef	OpenFOAM/OpFM	InitInputType	IntKi	NumSC2Ctrl	-	-	-	"number of controller
 typedef	^	^	IntKi	NumCtrl2SC	-	-	-	"number of controller outputs [to supercontroller]"	-
 typedef	^	^	IntKi	NumActForcePtsBlade	-	-	-	"number of actuator line force points in blade"	-
 typedef	^	^	IntKi	NumActForcePtsTower	-	-	-	"number of actuator line force points in tower"	-
-typedef	^	^	ReKi	StructBldRNodes	{:}	-	-	"Radius to structural model analysis nodes relative to hub"
-typedef	^	^	ReKi	StructTwrHNodes	{:}	-	-	"Location of variable-spaced structural model tower nodes (relative to the tower rigid base height)"
-typedef	^       ^	ReKi	BladeLength	-	-	-	"Blade length"	meters
-typedef	^	^	ReKi	TowerHeight	-	-	-	"Tower Height"	meters
-
-
-
+typedef ^       ^       IntKi   nStructBldEtaNodes      {:}     -       -       "Number of structural model nodes for each blade" -
+typedef	^	^	R8Ki	StructBldEtaNodes	{:}	-	-	"Location of blade structural model nodes in local coordinates [0-1]. The arrays for each blade are concatenated." -
+typedef	^	^	R8Ki	StructTwrEtaNodes	{:}	-	-	"Location of tower structural model nodes in local coodinates [0-1]" - 
+typedef ^       ^       IntKi   NumBl           -       -       -       "Number of blades"
 
 # ..... OpenFOAM_InitOutputType data .......................................................................................................
 # Define outputs from the initialization routine here:
@@ -52,10 +49,9 @@ typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesVel	-	-	-	"number of velocity no
 typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForce	-	-	-	"number of force nodes on FAST v8-OpenFOAM interface"	-
 typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForceBlade	-	-	-	"number of force nodes on FAST v8-OpenFOAM interface"	-
 typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForceTower	-	-	-	"number of force nodes on FAST v8-OpenFOAM interface"	-
-typedef ^       ^       ReKi            forceBldRnodes             {:}     "Radial location of force nodes"  -
-typedef ^       ^       ReKi            forceTwrHnodes             {:}     "Radial location of force nodes"  -
-typedef ^	^	ReKi	BladeLength	-	-	-	"Blade length (same for all blades)"	"m"
-typedef ^	^	ReKi	TowerHeight	-	-	-	"Tower height"	"m"
+typedef ^       ^       ReKi            forceBldEtaNodes             {:}     "Location of blade force nodes in [0-1] co-ordinates"  -
+typedef ^       ^       ReKi            forceTwrEtaNodes             {:}     "Location of tower force nodes in [0-1] coordinates"  -
+
 
 
 # ..... OpenFOAM_InputType data .......................................................................................................

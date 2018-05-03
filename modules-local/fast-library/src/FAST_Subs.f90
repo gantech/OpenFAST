@@ -168,6 +168,8 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    INTEGER(IntKi)                          :: IceDim              ! dimension we're pre-allocating for number of IceDyn legs/instances
    INTEGER(IntKi)                          :: I                   ! generic loop counter
    INTEGER(IntKi)                          :: k                   ! blade loop counter
+   INTEGER(IntKi)                          :: bldNodes_BD         ! Number of output nodes in BeamDyn
+   INTEGER(IntKi)                          :: bldNodes_ED         ! Number of output nodes in ElastoDyn
    logical                                 :: CallStart
    
    CHARACTER(ErrMsgLen)                    :: ErrMsg2
@@ -609,12 +611,36 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
          CALL Cleanup()
          RETURN         
       END IF
-      InitInData_OpFM%BladeLength = InitOutData_ED%BladeLength
-      InitInData_OpFM%TowerHeight = InitOutData_ED%TowerHeight
-      ALLOCATE(InitInData_OpFM%StructBldRNodes( SIZE(InitOutData_ED%BldRNodes)),  STAT=ErrStat2)
-      InitInData_OpFM%StructBldRNodes(:) = InitOutData_ED%BldRNodes(:)
-      ALLOCATE(InitInData_OpFM%StructTwrHNodes( SIZE(InitOutData_ED%TwrHNodes)),  STAT=ErrStat2)
-      InitInData_OpFM%StructTwrHNodes(:) = InitOutData_ED%TwrHNodes(:)
+      InitInData_OpFM%NumBl = InitOutData_ED%NumBl
+      !Each blade could have a different number of nodes in BeamDyn
+      ALLOCATE(InitInData_OpFM%nStructBldEtaNodes(InitOutData_ED%NumBl))
+      IF (p_FAST%CompElast == Module_BD) THEN
+         bldNodes_BD = 0
+         do k=1,InitOutData_ED%NumBl
+            InitInData_OpFM%nStructBldEtaNodes(k) = SIZE(InitOutData_BD(k)%QPtN)
+            bldNodes_BD = bldNodes_BD + SIZE(InitOutData_BD(k)%QPtN)
+         end do
+         ALLOCATE(InitInData_OpFM%structBldEtaNodes(bldNodes_BD), STAT=ErrStat2)
+         i=0
+         do k=1,InitOutData_ED%NumBl
+            InitInData_OpFM%structBldEtaNodes(i+1:i+InitInData_OpFM%nStructBldEtaNodes(k)) = InitOutData_BD(k)%QPtN
+            i = i + InitInData_OpFM%nStructBldEtaNodes(k)
+         end do
+      ELSE
+         bldNodes_ED = SIZE(InitOutData_ED%BldRNodes)+2 ! The same for all blades
+         InitInData_OpFM%nStructBldEtaNodes(:) = bldNodes_ED
+         ALLOCATE(InitInData_OpFM%structBldEtaNodes( bldNodes_ED*InitOutData_ED%NumBl), STAT=ErrStat2)
+         do k=1,InitOutData_ED%NumBl
+            !ElastoDyn does not include the first and the last nodes in 'BldRNodes'
+            InitInData_OpFM%StructBldEtaNodes(bldNodes_ED*(k-1)+1) = 0.0
+            InitInData_OpFM%StructBldEtaNodes(bldNodes_ED*(k-1)+2:bldNodes_ED*k-1) = InitOutData_ED%BldRNodes(:)/InitOutData_ED%BladeLength
+            InitInData_OpFM%StructBldEtaNodes(bldNodes_ED*k) = 1.0
+         end do
+      END IF
+      ALLOCATE(InitInData_OpFM%StructTwrEtaNodes(SIZE(InitOutData_ED%TwrHNodes)+2),  STAT=ErrStat2)
+      InitInData_OpFM%StructTwrEtaNodes(1) = 0.0
+      InitInData_OpFM%StructTwrEtaNodes(2:SIZE(InitOutData_ED%TwrHNodes)+1) = InitOutData_ED%TwrHNodes(:)/InitOutData_ED%TowerFlexL
+      InitInData_OpFM%StructTwrEtaNodes(SIZE(InitOutData_ED%TwrHNodes)+2) = 1.0
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating OpFM%InitInput.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
