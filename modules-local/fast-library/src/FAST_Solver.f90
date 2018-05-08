@@ -34,6 +34,7 @@ MODULE FAST_Solver
       
    USE AeroDyn
    USE AeroDyn14
+   USE ExtLoads     
    USE InflowWind
    USE ElastoDyn
    USE BeamDyn

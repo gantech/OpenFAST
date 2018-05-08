@@ -75,6 +75,7 @@ add_subdirectory(modules-local/fast-registry)
 set(FAST_MODULES_LOCAL
   nwtc-library
   inflowwind
+  extloads  
   aerodyn
   aerodyn14
   servodyn

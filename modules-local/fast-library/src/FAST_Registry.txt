@@ -16,6 +16,7 @@ usefrom	Registry_BeamDyn.txt
 usefrom	ServoDyn_Registry.txt
 usefrom	Registry-AD14.txt
 usefrom	AeroDyn_Registry.txt
+usefrom	ExtLoads_Registry.txt
 usefrom	SubDyn_Registry.txt
 usefrom	HydroDyn.txt
 usefrom	IceFloe_FASTRegistry.inp
@@ -42,17 +43,18 @@ param	^	-	INTEGER	Module_ED	-	3	-	"ElastoDyn"	-
 param	^	-	INTEGER	Module_BD	-	4	-	"BeamDyn"	-
 param	^	-	INTEGER	Module_AD14	-	5	-	"AeroDyn14"	-
 param	^	-	INTEGER	Module_AD	-	6	-	"AeroDyn"	-
-param	^	-	INTEGER	Module_SrvD	-	7	-	"ServoDyn"	-
-param	^	-	INTEGER	Module_HD	-	8	-	"HydroDyn"	-
-param	^	-	INTEGER	Module_SD	-	9	-	"SubDyn"	-
-param	^	-	INTEGER	Module_ExtPtfm	-	10	-	"External Platform Loading MCKF"	-
-param	^	-	INTEGER	Module_MAP	-	11	-	"MAP (Mooring Analysis Program)"	-
-param	^	-	INTEGER	Module_FEAM	-	12	-	"FEAMooring"	-
-param	^	-	INTEGER	Module_MD	-	13	-	"MoorDyn"	-
-param	^	-	INTEGER	Module_Orca	-	14	-	"OrcaFlex integration (HD/Mooring)"	-
-param	^	-	INTEGER	Module_IceF	-	15	-	"IceFloe"	-
-param	^	-	INTEGER	Module_IceD	-	16	-	"IceDyn"	-
-param	^	-	INTEGER	NumModules	-	16	-	"The number of modules available in FAST"	-
+param	^	-	INTEGER	Module_ExtLoads	-	7	-	"Externally specified loads"	-
+param	^	-	INTEGER	Module_SrvD	-	8	-	"ServoDyn"	-
+param	^	-	INTEGER	Module_HD	-	9	-	"HydroDyn"	-
+param	^	-	INTEGER	Module_SD	-	10	-	"SubDyn"	-
+param	^	-	INTEGER	Module_ExtPtfm	-	11	-	"External Platform Loading MCKF"	-
+param	^	-	INTEGER	Module_MAP	-	12	-	"MAP (Mooring Analysis Program)"	-
+param	^	-	INTEGER	Module_FEAM	-	13	-	"FEAMooring"	-
+param	^	-	INTEGER	Module_MD	-	14	-	"MoorDyn"	-
+param	^	-	INTEGER	Module_Orca	-	15	-	"OrcaFlex integration (HD/Mooring)"	-
+param	^	-	INTEGER	Module_IceF	-	16	-	"IceFloe"	-
+param	^	-	INTEGER	Module_IceD	-	17	-	"IceDyn"	-
+param	^	-	INTEGER	NumModules	-	17	-	"The number of modules available in FAST"	-
 # Other Constants
 param	^	-	INTEGER	MaxNBlades	-	3	-	"Maximum number of blades allowed on a turbine"	-
 param	^	-	INTEGER	IceD_MaxLegs	-	4	-	"because I don't know how many legs there are before calling IceD_Init and I don't want to copy the data because of sibling mesh issues, I'm going to allocate IceD based on this number"	-
@@ -268,6 +270,18 @@ typedef	^	^	AD_InputType	u	-	-	-	"System inputs"
 typedef	^	^	AD_OutputType	y	-	-	-	"System outputs"
 typedef	^	^	AD_MiscVarType	m	-	-	-	"Misc/optimization variables"
 typedef	^	^	AD_InputType	Input	{:}	-	-	"Array of inputs associated with InputTimes"
+typedef	^	^	DbKi	InputTimes	{:}	-	-	"Array of times associated with Input Array"
+
+# ..... ExtLoads data .......................................................................................................
+typedef	FAST	ExtLoads_Data	ExtLoads_ContinuousStateType	x	{2}	-	-	"Continuous states"
+typedef	^	^	ExtLoads_DiscreteStateType	xd	{2}	-	-	"Discrete states"
+typedef	^	^	ExtLoads_ConstraintStateType	z	{2}	-	-	"Constraint states"
+typedef	^	^	ExtLoads_OtherStateType	OtherSt	{2}	-	-	"Other states"
+typedef	^	^	ExtLoads_ParameterType	p	-	-	-	"Parameters"
+typedef	^	^	ExtLoads_InputType	u	-	-	-	"System inputs"
+typedef	^	^	ExtLoads_OutputType	y	-	-	-	"System outputs"
+typedef	^	^	ExtLoads_MiscVarType	m	-	-	-	"Misc/optimization variables"
+typedef	^	^	ExtLoads_InputType	Input	{:}	-	-	"Array of inputs associated with InputTimes"
 typedef	^	^	DbKi	InputTimes	{:}	-	-	"Array of times associated with Input Array"
 
 # ..... InflowWind data .......................................................................................................
@@ -503,6 +517,7 @@ typedef	^	FAST_TurbineType	BeamDyn_Data	BD	-	-	-	"Data for the BeamDyn module"	-
 typedef	^	FAST_TurbineType	ServoDyn_Data	SrvD	-	-	-	"Data for the ServoDyn module"	-
 typedef	^	FAST_TurbineType	AeroDyn_Data	AD	-	-	-	"Data for the AeroDyn module"	-
 typedef	^	FAST_TurbineType	AeroDyn14_Data	AD14	-	-	-	"Data for the AeroDyn14 module"	-
+typedef	^	FAST_TurbineType	ExtLoads_Data	ExtLoads	-	-	-	"Data for the External loads module"	-
 typedef	^	FAST_TurbineType	InflowWind_Data	IfW	-	-	-	"Data for InflowWind module"	-
 typedef	^	FAST_TurbineType	OpenFOAM_Data	OpFM	-	-	-	"Data for OpenFOAM integration module"	-
 typedef	^	FAST_TurbineType	SuperController_Data	SC	-	-	-	"Data for SuperController integration module"	-
