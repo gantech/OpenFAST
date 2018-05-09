@@ -98,6 +98,10 @@ SUBROUTINE BD_InputSolve( p_FAST, BD, y_AD, u_AD, MeshMapData, ErrStat, ErrMsg )
                
          END DO
                   
+      ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
+
       ELSE
 
          DO K = 1,p_FAST%nBeams ! Loop through all blades
@@ -200,7 +204,11 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_SrvD, u_AD
             CALL Transfer_Line2_to_Point( y_AD%BladeLoad(k), u_ED%BladePtLoads(k), MeshMapData%AD_L_2_BDED_B(k), ErrStat2, ErrMsg2, u_AD%BladeMotion(k), y_ED%BladeLn2Mesh(k) )
                CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
          END DO
-                  
+
+      ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
+
       ELSE
          !p_FAST%CompAero = Module_None
          DO K = 1,SIZE(u_ED%BladePtLoads,1) ! Loop through all blades (p_ED%NumBl)
@@ -240,7 +248,11 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_SrvD, u_AD
          CALL Transfer_Line2_to_Point( y_AD%TowerLoad, u_ED%TowerPtLoads, MeshMapData%AD_L_2_ED_P_T, ErrStat2, ErrMsg2, u_AD%TowerMotion, y_ED%TowerLn2Mesh )
             CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)         
       END IF
-            
+
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
+      
    ELSE
       u_ED%TowerPtLoads%Force  = 0.0_ReKi
       u_ED%TowerPtLoads%Moment = 0.0_ReKi      
@@ -741,6 +753,8 @@ SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_OpFM, y_BD, M
       u_SrvD%WindDir  = ATAN2( y_OpFM%v(1), y_OpFM%u(1) )
       u_SrvD%YawErr   = u_SrvD%WindDir - y_ED%YawAngle
       u_SrvD%HorWindV = SQRT( y_OpFM%u(1)**2 + y_OpFM%v(1)**2 )
+
+      ! May be we need to still include the OpFM module to send this data to ServoDyn? Figure out how to deal with this for blade-resolved FSI cases.
       
       if ( allocated(u_SrvD%SuperController) ) then
          u_SrvD%SuperController = y_OpFM%SuperController
@@ -3692,7 +3706,11 @@ SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp
          AD%Input(1)%BladeMotion(    k)%RemapFlag = .FALSE.
                 AD%y%BladeLoad(      k)%RemapFlag = .FALSE.
       END DO
-                                    
+
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+      ! DO SOMETHING HERE
+      
    END IF
    
    
@@ -4002,6 +4020,9 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, M
          END IF         
       END IF
       
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+      ! DO SOMETHING HERE
       
    END IF
    
@@ -4455,8 +4476,12 @@ end if
          ! this probably can be skipped; 
          ! @todo: alternatively, we could call InflowWind_CalcOutput, too.
       CALL AD_InputSolve_IfW( p_FAST, AD%Input(1), IfW%y, OpFM%y, ErrStat2, ErrMsg2 )   
-         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )                       
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
+         
    END IF
 
    IF ( p_FAST%CompInflow == Module_IfW ) THEN
@@ -4742,6 +4767,10 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
          ! note that this uses BD outputs, which are from the previous step (and need to be initialized)
       CALL AD_InputSolve_NoIfW( p_FAST, AD%Input(1), ED%Output(1), BD, MeshMapData, ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
          
    END IF
    
@@ -4782,6 +4811,11 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
       CALL AD_CalcOutput( this_time, AD%Input(1), AD%p, AD%x(this_state), AD%xd(this_state), AD%z(this_state), &
                        AD%OtherSt(this_state), AD%y, AD%m, ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
+         
    END IF
       
                        
@@ -4958,6 +4992,11 @@ SUBROUTINE FAST_AdvanceStates( t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED
                                AD%xd(STATE_PRED), AD%z(STATE_PRED), AD%OtherSt(STATE_PRED), AD%m, ErrStat2, ErrMsg2 )
             CALL SetErrStat( Errstat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       END DO !j_ss
+
+   ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO WE HAVE TO DO SOMETHING HERE
+         
    END IF            
 
                         
@@ -5332,6 +5371,10 @@ SUBROUTINE FAST_ExtrapInterpMods( t_global_next, p_FAST, y_FAST, m_FAST, ED, BD,
          CALL AD_CopyInput (AD%u,  AD%Input(1),  MESH_UPDATECOPY, Errstat2, ErrMsg2)
             CALL SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName )
          AD%InputTimes(1)  = t_global_next    
+
+      ELSE IF (p_FAST%CompAero == Module_ExtLoads ) THEN
+
+         ! DO SOMETHING HERE
          
       END IF  ! CompAero      
       
