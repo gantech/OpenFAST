@@ -171,6 +171,47 @@ subroutine Init_y(y, u, p, errStat, errMsg)
 
    errStat = ErrID_None
    errMsg  = ""
+
+   if (p%TwrAero) then
+
+      call MeshCopy ( SrcMesh  = u%TowerMotion    &
+           , DestMesh = y%TowerLoad      &
+           , CtrlCode = MESH_SIBLING     &
+           , IOS      = COMPONENT_OUTPUT &
+           , force    = .TRUE.           &
+           , moment   = .TRUE.           &
+           , ErrStat  = ErrStat2         &
+           , ErrMess  = ErrMsg2          )
+
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+      if (ErrStat >= AbortErrLev) RETURN         
+
+      !y%TowerLoad%force = 0.0_ReKi  ! shouldn't have to initialize this
+      !y%TowerLoad%moment= 0.0_ReKi  ! shouldn't have to initialize this
+   else
+      y%TowerLoad%nnodes = 0
+   end if
+
+   allocate( y%BladeLoad(p%numBlades), stat=ErrStat2 )
+   if (errStat2 /= 0) then
+      call SetErrStat( ErrID_Fatal, 'Error allocating y%BladeLoad.', ErrStat, ErrMsg, RoutineName )      
+      return
+   end if
+
+   do k = 1, p%numBlades
+
+      call MeshCopy ( SrcMesh  = u%BladeMotion(k) &
+           , DestMesh = y%BladeLoad(k)   &
+           , CtrlCode = MESH_SIBLING     &
+           , IOS      = COMPONENT_OUTPUT &
+           , force    = .TRUE.           &
+           , moment   = .TRUE.           &
+           , ErrStat  = ErrStat2         &
+           , ErrMess  = ErrMsg2          )
+
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+
+   end do
    
 end subroutine Init_y
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -180,7 +221,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
 
    type(ExtLoads_InputType),           intent(  out)  :: u                 !< Input data
    type(ExtLoads_ParameterType),       intent(in   )  :: p                 !< Parameters
-   type(ExtLoads_InitInputType),       intent(in   )  :: InitInp           !< Input data for AD initialization routine
+   type(ExtLoads_InitInputType),       intent(in   )  :: InitInp           !< Input data for ExtLoads initialization routine
    integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
    character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
 
@@ -204,6 +245,142 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    ErrStat = ErrID_None
    ErrMsg  = ""
 
+
+      ! Meshes for motion inputs (ElastoDyn and/or BeamDyn)
+         !................
+         ! tower
+         !................
+   if (p%NumTwrNds > 0) then
+      
+      call MeshCreate ( BlankMesh = u%TowerMotion   &
+                       ,IOS       = COMPONENT_INPUT &
+                       ,Nnodes    = p%NumTwrNds     &
+                       ,ErrStat   = ErrStat2        &
+                       ,ErrMess   = ErrMsg2         &
+                       ,Orientation     = .true.    &
+                       ,TranslationDisp = .true.    &
+                       ,TranslationVel  = .true.    &
+                      )
+            call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+
+      if (errStat >= AbortErrLev) return
+            
+         ! set node initial position/orientation
+      position = 0.0_ReKi
+      do j=1,p%NumTwrNds         
+         position(:) = InitInp%TwrPos(:,j)
+         
+         call MeshPositionNode(u%TowerMotion, j, position, errStat2, errMsg2)  ! orientation is identity by default
+            call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+      end do !j
+         
+         ! create point elements
+      do j=1,p%NumTwrNds
+         call MeshConstructElement( u%TowerMotion, ELEMENT_POINT, errStat2, errMsg2, p1=j )
+            call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+      end do !j
+            
+      call MeshCommit(u%TowerMotion, errStat2, errMsg2 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+            
+      if (errStat >= AbortErrLev) return
+
+      
+      u%TowerMotion%Orientation     = u%TowerMotion%RefOrientation
+      u%TowerMotion%TranslationDisp = 0.0_R8Ki
+      u%TowerMotion%TranslationVel  = 0.0_ReKi
+      
+   end if ! we compute tower loads
+   
+         !................
+         ! hub
+         !................
+   
+      call MeshCreate ( BlankMesh = u%HubMotion     &
+                       ,IOS       = COMPONENT_INPUT &
+                       ,Nnodes    = 1               &
+                       ,ErrStat   = ErrStat2        &
+                       ,ErrMess   = ErrMsg2         &
+                       ,Orientation     = .true.    &
+                       ,TranslationDisp = .true.    &
+                       ,RotationVel     = .true.    &
+                      )
+            call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+
+      if (errStat >= AbortErrLev) return
+                     
+      call MeshPositionNode(u%HubMotion, 1, InitInp%HubPos, errStat2, errMsg2, InitInp%HubOrient)
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         
+      call MeshConstructElement( u%HubMotion, ELEMENT_POINT, errStat2, errMsg2, p1=1 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+            
+      call MeshCommit(u%HubMotion, errStat2, errMsg2 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+            
+      if (errStat >= AbortErrLev) return
+
+         
+      u%HubMotion%Orientation     = u%HubMotion%RefOrientation
+      u%HubMotion%TranslationDisp = 0.0_R8Ki
+      u%HubMotion%RotationVel     = 0.0_ReKi   
+      
+         !................
+         ! blades
+         !................
+   
+      allocate( u%BladeMotion(p%NumBlades), STAT = ErrStat2 )
+      if (ErrStat2 /= 0) then
+         call SetErrStat( ErrID_Fatal, 'Error allocating u%BladeMotion array.', ErrStat, ErrMsg, RoutineName )
+         return
+      end if
+      
+      do k=1,p%NumBlades
+         call MeshCreate ( BlankMesh = u%BladeMotion(k)                     &
+                          ,IOS       = COMPONENT_INPUT                      &
+                          ,Nnodes    = InitInp%NumBldNodes(k) &
+                          ,ErrStat   = ErrStat2                             &
+                          ,ErrMess   = ErrMsg2                              &
+                          ,Orientation     = .true.                         &
+                          ,TranslationDisp = .true.                         &
+                          ,TranslationVel  = .true.                         &
+                         )
+               call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+
+         if (errStat >= AbortErrLev) return
+            
+                        
+         do j=1,InitInp%NumBldNodes(k)
+
+               ! reference position of the jth node in the kth blade:
+            position(:) = InitInp%BldPos(:,j,k)
+                                 
+               ! reference orientation of the jth node in the kth blade
+            orientation(:,:) = InitInp%BldOrient(:,:,j,k)
+
+            
+            call MeshPositionNode(u%BladeMotion(k), j, position, errStat2, errMsg2, orientation)
+               call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+               
+         end do ! j=blade nodes
+         
+            ! create point elements
+         do j=1,InitInp%NumBldNodes(k)
+            call MeshConstructElement( u%BladeMotion(k), ELEMENT_POINT, errStat2, errMsg2, p1=j )
+               call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         end do !j
+            
+         call MeshCommit(u%BladeMotion(k), errStat2, errMsg2 )
+            call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+            
+         if (errStat >= AbortErrLev) return
+      
+         u%BladeMotion(k)%Orientation     = u%BladeMotion(k)%RefOrientation
+         u%BladeMotion(k)%TranslationDisp = 0.0_R8Ki
+         u%BladeMotion(k)%TranslationVel  = 0.0_ReKi
+   
+   end do !k=numBlades
+   
    
 end subroutine Init_u
 !----------------------------------------------------------------------------------------------------------------------------------
