@@ -493,21 +493,26 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       AirDens = InitOutData_AD%AirDens
 
    ELSEIF ( p_FAST%CompAero == Module_ExtLoads ) THEN
+
+      IF ( PRESENT(ExternInitData) ) THEN
       
          ! set initialization data for ExtLoads
-      CALL ExtLoads_Init( InitInData_ExtLoads, ExtLoads%Input(1), ExtLoads%p, ExtLoads%y, ExtLoads%m, p_FAST%dt_module( MODULE_AD ), InitOutData_ExtLoads, ErrStat2, ErrMsg2 )
+         CALL ExtLoads_SetInitInput(InitInData_ExtLoads, InitOutData_ED, ED%Output(1), InitOutData_BD, BD%y(:), p_FAST, ExternInitData, ErrStat2, ErrMsg2)
+         CALL ExtLoads_Init( InitInData_ExtLoads, ExtLoads%Input(1), ExtLoads%p, ExtLoads%y, ExtLoads%m, p_FAST%dt_module( MODULE_AD ), InitOutData_ExtLoads, ErrStat2, ErrMsg2 )
          CALL SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
-
-      p_FAST%ModuleInitialized(Module_ExtLoads) = .TRUE.            
-      CALL SetModuleSubstepTime(Module_ExtLoads, p_FAST, y_FAST, ErrStat2, ErrMsg2)
+         
+         p_FAST%ModuleInitialized(Module_ExtLoads) = .TRUE.            
+         CALL SetModuleSubstepTime(Module_ExtLoads, p_FAST, y_FAST, ErrStat2, ErrMsg2)
          CALL SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
-                               
-      IF (ErrStat >= AbortErrLev) THEN
-         CALL Cleanup()
-         RETURN
-      END IF       
-      
-      AirDens = InitOutData_ExtLoads%AirDens
+         
+         IF (ErrStat >= AbortErrLev) THEN
+            CALL Cleanup()
+            RETURN
+         END IF
+         
+         AirDens = InitOutData_ExtLoads%AirDens
+         
+      END IF
       
    ELSE
       AirDens = 0.0_ReKi
@@ -3277,6 +3282,138 @@ SUBROUTINE WrVTK_Ground ( RefPoint, HalfLengths, FileRootName, ErrStat, ErrMsg )
       call WrVTK_footer( Un )       
                      
    END SUBROUTINE WrVTK_Ground
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This subroutine sets up the information needed to initialize ExtLoads
+SUBROUTINE ExtLoads_SetInitInput(InitInData_ExtLoads, InitOutData_ED, y_ED, InitOutData_BD, y_BD, p_FAST, ExternInitData, ErrStat, ErrMsg)
+   ! Passed variables:
+   TYPE(ExtLoads_InitInputType),INTENT(INOUT) :: InitInData_ExtLoads  !< The initialization input to AeroDyn14
+   TYPE(ED_InitOutputType), INTENT(IN)    :: InitOutData_ED   !< The initialization output from structural dynamics module
+   TYPE(ED_OutputType),     INTENT(IN)    :: y_ED             !< The outputs of the structural dynamics module (meshes with position/RefOrientation set)
+   TYPE(BD_InitOutputType), INTENT(IN)    :: InitOutData_BD(:)   !< The initialization output from structural dynamics module
+   TYPE(BD_OutputType),     INTENT(IN)    :: y_BD(:)             !< The outputs of the structural dynamics module (meshes with position/RefOrientation set)   
+   TYPE(FAST_ParameterType),INTENT(IN)    :: p_FAST           !< The parameters of the glue code
+   TYPE(FAST_ExternInitType),INTENT(IN)   :: ExternInitData   !< Initialization input data from an external source
+   
+   INTEGER(IntKi)                         :: ErrStat          !< Error status of the operation
+   CHARACTER(*)                           :: ErrMsg           !< Error message if ErrStat /= ErrID_None
+
+      ! Local variables
+   INTEGER                    :: k, tmp
+   INTEGER                    :: nTotBldNds
+   INTEGER                    :: nMaxBldNds   
+   
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+   
+   InitInData_ExtLoads%NumBlades  = InitOutData_ED%NumBl
+   IF (.NOT. ALLOCATED( InitInData_ExtLoads%NumBldNodes) ) THEN
+      ALLOCATE( InitInData_ExtLoads%NumBldNodes(InitInData_ExtLoads%NumBlades), STAT = ErrStat )
+      IF ( ErrStat /= 0 ) THEN
+         ErrStat = ErrID_Fatal
+         ErrMsg = ' Error allocating space for InitInData_ExtLoads%NumBldNodes.'
+         RETURN
+      ELSE
+         ErrStat = ErrID_None !reset to ErrID_None, just in case ErrID_None /= 0
+      END IF
+   END IF
+   
+   ! Blade node positions and orientations   
+   nTotBldNds = 0
+   nMaxBldNds = 0
+   IF (p_FAST%CompElast == Module_ED ) THEN
+      nMaxBldNds = SIZE(y_ED%BladeLn2Mesh(1)%position(1,:))      
+      nTotBldNds = nMaxBldNds * InitInData_ExtLoads%NumBlades
+      InitInData_ExtLoads%NumBldNodes(:) = nMaxBldNds
+   ELSE IF (p_FAST%CompElast == Module_BD ) THEN
+      do k=1,InitInData_ExtLoads%NumBlades
+         tmp = SIZE(y_BD(k)%BldMotion%position(1,:))
+         nMaxBldNds = max(nMaxBldNds, tmp)
+         nTotBldNds = nTotBldNds + tmp
+         InitInData_ExtLoads%NumBldNodes(k) = tmp
+      end do
+   END IF
+   
+   IF (.NOT. ALLOCATED( InitInData_ExtLoads%BldPos) ) THEN
+      ALLOCATE( InitInData_ExtLoads%BldPos( 3, nMaxBldNds, InitInData_ExtLoads%NumBlades), STAT = ErrStat )
+      IF ( ErrStat /= 0 ) THEN
+         ErrStat = ErrID_Fatal
+         ErrMsg = ' Error allocating space for InitInData_ExtLoads%BldPos.'
+         RETURN
+      ELSE
+         ErrStat = ErrID_None !reset to ErrID_None, just in case ErrID_None /= 0
+      END IF
+   END IF
+
+   IF (.NOT. ALLOCATED( InitInData_ExtLoads%BldOrient) ) THEN
+      ALLOCATE( InitInData_ExtLoads%BldOrient( 3, 3, nMaxBldNds, InitInData_ExtLoads%NumBlades), STAT = ErrStat )
+      IF ( ErrStat /= 0 ) THEN
+         ErrStat = ErrID_Fatal
+         ErrMsg = ' Error allocating space for InitInData_ExtLoads%BldOrient.'
+         RETURN
+      ELSE
+         ErrStat = ErrID_None !reset to ErrID_None, just in case ErrID_None /= 0
+      END IF
+   END IF
+
+   IF (p_FAST%CompElast == Module_ED ) THEN
+      DO k=1,InitInData_ExtLoads%NumBlades
+         InitInData_ExtLoads%BldPos(:,:,k) = y_ED%BladeLn2Mesh(k)%position(:,:)
+         InitInData_ExtLoads%BldOrient(:,:,:,k) = y_ED%BladeLn2Mesh(k)%orientation(:,:,:)
+      END DO
+   ELSE IF (p_FAST%CompElast == Module_BD ) THEN
+      DO k=1,InitInData_ExtLoads%NumBlades
+         InitInData_ExtLoads%BldPos(:,:,k) = y_BD(k)%BldMotion%position(:,:)
+         InitInData_ExtLoads%BldOrient(:,:,:,k) = y_BD(k)%BldMotion%orientation(:,:,:)
+      END DO
+   END IF
+
+   ! Tower mesh
+   InitInData_ExtLoads%TwrAero = ExternInitData%TwrAero
+   if (InitInData_ExtLoads%TwrAero) then
+      InitInData_ExtLoads%NumTwrNds = y_ED%TowerLn2Mesh%NNodes
+      IF ( InitInData_ExtLoads%NumTwrNds > 0 ) THEN
+
+         IF (.NOT. ALLOCATED( InitInData_ExtLoads%TwrPos ) ) THEN
+            ALLOCATE( InitInData_ExtLoads%TwrPos( 3, InitInData_ExtLoads%NumTwrNds ), STAT = ErrStat )
+            IF ( ErrStat /= 0 ) THEN
+               ErrStat = ErrID_Fatal
+               ErrMsg = ' Error allocating space for InitInData_AD%TwrNodeLocs.'
+               RETURN
+            ELSE
+               ErrStat = ErrID_None
+            END IF
+         END IF
+         IF (.NOT. ALLOCATED( InitInData_ExtLoads%TwrOrient ) ) THEN
+            ALLOCATE( InitInData_ExtLoads%TwrOrient( 3, 3, InitInData_ExtLoads%NumTwrNds ), STAT = ErrStat )
+            IF ( ErrStat /= 0 ) THEN
+               ErrStat = ErrID_Fatal
+               ErrMsg = ' Error allocating space for InitInData_AD%TwrOrient.'
+               RETURN
+            ELSE
+               ErrStat = ErrID_None
+            END IF
+         END IF
+         
+         ! For some reason, ElastoDyn keeps the last point as the blade/tower root
+         InitInData_ExtLoads%TwrPos(:,1) = y_ED%TowerLn2Mesh%Position(:,InitInData_ExtLoads%NumTwrNds)
+         InitInData_ExtLoads%TwrOrient(:,:,1) = y_ED%TowerLn2Mesh%Orientation(:,:,InitInData_ExtLoads%NumTwrNds)
+         ! Now fill in rest of the nodes
+         InitInData_ExtLoads%TwrPos(:,2:InitInData_ExtLoads%NumTwrNds) = y_ED%TowerLn2Mesh%Position(:,1:InitInData_ExtLoads%NumTwrNds-1)
+         InitInData_ExtLoads%TwrOrient(:,:,2:InitInData_ExtLoads%NumTwrNds) = y_ED%TowerLn2Mesh%Orientation(:,:,1:InitInData_ExtLoads%NumTwrNds-1) 
+      END IF
+      
+   else
+      
+      InitInData_ExtLoads%NumTwrNds = 0
+      
+   end if
+
+   InitInData_ExtLoads%HubPos             = y_ED%HubPtMotion%Position(:,1)
+   InitInData_ExtLoads%HubOrient          = y_ED%HubPtMotion%RefOrientation(:,:,1)
+   
+   RETURN
+  
+END SUBROUTINE ExtLoads_SetInitInput
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This subroutine sets up the information needed to initialize AeroDyn, then initializes AeroDyn
 SUBROUTINE AD_SetInitInput(InitInData_AD14, InitOutData_ED, y_ED, p_FAST, ErrStat, ErrMsg)

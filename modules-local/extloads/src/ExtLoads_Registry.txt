@@ -15,14 +15,13 @@
 ###################################################################################################################################
 # ...... Include files (definitions from NWTC Library) ............................................................................
 include	Registry_NWTC_Library.txt
+usefrom ExtLoadsDX_Registry.txt
 
 # ..... Initialization data .......................................................................................................
 # Define inputs that the initialization routine may need here:
-typedef	ExtLoads/ExtLoads	InitInputType	CHARACTER(1024)	InputFile	-	-	-	"Name of the input file"	-
-typedef	^	                InitInputType	Logical	Linearize	-	.FALSE.	-	"Flag that tells this module if the glue code wants to linearize."	-
-typedef	^	                InitInputType	IntKi	NumBlades	-	-	-	"Number of blades on the turbine" -
+typedef	ExtLoads/ExtLoads       InitInputType	IntKi	NumBlades	-	-	-	"Number of blades on the turbine" -
 typedef ^                       InitInputType   IntKi   NumBldNodes     {:}     -       -       "Number of blade nodes for each blade"  -
-typedef	^	                InitInputType	Logical	TwrAero	        -	.FALSE.	-	"Flag that tells this module if the tower aero is on."	-
+typedef	^	                InitInputType	Logical	TwrAero	        -	.false.	-	"Flag that tells this module if the tower aero is on."	-
 typedef ^                       InitInputType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes for each blade"  -
 typedef	^	                InitInputType	ReKi	HubPos	{3}	-	-	"X-Y-Z reference position of hub"	m
 typedef	^	                InitInputType	R8Ki	HubOrient	{3}{3}	-	-	"DCM reference orientation of hub"	-
@@ -63,9 +62,9 @@ typedef ^       MiscVarType	ReKi	blah    -       -       -       "Something"    
 
 # ..... Parameters ................................................................................................................
 # Define parameters here:
-typedef ^       ParameterType	ReKi	blah           -       -       -       "Something"     -
-typedef	^	ParameterType	IntKi	NumBlades      -       -       -       "Number of blades on the turbine" -
-typedef ^       ParameterType   IntKi   NumBldNodes   {:}      -       -       "Number of blade nodes for each blade"  -
+typedef	^	ParameterType	IntKi	NumBlds      -       -       -       "Number of blades on the turbine" -
+typedef ^       ParameterType   IntKi   NumBldNds   {:}      -       -       "Number of blade nodes for each blade"  -
+typedef ^       ParameterType   IntKi   nTotBldNds   -       -       -       "Total number of blade nodes"   -
 typedef	^	ParameterType	Logical	TwrAero	        -	.FALSE.	-	"Flag that tells this module if the tower aero is on."	-
 typdef  ^       ParameterType   Logical TwrAero        -     .FALSE.   -       "Option to enable/disable tower aerodynamics " -
 typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes"  -
@@ -73,11 +72,7 @@ typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "
 
 # ..... Inputs ....................................................................................................................
 # Define inputs that are contained on the mesh here:
-typedef ^       OutputType      ReKi            twrDefExt        {:}     -       -       "Deformations on the tower  - to send to external driver"
-typedef ^       OutputType      ReKi            bldDefExt        {:}     -       -       "Deformations on all blades - to send to external driver"
-typedef ^       OutputType      IntKi           nBlades          -      -       -       "Number of blades"
-typedef ^       OutputType      IntKi           nBladeNodes     {:}     -       -       "Number of blade nodes for each blade"  -
-typedef ^       OutputType      IntKi           nTowerNodes      -      -       -       "Number of tower nodes for each blade"  -
+typedef ^       InputType       ExtLoadsDX_InputType    DX_u    -       -       -       "Data to send to external driver"
 typedef	^	InputType	MeshType	TowerMotion	-	-	-	"motion on the tower"	-
 typedef	^	InputType	MeshType	HubMotion	-	-	-	"motion on the hub"	-
 typedef	^	InputType	MeshType	BladeRootMotion	{:}	-	-	"motion on each blade root"	-
@@ -85,7 +80,6 @@ typedef	^	InputType	MeshType	BladeMotion	{:}	-	-	"motion on each blade"	-
 
 # ..... Outputs ...................................................................................................................
 # Define outputs that are contained on the mesh here:
-typedef ^       OutputType      ReKi            twrLdExt        {:}     -       -       "Loads on the tower  - Externally supplied"
-typedef ^       OutputType      ReKi            bldLdExt        {:}     -       -       "Loads on all blades - Externally supplied"
+typedef ^       OutputType      ExtLoadsDX_OutputType    DX_y    -       -       -       "Data to get from external driver"
 typedef	^	OutputType	MeshType	TowerLoad 	 -	-	-	"loads on the tower"	-
 typedef	^	OutputType	MeshType	BladeLoad	{:}	-	-	"loads on each blade"	-

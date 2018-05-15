@@ -192,13 +192,13 @@ subroutine Init_y(y, u, p, errStat, errMsg)
       y%TowerLoad%nnodes = 0
    end if
 
-   allocate( y%BladeLoad(p%numBlades), stat=ErrStat2 )
+   allocate( y%BladeLoad(p%NumBlds), stat=ErrStat2 )
    if (errStat2 /= 0) then
       call SetErrStat( ErrID_Fatal, 'Error allocating y%BladeLoad.', ErrStat, ErrMsg, RoutineName )      
       return
    end if
 
-   do k = 1, p%numBlades
+   do k = 1, p%NumBlds
 
       call MeshCopy ( SrcMesh  = u%BladeMotion(k) &
            , DestMesh = y%BladeLoad(k)   &
@@ -212,6 +212,13 @@ subroutine Init_y(y, u, p, errStat, errMsg)
       call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
 
    end do
+
+   CALL AllocPAry( y%DX_y%twrLd, p%NumTwrNds*6, 'twrLd', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( y%DX_y%bldLd, p%nTotBldNds*6, 'bldLd', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   ! make sure the C versions are synced with these arrays
+   y%DX_y%c_obj%twrLd_Len = p%NumTwrNds*6; y%DX_y%c_obj%twrLd = C_LOC( y%DX_y%twrLd(1) )
+   y%DX_y%c_obj%bldLd_Len = p%nTotBldNds*6; y%DX_y%c_obj%bldLd = C_LOC( y%DX_y%bldLd(1) )
    
 end subroutine Init_y
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -235,7 +242,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    
    integer(intKi)                               :: j                 ! counter for nodes
    integer(intKi)                               :: k                 ! counter for blades
-   
+
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
    character(*), parameter                      :: RoutineName = 'Init_u'
@@ -329,13 +336,13 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
          ! blades
          !................
    
-      allocate( u%BladeMotion(p%NumBlades), STAT = ErrStat2 )
+      allocate( u%BladeMotion(p%NumBlds), STAT = ErrStat2 )
       if (ErrStat2 /= 0) then
          call SetErrStat( ErrID_Fatal, 'Error allocating u%BladeMotion array.', ErrStat, ErrMsg, RoutineName )
          return
       end if
       
-      do k=1,p%NumBlades
+      do k=1,p%NumBlds
          call MeshCreate ( BlankMesh = u%BladeMotion(k)                     &
                           ,IOS       = COMPONENT_INPUT                      &
                           ,Nnodes    = InitInp%NumBldNodes(k) &
@@ -380,6 +387,20 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
          u%BladeMotion(k)%TranslationVel  = 0.0_ReKi
    
    end do !k=numBlades
+
+
+   CALL AllocPAry( u%DX_u%twrDef, p%NumTwrNds*12, 'twrDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%bldDef, p%nTotBldNds*12, 'bldDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   
+   ! make sure the C versions are synced with these arrays
+   u%DX_u%c_obj%twrDef_Len = p%NumTwrNds*12; u%DX_u%c_obj%twrDef = C_LOC( u%DX_u%twrDef(1) )
+   u%DX_u%c_obj%bldDef_Len = p%nTotBldNds*12; u%DX_u%c_obj%bldDef = C_LOC( u%DX_u%bldDef(1) )
+
+   u%DX_u%nTowerNodes = p%NumTwrNds
+   u%DX_u%nBlades = p%NumBlds
+   CALL AllocPAry( u%DX_u%nBladeNodes, p%NumBlds, 'nBladeNodes', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   u%DX_u%c_obj%nBladeNodes_Len = p%NumBlds; u%DX_u%c_obj%nBladeNodes = C_LOC( u%DX_u%nBladeNodes(1) )
+   u%DX_u%nBladeNodes(:) = p%NumBldNds(:)
    
    
 end subroutine Init_u
