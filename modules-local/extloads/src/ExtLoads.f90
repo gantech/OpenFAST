@@ -219,6 +219,9 @@ subroutine Init_y(y, u, p, errStat, errMsg)
    ! make sure the C versions are synced with these arrays
    y%DX_y%c_obj%twrLd_Len = p%NumTwrNds*6; y%DX_y%c_obj%twrLd = C_LOC( y%DX_y%twrLd(1) )
    y%DX_y%c_obj%bldLd_Len = p%nTotBldNds*6; y%DX_y%c_obj%bldLd = C_LOC( y%DX_y%bldLd(1) )
+
+   call ConvertOpDataForExtProg(y, p, ErrStat2, ErrMsg2 )
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
    
 end subroutine Init_y
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -402,8 +405,110 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    u%DX_u%c_obj%nBladeNodes_Len = p%NumBlds; u%DX_u%c_obj%nBladeNodes = C_LOC( u%DX_u%nBladeNodes(1) )
    u%DX_u%nBladeNodes(:) = p%NumBldNds(:)
    
+   call ConvertInpDataForExtProg(u, p, ErrStat2, ErrMsg2 )
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
    
 end subroutine Init_u
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This routine converts the data in the meshes in the input into a simple array format that can be accessed by external programs
+subroutine ConvertInpDataForExtProg(u, p, errStat, errMsg )
+!..................................................................................................................................
+  USE BeamDyn_IO, ONLY: BD_CrvExtractCrv
+  
+   type(ExtLoads_InputType),           intent(inout)  :: u                 !< Input data
+   type(ExtLoads_ParameterType),       intent(in   )  :: p                 !< Parameters
+   integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
+   character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
+
+
+      ! Local variables
+   real(R8Ki)                                   :: wm_crv(3)         ! Wiener-Milenkovic parameters
+   integer(intKi)                               :: j                 ! counter for nodes
+   integer(intKi)                               :: jTot              ! counter for nodes
+   integer(intKi)                               :: k                 ! counter for blades
+
+   
+   integer(intKi)                               :: ErrStat2          ! temporary Error status
+   character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
+   character(*), parameter                      :: RoutineName = 'ConvertInpDataForExtProg'
+
+      ! Initialize variables for this routine
+
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+
+   if (p%TwrAero) then
+      do j=1,p%NumTwrNds
+         call BD_CrvExtractCrv(u%TowerMotion%Orientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
+         call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+
+         u%DX_u%twrDef((j-1)*12+1:3) = u%TowerMotion%TranslationDisp(:,j)
+         u%DX_u%twrDef((j-1)*12+4:6) = u%TowerMotion%TranslationVel(:,j)
+         u%DX_u%twrDef((j-1)*12+7:9) = wm_crv
+         u%DX_u%twrDef((j-1)*12+10:12) = u%TowerMotion%RotationVel(:,j)
+      end do
+   end if
+
+   jTot = 1
+   do k=1,p%NumBlds
+      do j=1,p%NumBldNds(k)         
+         call BD_CrvExtractCrv(u%BladeMotion(k)%Orientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
+         call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+
+         u%DX_u%bldDef((jTot-1)*12+1:3) = u%BladeMotion(k)%TranslationDisp(:,j)
+         u%DX_u%twrDef((jTot-1)*12+4:6) = u%BladeMotion(k)%TranslationVel(:,j)
+         u%DX_u%twrDef((jTot-1)*12+7:9) = wm_crv
+         u%DX_u%twrDef((jTot-1)*12+10:12) = u%BladeMotion(k)%RotationVel(:,j)
+         jTot = jTot+1
+      end do
+   end do
+   
+   
+end subroutine ConvertInpDataForExtProg
+!----------------------------------------------------------------------------------------------------------------------------------
+!> This routine converts the data in the simple array format in the output data type into OpenFAST mesh format
+subroutine ConvertOpDataForExtProg(y, p, errStat, errMsg )
+!..................................................................................................................................
+  
+   type(ExtLoads_OutputType),          intent(inout)  :: y                 !< Ouput data
+   type(ExtLoads_ParameterType),       intent(in   )  :: p                 !< Parameters
+   integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
+   character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
+
+
+      ! Local variables
+   integer(intKi)                               :: j                 ! counter for nodes
+   integer(intKi)                               :: jTot              ! counter for nodes
+   integer(intKi)                               :: k                 ! counter for blades
+
+   
+   integer(intKi)                               :: ErrStat2          ! temporary Error status
+   character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
+   character(*), parameter                      :: RoutineName = 'ConvertInpDataForExtProg'
+
+      ! Initialize variables for this routine
+
+   ErrStat = ErrID_None
+   ErrMsg  = ""
+
+   if (p%TwrAero) then
+      do j=1,p%NumTwrNds
+         y%TowerLoad%Force(:,j) = y%DX_y%twrLd((j-1)*6+1:3)
+         y%TowerLoad%Moment(:,j) = y%DX_y%twrLd((j-1)*6+4:6)
+      end do
+   end if
+
+   jTot = 1
+   do k=1,p%NumBlds
+      do j=1,p%NumBldNds(k)
+         y%BladeLoad(k)%Force(:,j) = y%DX_y%bldLd((jTot-1)*6+1:3)
+         y%BladeLoad(k)%Moment(:,j) = y%DX_y%bldLd((jTot-1)*6+4:6)
+         jTot = jTot+1
+      end do
+   end do
+   
+   
+end subroutine ConvertOpDataForExtProg
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine is called at the end of the simulation.
 subroutine ExtLoads_End( u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
