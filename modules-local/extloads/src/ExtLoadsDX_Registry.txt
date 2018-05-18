@@ -18,7 +18,7 @@ include	Registry_NWTC_Library.txt
 
 # ..... Inputs ....................................................................................................................
 # Define inputs that are contained on the mesh here:
-typedef ExtLoadsDX/ExtLoadsDX       InputType      R8Ki            twrDef        {:}     -       -       "Deformations on the tower  - to send to external driver"
+typedef ExtLoadsDX/ExtLdDX       InputType      R8Ki            twrDef        {:}     -       -       "Deformations on the tower  - to send to external driver"
 typedef ^       InputType      R8Ki            bldDef        {:}     -       -       "Deformations on all blades - to send to external driver"
 typedef ^       InputType      IntKi           nBlades          -      -       -        "Number of blades"
 typedef ^       InputType      IntKi           nBladeNodes     {:}     -       -        "Number of blade nodes for each blade"  -

@@ -33,20 +33,20 @@ module ExtLoads
 
    ! ..... Public Subroutines ...................................................................................................
 
-   public :: ExtLoads_Init                           ! Initialization routine
-   public :: ExtLoads_End                            ! Ending routine (includes clean up)
-   public :: ExtLoads_UpdateStates                   ! Loose coupling routine for solving for constraint states, integrating
+   public :: ExtLd_Init                           ! Initialization routine
+   public :: ExtLd_End                            ! Ending routine (includes clean up)
+   public :: ExtLd_UpdateStates                   ! Loose coupling routine for solving for constraint states, integrating
                                                      !   continuous states, and updating discrete states
-   public :: ExtLoads_CalcOutput                     ! Routine for computing outputs
+   public :: ExtLd_CalcOutput                     ! Routine for computing outputs
   
 contains    
 !----------------------------------------------------------------------------------------------------------------------------------   
 !> This subroutine sets the initialization output data structure, which contains data to be returned to the calling program (e.g.,
 !! FAST)   
-subroutine ExtLoads_SetInitOut(p, InitOut, errStat, errMsg)
+subroutine ExtLd_SetInitOut(p, InitOut, errStat, errMsg)
 
-   type(ExtLoads_InitOutputType),       intent(  out)  :: InitOut          ! output data
-   type(ExtLoads_ParameterType),        intent(in   )  :: p                ! Parameters
+   type(ExtLd_InitOutputType),       intent(  out)  :: InitOut          ! output data
+   type(ExtLd_ParameterType),        intent(in   )  :: p                ! Parameters
    integer(IntKi),                intent(  out)  :: errStat          ! Error status of the operation
    character(*),                  intent(  out)  :: errMsg           ! Error message if ErrStat /= ErrID_None
 
@@ -54,7 +54,7 @@ subroutine ExtLoads_SetInitOut(p, InitOut, errStat, errMsg)
       ! Local variables
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
-   character(*), parameter                      :: RoutineName = 'ExtLoads_SetInitOut'
+   character(*), parameter                      :: RoutineName = 'ExtLd_SetInitOut'
    
    
    
@@ -69,28 +69,28 @@ subroutine ExtLoads_SetInitOut(p, InitOut, errStat, errMsg)
    errStat = ErrID_None
    errMsg  = ""
    
-end subroutine ExtLoads_SetInitOut
+end subroutine ExtLd_SetInitOut
 
 !----------------------------------------------------------------------------------------------------------------------------------   
 !> This routine is called at the start of the simulation to perform initialization steps.
 !! The parameters are set here and not changed during the simulation.
 !! The initial states and initial guess for the input are defined.
-subroutine ExtLoads_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMsg )
+subroutine ExtLd_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMsg )
 !..................................................................................................................................
 
-   type(ExtLoads_InitInputType),       intent(in   ) :: InitInp       !< Input data for initialization routine
-   type(ExtLoads_InputType),           intent(  out) :: u             !< An initial guess for the input; input mesh must be defined
-   type(ExtLoads_OutputType),          intent(  out) :: y             !< Initial system outputs (outputs are not calculated;
-   type(ExtLoads_MiscVarType),         intent(  out) :: m             !< Miscellaneous variables
-   type(ExtLoads_ParameterType),       intent(  out) :: p             !< Parameter variables
+   type(ExtLd_InitInputType),       intent(in   ) :: InitInp       !< Input data for initialization routine
+   type(ExtLd_InputType),           intent(  out) :: u             !< An initial guess for the input; input mesh must be defined
+   type(ExtLd_OutputType),          intent(  out) :: y             !< Initial system outputs (outputs are not calculated;
+   type(ExtLd_MiscVarType),         intent(  out) :: m             !< Miscellaneous variables
+   type(ExtLd_ParameterType),       intent(  out) :: p             !< Parameter variables
                                                                 !!   only the output mesh is initialized)
    real(DbKi),                   intent(inout) :: interval      !< Coupling interval in seconds: the rate that
-                                                                !!   (1) ExtLoads_UpdateStates() is called in loose coupling &
-                                                                !!   (2) ExtLoads_UpdateDiscState() is called in tight coupling.
+                                                                !!   (1) ExtLd_UpdateStates() is called in loose coupling &
+                                                                !!   (2) ExtLd_UpdateDiscState() is called in tight coupling.
                                                                 !!   Input is the suggested time from the glue code;
                                                                 !!   Output is the actual coupling interval that will be used
                                                                 !!   by the glue code.
-   type(ExtLoads_InitOutputType),      intent(  out) :: InitOut       !< Output for initialization routine
+   type(ExtLd_InitOutputType),      intent(  out) :: InitOut       !< Output for initialization routine
    integer(IntKi),               intent(  out) :: errStat       !< Error status of the operation
    character(*),                 intent(  out) :: errMsg        !< Error message if ErrStat /= ErrID_None
    
@@ -101,7 +101,7 @@ subroutine ExtLoads_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMs
    integer(IntKi)                              :: errStat2      ! temporary error status of the operation
    character(ErrMsgLen)                        :: errMsg2       ! temporary error message 
       
-   character(*), parameter                     :: RoutineName = 'ExtLoads_Init'
+   character(*), parameter                     :: RoutineName = 'ExtLd_Init'
    
    
       ! Initialize variables for this routine
@@ -140,7 +140,7 @@ subroutine ExtLoads_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMs
       !............................................................................................
       ! Define initialization output here
       !............................................................................................
-   call ExtLoads_SetInitOut(p, InitOut, errStat2, errMsg2)
+   call ExtLd_SetInitOut(p, InitOut, errStat2, errMsg2)
       call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
    
    call Cleanup() 
@@ -150,13 +150,13 @@ subroutine ExtLoads_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMs
      
    end subroutine Cleanup
    
-end subroutine ExtLoads_Init
+end subroutine ExtLd_Init
 !----------------------------------------------------------------------------------------------------------------------------------   
 !> This routine initializes ExtLoads meshes and output array variables for use during the simulation.
 subroutine Init_y(y, u, p, errStat, errMsg)
-   type(ExtLoads_OutputType),           intent(  out)  :: y               !< Module outputs
-   type(ExtLoads_InputType),            intent(inout)  :: u               !< Module inputs -- intent(out) because of mesh sibling copy
-   type(ExtLoads_ParameterType),        intent(in   )  :: p               !< Parameters
+   type(ExtLd_OutputType),           intent(  out)  :: y               !< Module outputs
+   type(ExtLd_InputType),            intent(inout)  :: u               !< Module inputs -- intent(out) because of mesh sibling copy
+   type(ExtLd_ParameterType),        intent(in   )  :: p               !< Parameters
    integer(IntKi),                intent(  out)  :: errStat         !< Error status of the operation
    character(*),                  intent(  out)  :: errMsg          !< Error message if ErrStat /= ErrID_None
 
@@ -229,9 +229,9 @@ end subroutine Init_y
 subroutine Init_u( u, p, InitInp, errStat, errMsg )
 !..................................................................................................................................
 
-   type(ExtLoads_InputType),           intent(  out)  :: u                 !< Input data
-   type(ExtLoads_ParameterType),       intent(in   )  :: p                 !< Parameters
-   type(ExtLoads_InitInputType),       intent(in   )  :: InitInp           !< Input data for ExtLoads initialization routine
+   type(ExtLd_InputType),           intent(  out)  :: u                 !< Input data
+   type(ExtLd_ParameterType),       intent(in   )  :: p                 !< Parameters
+   type(ExtLd_InitInputType),       intent(in   )  :: InitInp           !< Input data for ExtLd initialization routine
    integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
    character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
 
@@ -415,8 +415,8 @@ subroutine ConvertInpDataForExtProg(u, p, errStat, errMsg )
 !..................................................................................................................................
   USE BeamDyn_IO, ONLY: BD_CrvExtractCrv
   
-   type(ExtLoads_InputType),           intent(inout)  :: u                 !< Input data
-   type(ExtLoads_ParameterType),       intent(in   )  :: p                 !< Parameters
+   type(ExtLd_InputType),           intent(inout)  :: u                 !< Input data
+   type(ExtLd_ParameterType),       intent(in   )  :: p                 !< Parameters
    integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
    character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
 
@@ -470,8 +470,8 @@ end subroutine ConvertInpDataForExtProg
 subroutine ConvertOpDataForExtProg(y, p, errStat, errMsg )
 !..................................................................................................................................
   
-   type(ExtLoads_OutputType),          intent(inout)  :: y                 !< Ouput data
-   type(ExtLoads_ParameterType),       intent(in   )  :: p                 !< Parameters
+   type(ExtLd_OutputType),          intent(inout)  :: y                 !< Ouput data
+   type(ExtLd_ParameterType),       intent(in   )  :: p                 !< Parameters
    integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
    character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
 
@@ -511,17 +511,17 @@ subroutine ConvertOpDataForExtProg(y, p, errStat, errMsg )
 end subroutine ConvertOpDataForExtProg
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine is called at the end of the simulation.
-subroutine ExtLoads_End( u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
+subroutine ExtLd_End( u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
 !..................................................................................................................................
 
-      TYPE(ExtLoads_InputType),           INTENT(INOUT)  :: u           !< System inputs
-      TYPE(ExtLoads_ParameterType),       INTENT(INOUT)  :: p           !< Parameters
-      TYPE(ExtLoads_ContinuousStateType), INTENT(INOUT)  :: x           !< Continuous states
-      TYPE(ExtLoads_DiscreteStateType),   INTENT(INOUT)  :: xd          !< Discrete states
-      TYPE(ExtLoads_ConstraintStateType), INTENT(INOUT)  :: z           !< Constraint states
-      TYPE(ExtLoads_OtherStateType),      INTENT(INOUT)  :: OtherState  !< Other states
-      TYPE(ExtLoads_OutputType),          INTENT(INOUT)  :: y           !< System outputs
-      TYPE(ExtLoads_MiscVarType),         INTENT(INOUT)  :: m           !< Misc/optimization variables
+      TYPE(ExtLd_InputType),           INTENT(INOUT)  :: u           !< System inputs
+      TYPE(ExtLd_ParameterType),       INTENT(INOUT)  :: p           !< Parameters
+      TYPE(ExtLd_ContinuousStateType), INTENT(INOUT)  :: x           !< Continuous states
+      TYPE(ExtLd_DiscreteStateType),   INTENT(INOUT)  :: xd          !< Discrete states
+      TYPE(ExtLd_ConstraintStateType), INTENT(INOUT)  :: z           !< Constraint states
+      TYPE(ExtLd_OtherStateType),      INTENT(INOUT)  :: OtherState  !< Other states
+      TYPE(ExtLd_OutputType),          INTENT(INOUT)  :: y           !< System outputs
+      TYPE(ExtLd_MiscVarType),         INTENT(INOUT)  :: m           !< Misc/optimization variables
       INTEGER(IntKi),               INTENT(  OUT)  :: ErrStat     !< Error status of the operation
       CHARACTER(*),                 INTENT(  OUT)  :: ErrMsg      !< Error message if ErrStat /= ErrID_None
 
@@ -542,62 +542,62 @@ subroutine ExtLoads_End( u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
          ! Destroy the input data:
 
 
-END SUBROUTINE ExtLoads_End
+END SUBROUTINE ExtLd_End
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Loose coupling routine for solving for constraint states, integrating continuous states, and updating discrete and other states.
 !! Continuous, constraint, discrete, and other states are updated for t + Interval
-subroutine ExtLoads_UpdateStates( t, n, u, utimes, p, x, xd, z, OtherState, m, errStat, errMsg )
+subroutine ExtLd_UpdateStates( t, n, u, utimes, p, x, xd, z, OtherState, m, errStat, errMsg )
 !..................................................................................................................................
 
    real(DbKi),                     intent(in   ) :: t          !< Current simulation time in seconds
    integer(IntKi),                 intent(in   ) :: n          !< Current simulation time step n = 0,1,...
-   type(ExtLoads_InputType),             intent(inout) :: u(:)       !< Inputs at utimes (out only for mesh record-keeping in ExtrapInterp routine)
+   type(ExtLd_InputType),             intent(inout) :: u(:)       !< Inputs at utimes (out only for mesh record-keeping in ExtrapInterp routine)
    real(DbKi),                     intent(in   ) :: utimes(:)  !< Times associated with u(:), in seconds
-   type(ExtLoads_ParameterType),         intent(in   ) :: p          !< Parameters
-   type(ExtLoads_ContinuousStateType),   intent(inout) :: x          !< Input: Continuous states at t;
+   type(ExtLd_ParameterType),         intent(in   ) :: p          !< Parameters
+   type(ExtLd_ContinuousStateType),   intent(inout) :: x          !< Input: Continuous states at t;
                                                                !!   Output: Continuous states at t + Interval
-   type(ExtLoads_DiscreteStateType),     intent(inout) :: xd         !< Input: Discrete states at t;
+   type(ExtLd_DiscreteStateType),     intent(inout) :: xd         !< Input: Discrete states at t;
                                                                !!   Output: Discrete states at t  + Interval
-   type(ExtLoads_ConstraintStateType),   intent(inout) :: z          !< Input: Constraint states at t;
+   type(ExtLd_ConstraintStateType),   intent(inout) :: z          !< Input: Constraint states at t;
                                                                !!   Output: Constraint states at t+dt
-   type(ExtLoads_OtherStateType),        intent(inout) :: OtherState !< Input: Other states at t;
+   type(ExtLd_OtherStateType),        intent(inout) :: OtherState !< Input: Other states at t;
                                                                !!   Output: Other states at t+dt
-   type(ExtLoads_MiscVarType),           intent(inout) :: m          !< Misc/optimization variables
+   type(ExtLd_MiscVarType),           intent(inout) :: m          !< Misc/optimization variables
    integer(IntKi),                 intent(  out) :: errStat    !< Error status of the operation
    character(*),                   intent(  out) :: errMsg     !< Error message if ErrStat /= ErrID_None
 
    ! local variables
-   type(ExtLoads_InputType)                           :: uInterp     ! Interpolated/Extrapolated input
+   type(ExtLd_InputType)                           :: uInterp     ! Interpolated/Extrapolated input
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
-   character(*), parameter                      :: RoutineName = 'ExtLoads_UpdateStates'
+   character(*), parameter                      :: RoutineName = 'ExtLd_UpdateStates'
       
    ErrStat = ErrID_None
    ErrMsg  = ""
            
    
-end subroutine ExtLoads_UpdateStates
+end subroutine ExtLd_UpdateStates
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine for computing outputs, used in both loose and tight coupling.
 !! This subroutine is used to compute the output channels (motions and loads) and place them in the WriteOutput() array.
 !! The descriptions of the output channels are not given here. Please see the included OutListParameters.xlsx sheet for
 !! for a complete description of each output parameter.
-subroutine ExtLoads_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
+subroutine ExtLd_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
 ! NOTE: no matter how many channels are selected for output, all of the outputs are calculated
 ! All of the calculated output channels are placed into the m%AllOuts(:), while the channels selected for outputs are
 ! placed in the y%WriteOutput(:) array.
 !..................................................................................................................................
 
    REAL(DbKi),                   INTENT(IN   )  :: t           !< Current simulation time in seconds
-   TYPE(ExtLoads_InputType),           INTENT(IN   )  :: u           !< Inputs at Time t
-   TYPE(ExtLoads_ParameterType),       INTENT(IN   )  :: p           !< Parameters
-   TYPE(ExtLoads_ContinuousStateType), INTENT(IN   )  :: x           !< Continuous states at t
-   TYPE(ExtLoads_DiscreteStateType),   INTENT(IN   )  :: xd          !< Discrete states at t
-   TYPE(ExtLoads_ConstraintStateType), INTENT(IN   )  :: z           !< Constraint states at t
-   TYPE(ExtLoads_OtherStateType),      INTENT(IN   )  :: OtherState  !< Other states at t
-   TYPE(ExtLoads_OutputType),          INTENT(INOUT)  :: y           !< Outputs computed at t (Input only so that mesh con-
+   TYPE(ExtLd_InputType),           INTENT(IN   )  :: u           !< Inputs at Time t
+   TYPE(ExtLd_ParameterType),       INTENT(IN   )  :: p           !< Parameters
+   TYPE(ExtLd_ContinuousStateType), INTENT(IN   )  :: x           !< Continuous states at t
+   TYPE(ExtLd_DiscreteStateType),   INTENT(IN   )  :: xd          !< Discrete states at t
+   TYPE(ExtLd_ConstraintStateType), INTENT(IN   )  :: z           !< Constraint states at t
+   TYPE(ExtLd_OtherStateType),      INTENT(IN   )  :: OtherState  !< Other states at t
+   TYPE(ExtLd_OutputType),          INTENT(INOUT)  :: y           !< Outputs computed at t (Input only so that mesh con-
                                                                !!   nectivity information does not have to be recalculated)
-   type(ExtLoads_MiscVarType),         intent(inout)  :: m           !< Misc/optimization variables
+   type(ExtLd_MiscVarType),         intent(inout)  :: m           !< Misc/optimization variables
    INTEGER(IntKi),               INTENT(  OUT)  :: ErrStat     !< Error status of the operation
    CHARACTER(*),                 INTENT(  OUT)  :: ErrMsg      !< Error message if ErrStat /= ErrID_None
 
@@ -608,12 +608,12 @@ subroutine ExtLoads_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, Er
 
    integer(intKi)                               :: ErrStat2
    character(ErrMsgLen)                         :: ErrMsg2
-   character(*), parameter                      :: RoutineName = 'ExtLoads_CalcOutput'
+   character(*), parameter                      :: RoutineName = 'ExtLd_CalcOutput'
    real(ReKi)                                   :: SigmaCavitCrit, SigmaCavit
 
    ErrStat = ErrID_None
    ErrMsg  = ""
 
- end subroutine ExtLoads_CalcOutput
+ end subroutine ExtLd_CalcOutput
  
 END MODULE ExtLoads

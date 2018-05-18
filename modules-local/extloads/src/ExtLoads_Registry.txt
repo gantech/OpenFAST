@@ -19,7 +19,7 @@ usefrom ExtLoadsDX_Registry.txt
 
 # ..... Initialization data .......................................................................................................
 # Define inputs that the initialization routine may need here:
-typedef	ExtLoads/ExtLoads       InitInputType	IntKi	NumBlades	-	-	-	"Number of blades on the turbine" -
+typedef	ExtLoads/ExtLd       InitInputType	IntKi	NumBlades	-	-	-	"Number of blades on the turbine" -
 typedef ^                       InitInputType   IntKi   NumBldNodes     {:}     -       -       "Number of blade nodes for each blade"  -
 typedef	^	                InitInputType	Logical	TwrAero	        -	.false.	-	"Flag that tells this module if the tower aero is on."	-
 typedef ^                       InitInputType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes for each blade"  -
@@ -72,7 +72,7 @@ typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "
 
 # ..... Inputs ....................................................................................................................
 # Define inputs that are contained on the mesh here:
-typedef ^       InputType       ExtLoadsDX_InputType    DX_u    -       -       -       "Data to send to external driver"
+typedef  ^  InputType   ExtLdDX_InputType  DX_u    -       -       -       "Data to send to external driver"
 typedef	^	InputType	MeshType	TowerMotion	-	-	-	"motion on the tower"	-
 typedef	^	InputType	MeshType	HubMotion	-	-	-	"motion on the hub"	-
 typedef	^	InputType	MeshType	BladeRootMotion	{:}	-	-	"motion on each blade root"	-
@@ -80,6 +80,6 @@ typedef	^	InputType	MeshType	BladeMotion	{:}	-	-	"motion on each blade"	-
 
 # ..... Outputs ...................................................................................................................
 # Define outputs that are contained on the mesh here:
-typedef ^       OutputType      ExtLoadsDX_OutputType    DX_y    -       -       -       "Data to get from external driver"
-typedef	^	OutputType	MeshType	TowerLoad 	 -	-	-	"loads on the tower"	-
-typedef	^	OutputType	MeshType	BladeLoad	{:}	-	-	"loads on each blade"	-
+typedef ^ OutputType ExtLdDX_OutputType  DX_y    -       -       -       "Data to get from external driver"
+typedef ^ OutputType MeshType TowerLoad 	 -	-	-	"loads on the tower"	-
+typedef ^ OutputType MeshType BladeLoad	{:}	-	-	"loads on each blade"	-
