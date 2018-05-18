@@ -594,15 +594,15 @@ subroutine SetExtLoads_pointers(iTurb, ExtLoads_iFromOF, ExtLoads_oToOF)
 
    IMPLICIT NONE
    INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number 
-   TYPE(ExtLoadsDX_InputType_C), INTENT(INOUT) :: ExtLoads_iFromOF
-   TYPE(ExtLoadsDX_OutputType_C),INTENT(INOUT) :: ExtLoads_oToOF
+   TYPE(ExtLdDX_InputType_C), INTENT(INOUT) :: ExtLoads_iFromOF
+   TYPE(ExtLdDX_OutputType_C),INTENT(INOUT) :: ExtLoads_oToOF
 
-   ExtLoads_iFromOF%twrDef_Len = Turbine(iTurb)%ExtLoads%u%DX_u%c_obj%twrDef_Len; ExtLoads_iFromOF%twrDef = Turbine(iTurb)%ExtLoads%u%DX_u%c_obj%twrDef
-   ExtLoads_iFromOF%bldDef_Len = Turbine(iTurb)%ExtLoads%u%DX_u%c_obj%bldDef_Len; ExtLoads_iFromOF%bldDef = Turbine(iTurb)%ExtLoads%u%DX_u%c_obj%bldDef   
-   ExtLoads_iFromOF%nBladeNodes_Len = Turbine(iTurb)%ExtLoads%u%DX_u%c_obj%nBladeNodes_Len; ExtLoads_iFromOF%nBladeNodes = Turbine(iTurb)%ExtLoads%u%DX_u%c_obj%nBladeNodes
+   ExtLoads_iFromOF%twrDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDef_Len; ExtLoads_iFromOF%twrDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDef
+   ExtLoads_iFromOF%bldDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldDef_Len; ExtLoads_iFromOF%bldDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldDef
+   ExtLoads_iFromOF%nBladeNodes_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBladeNodes_Len; ExtLoads_iFromOF%nBladeNodes = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBladeNodes
    
-   ExtLoads_oToOF%twrLd_Len   = Turbine(iTurb)%ExtLoads%y%DX_y%c_obj%twrLd_Len;  ExtLoads_oToOF%twrLd = Turbine(iTurb)%ExtLoads%y%DX_y%c_obj%twrLd
-   ExtLoads_oToOF%bldLd_Len   = Turbine(iTurb)%ExtLoads%y%DX_y%c_obj%bldLd_Len;  ExtLoads_oToOF%bldLd = Turbine(iTurb)%ExtLoads%y%DX_y%c_obj%bldLd
+   ExtLoads_oToOF%twrLd_Len   = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%twrLd_Len;  ExtLoads_oToOF%twrLd = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%twrLd
+   ExtLoads_oToOF%bldLd_Len   = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%bldLd_Len;  ExtLoads_oToOF%bldLd = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%bldLd
 
       
 end subroutine SetExtLoads_pointers

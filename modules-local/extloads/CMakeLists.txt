@@ -27,7 +27,7 @@ set(EXTLOADS_LIBS_SOURCES
   )
 
 add_library(extloadslib ${EXTLOADS_LIBS_SOURCES})
-target_link_libraries(extloadslib nwtclibs)
+target_link_libraries(extloadslib nwtclibs beamdynlib)
 
 install(TARGETS extloadslib
   EXPORT "${CMAKE_PROJECT_NAME}Libraries"
