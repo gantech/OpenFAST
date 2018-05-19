@@ -126,7 +126,7 @@ END SUBROUTINE BD_InputSolve
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine sets the inputs required for ED--using the Option 2 solve method; currently the only input not solved in this routine
 !! are the fields on PlatformPtMesh and HubPtLoad,  which are solved in option 1.
-SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_SrvD, u_AD, u_SrvD, MeshMapData, ErrStat, ErrMsg )
+SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_ExtLd, y_SrvD, u_AD, u_ExtLd, u_SrvD, MeshMapData, ErrStat, ErrMsg )
 !..................................................................................................................................
 
    TYPE(FAST_ParameterType),       INTENT(IN   )  :: p_FAST                   !< Glue-code simulation parameters
@@ -136,6 +136,8 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_SrvD, u_AD
    TYPE(AD14_OutputType),          INTENT(IN   )  :: y_AD14                   !< AeroDyn14 outputs
    TYPE(AD_OutputType),            INTENT(IN   )  :: y_AD                     !< AeroDyn outputs
    TYPE(AD_InputType),             INTENT(IN   )  :: u_AD                     !< AD inputs (for AD-ED load transfer)
+   TYPE(ExtLd_OutputType),         INTENT(IN   )  :: y_ExtLd                  !< ExtLoads outputs
+   TYPE(ExtLd_InputType),          INTENT(IN   )  :: u_ExtLd                  !< ExtLoads inputs (for ExtLoads-ED load transfer)
    TYPE(SrvD_OutputType),          INTENT(IN   )  :: y_SrvD                   !< ServoDyn outputs
    TYPE(SrvD_InputType),           INTENT(IN   )  :: u_SrvD                   !< ServoDyn inputs
    
@@ -214,7 +216,11 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_SrvD, u_AD
 
       ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
-         ! DO SOMETHING HERE
+         DO K = 1,SIZE(u_ED%BladePtLoads,1) ! Loop through all blades (p_ED%NumBl)
+           ! NOTE - not only is BladeLn2Mesh not a Sbiling of TowerPtLoads, it is a line 2 mesh with different number of nodes
+            CALL Transfer_Point_to_Point( y_ExtLd%BladeLoad(k), u_ED%BladePtLoads(k), MeshMapData%ExtLd_P_2_BDED_B(k), ErrStat2, ErrMsg2, u_ExtLd%BladeMotion(k), y_ED%BladeLn2Mesh(k) )
+            CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+         END DO
 
       ELSE
          !p_FAST%CompAero = Module_None
@@ -258,7 +264,10 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, y_SrvD, u_AD
 
    ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
-         ! DO SOMETHING HERE
+      IF ( y_ExtLd%TowerLoad%Committed ) THEN ! NOTE - not only is TowerLn2Mesh not a Sbiling of TowerPtLoads, it is a line 2 mesh with different number of nodes
+         CALL Transfer_Point_to_Point( y_ExtLd%TowerLoad, u_ED%TowerPtLoads, MeshMapData%ExtLd_P_2_ED_P_T, ErrStat2, ErrMsg2, u_ExtLd%TowerMotion, y_ED%TowerLn2Mesh )
+         CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+      END IF
       
    ELSE
       u_ED%TowerPtLoads%Force  = 0.0_ReKi
@@ -3622,7 +3631,7 @@ SUBROUTINE Perturb_u_FullOpt1( p_FAST, Jac_u_indx, n, u_perturb, u_ED_perturb, u
 END SUBROUTINE Perturb_u_FullOpt1
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine resets the remap flags on all of the meshes
-SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD )
+SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD )
 !...............................................................................................................................
 
    TYPE(FAST_ParameterType), INTENT(IN   ) :: p_FAST              !< Parameters for the glue code
@@ -3632,6 +3641,7 @@ SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp
    TYPE(ServoDyn_Data),      INTENT(INOUT) :: SrvD                !< ServoDyn data
    TYPE(AeroDyn_Data),       INTENT(INOUT) :: AD                  !< AeroDyn data
    TYPE(AeroDyn14_Data),     INTENT(INOUT) :: AD14                !< AeroDyn14 data
+   TYPE(ExtLoads_Data),      INTENT(INOUT) :: ExtLd               !< ExtLoads data
    TYPE(HydroDyn_Data),      INTENT(INOUT) :: HD                  !< HydroDyn data
    TYPE(SubDyn_Data),        INTENT(INOUT) :: SD                  !< SubDyn data
    TYPE(ExtPtfm_Data),       INTENT(INOUT) :: ExtPtfm             !< ExtPtfm data
@@ -3716,7 +3726,21 @@ SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp
 
    ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
-      ! DO SOMETHING HERE
+      ExtLd%Input(1)%HubMotion%RemapFlag = .FALSE.
+
+      IF ( ExtLd%Input(1)%TowerMotion%Committed ) THEN
+          ExtLd%Input(1)%TowerMotion%RemapFlag = .FALSE.
+
+         IF ( ExtLd%y%TowerLoad%Committed ) THEN
+            ExtLd%y%TowerLoad%RemapFlag = .FALSE.
+         END IF
+      END IF
+
+      DO k=1,SIZE( ExtLd%Input(1)%BladeMotion )
+         ExtLd%Input(1)%BladeRootMotion(k)%RemapFlag = .FALSE.
+         ExtLd%Input(1)%BladeMotion(    k)%RemapFlag = .FALSE.
+                ExtLd%y%BladeLoad(      k)%RemapFlag = .FALSE.
+      END DO
       
    END IF
    
@@ -3804,7 +3828,7 @@ SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp
 END SUBROUTINE ResetRemapFlags  
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine initializes all of the mapping data structures needed between the various modules.
-SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg)
+SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD, MeshMapData, ErrStat, ErrMsg)
 !...............................................................................................................................
    
    TYPE(FAST_ParameterType), INTENT(INOUT) :: p_FAST              !< Parameters for the glue code
@@ -3814,6 +3838,7 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, M
    TYPE(ServoDyn_Data),      INTENT(INOUT) :: SrvD                !< ServoDyn data
    TYPE(AeroDyn_Data),       INTENT(INOUT) :: AD                  !< AeroDyn data
    TYPE(AeroDyn14_Data),     INTENT(INOUT) :: AD14                !< AeroDyn14 data
+   TYPE(ExtLoads_Data),      INTENT(INOUT) :: ExtLd               !< ExtLoads data
    TYPE(HydroDyn_Data),      INTENT(INOUT) :: HD                  !< HydroDyn data
    TYPE(SubDyn_Data),        INTENT(INOUT) :: SD                  !< SubDyn data
    TYPE(ExtPtfm_Data),       INTENT(INOUT) :: ExtPtfm             !< ExtPtfm data
@@ -4027,9 +4052,44 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, M
          END IF         
       END IF
       
-   ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
+   ELSE IF ( p_FAST%CompAero == Module_ExtLd ) THEN ! ED-ExtLd and/or BD-ExtLd
 
-      ! DO SOMETHING HERE
+      NumBl = SIZE(ExtLd%Input(1)%BladeRootMotion) ! Get number of blades
+
+      ! Allocate memory for mapping between ED and ExtLoad blade root meshes
+      ALLOCATE( MeshMapData%ED_P_2_ExtLd_P_R(NumBl), STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 ) THEN
+         CALL SetErrStat( ErrID_Fatal, 'Error allocating MeshMapData%ED_P_2_ExtLd_P_R.', ErrStat, ErrMsg, RoutineName )
+         RETURN
+      END IF
+
+      ! Create the the mesh mapping for mapping between ED and ExtLoad blade root meshes
+      DO K=1,NumBl
+         CALL MeshMapCreate( ED%Output(1)%BladeRootMotion(K), ExtLd%Input(1)%BladeRootMotion(K), MeshMapData%ED_P_2_ExtLd_P_R(K), ErrStat2, ErrMsg2 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ED_P_2_ExtLd_P_R('//TRIM(Num2LStr(K))//')' )
+      END DO
+
+      ! Hub point mesh
+      CALL MeshMapCreate( ED%Output(1)%HubPtMotion, ExtLd%Input(1)%HubMotion, MeshMapData%ED_P_2_ExtLd_P_H, ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ED_P_2_ExtLd_P_H' )
+
+      ! Blade meshes: (allocate two mapping data structures to number of blades, then allocate data inside the structures)
+      ALLOCATE( MeshMapData%BDED_L_2_ExtLd_P_B(NumBl), MeshMapData%ExtLd_P_2_BDED_B(NumBl), STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 ) THEN
+         CALL SetErrStat( ErrID_Fatal, 'Error allocating MeshMapData%BDED_L_2_ExtLd_P_B and MeshMapData%ExtLd_P_2_BDED_B.', &
+            ErrStat, ErrMsg, RoutineName )
+         RETURN
+      END IF
+
+!         ! connect ExtLd mesh with BeamDyn
+!         DO K=1,NumBl
+!            ! Create mapping for BeamDyn BldMotion line2 meshes to ExtLoads point mesh
+!            CALL MeshMapCreate( BD%y(k)%BldMotion, ExtLd%Input(1)%BladeMotion(K), MeshMapData%BDED_L_2_ExtLd_P_B(K), ErrStat2, ErrMsg2 )
+!            CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':BDED_L_2_ExtLd_P_B('//TRIM(Num2LStr(K))//')' )
+!            ! Create mapping for ExtLoads point mesh to BeamDyn BldMotion line2 mesh
+!            CALL MeshMapCreate( ExtLd%y%BladeLoad(K), BD%Input(1,k)%DistrLoad,  MeshMapData%ExtLd_P_2_BDED_B(K), ErrStat2, ErrMsg2 )
+!            CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ExtLd_P_2_BDED_B('//TRIM(Num2LStr(K))//')' )
+!         END DO
       
    END IF
    
@@ -4251,7 +4311,7 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, M
    !............................................................................................................................
    ! reset the remap flags (do this before making the copies else the copies will always have remap = true)
    !............................................................................................................................
-   CALL ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD )      
+   CALL ResetRemapFlags(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD )
             
    !............................................................................................................................
    ! initialize the temporary input meshes (for input-output solves):
@@ -4521,7 +4581,7 @@ end if
    ! Reset each mesh's RemapFlag (after calling all InputSolve routines):
    !.....................................................................              
          
-   CALL ResetRemapFlags(p_FAST, ED, BD, AD14, AD, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD)         
+   CALL ResetRemapFlags(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, SrvD, MAPp, FEAM, MD, Orca, IceF, IceD)
          
                         
 END SUBROUTINE CalcOutputs_And_SolveForInputs
@@ -4857,7 +4917,7 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
               
       
    !bjj: note ED%Input(1) may be a sibling mesh of output, but ED%u is not (routine may update something that needs to be shared between siblings)      
-   CALL ED_InputSolve( p_FAST, ED%Input(1), ED%Output(1), AD14%p, AD14%y, AD%y, SrvD%y, AD%Input(1), SrvD%Input(1), MeshMapData, ErrStat2, ErrMsg2 )
+   CALL ED_InputSolve( p_FAST, ED%Input(1), ED%Output(1), AD14%p, AD14%y, AD%y, ExtLd%y, SrvD%y, AD%Input(1), ExtLd%Input(1), SrvD%Input(1), MeshMapData, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    
    CALL BD_InputSolve( p_FAST, BD, AD%y, AD%Input(1), ExtLd%y, ExtLd%Input(1), MeshMapData, ErrStat2, ErrMsg2 )
