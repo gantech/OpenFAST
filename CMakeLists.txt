@@ -53,8 +53,18 @@ if (FPE_TRAP_ENABLED)
 endif (FPE_TRAP_ENABLED)
 
 # Setup dependencies
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
+  find_package(MKL)
+endif()
+if (MKL_FOUND)
+  include_directories(${MKL_INCLUDE_DIRS})
+  set(BLAS_LIBRARIES ${MKL_LIBRARIES})
+  set(LAPACK_LIBRARIES ${MKL_LIBRARIES})
+  set(CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES "ifport;ifcore;imf;svml;m;ipgo;intlc;c;irc_s;dl;c")
+else()
+  find_package(BLAS REQUIRED)
+  find_package(LAPACK REQUIRED)
+endif()
 
 ########################################################################
 # Test option configuration
@@ -75,7 +85,7 @@ add_subdirectory(modules-local/fast-registry)
 set(FAST_MODULES_LOCAL
   nwtc-library
   inflowwind
-  extloads  
+  extloads
   aerodyn
   aerodyn14
   servodyn
@@ -151,12 +161,9 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/OpenFASTConfig.cmake
 
 ########################################################################
 # Configure the default install path to openfast/install
-string(FIND ${CMAKE_Fortran_MODULE_DIRECTORY} "build/ftnmods" found)
-if(${found} GREATER 0)
-  string(REPLACE "build/ftnmods" "install" install_path ${CMAKE_Fortran_MODULE_DIRECTORY})
-  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX ${install_path} CACHE PATH "..." FORCE)
-  endif()
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH
+    "OpenFAST install directory" FORCE)
 endif()
 
 # Option configuration
