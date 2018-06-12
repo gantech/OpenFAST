@@ -1065,7 +1065,7 @@ void fast::OpenFAST::allocateMemory() {
         turbineData[iTurb].numForcePtsBlade = globTurbineData[iTurbGlob].numForcePtsBlade;
         turbineData[iTurb].numForcePtsTwr = globTurbineData[iTurbGlob].numForcePtsTwr;
         
-        velForceNodeData[iTurb].resize(3); // To hold data for 3 time steps
+        velForceNodeData[iTurb].resize(4); // To hold data for 4 time steps
         
     }
     
