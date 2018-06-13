@@ -455,6 +455,8 @@ subroutine FAST_OpFM_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, NumC
    CHARACTER(IntfStrLen)                 :: InputFileName   
    INTEGER(C_INT)                        :: i    
    TYPE(FAST_ExternInitType)             :: ExternInitData
+
+   CHARACTER(*),           PARAMETER     :: RoutineName = 'FAST_OpFM_Init' 
    
       ! transfer the character array from C to a Fortran string:   
    InputFileName = TRANSFER( InputFileName_c, InputFileName )
@@ -516,11 +518,13 @@ subroutine FAST_OpFM_Solution0(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_O
    INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
    CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen) 
 
+   CHARACTER(*),           PARAMETER     :: RoutineName = 'FAST_OpFM_Solution0' 
+   
    if(Turbine(iTurb)%SC%p%scOn) then
       CALL SC_SetOutputs(Turbine(iTurb)%p_FAST, Turbine(iTurb)%SrvD%Input(1), Turbine(iTurb)%SC, ErrStat, ErrMsg)
    end if
    
-   call FAST_Solution0_T(Turbine(iTurb), ErrStat, ErrMsg ) 
+   call FAST_Solution0_T(Turbine(iTurb), ErrStat, ErrMsg )
 
    if(Turbine(iTurb)%SC%p%scOn) then
       CALL SC_SetInputs(Turbine(iTurb)%p_FAST, Turbine(iTurb)%SrvD%y, Turbine(iTurb)%SC, ErrStat, ErrMsg)

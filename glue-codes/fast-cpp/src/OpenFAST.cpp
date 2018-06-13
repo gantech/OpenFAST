@@ -501,8 +501,10 @@ void fast::OpenFAST::step(double ss_time) {
         }
         
         FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
         send_data_to_openfast(ss_time);
         FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
         FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         
@@ -561,8 +563,10 @@ void fast::OpenFAST::step() {
         }
         
         FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
         send_data_to_openfast(fast::np1);
         FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
         get_data_from_openfast(fast::np1);
         FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);

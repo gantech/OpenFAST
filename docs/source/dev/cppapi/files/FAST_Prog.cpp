@@ -30,7 +30,9 @@ int main() {
   ntEnd = tEnd/fi.dtFAST;  //Calculate the last time step
 
   FAST.setInputs(fi);
-  FAST.allocateTurbinesToProcsSimple(); 
+  // In a parallel simulation, multiple turbines have to be allocated to processors.
+  // The C++ API can handle any allocation of turbines on an arbitrary number of processors
+  FAST.allocateTurbinesToProcsSimple(); // Use this for a simple round robin allocation of turbines to processors.
   // Or allocate turbines to procs by calling "setTurbineProcNo(iTurbGlob, procId)" for each turbine.
 
   FAST.init();
