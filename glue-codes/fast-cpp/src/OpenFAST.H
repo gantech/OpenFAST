@@ -22,31 +22,41 @@
 
 namespace fast {
 
-    struct turbineDataType {
-        //!Integer id for every turbine
-        int TurbID;
-        //! The FAST Input file name. Typically a .fst file.
-        std::string FASTInputFileName;
-        //! The restart/checkpoint file name. 
-        std::string FASTRestartFileName;
-        //! The position of the base of the turbine in global coordinates
-        std::vector<float> TurbineBasePos;
-        //! The approximate position of the hub of the turbine in global coordinates
-        std::vector<double> TurbineHubPos;
-        int numBlades;
-        int numVelPtsBlade;
-        int numVelPtsTwr;
-        int numVelPts;
-        //! Desired number of actuator points on each blade
-        int numForcePtsBlade;
-        //! Desired number of actuator points on the tower
-        int numForcePtsTwr;
-        int numForcePts;
-        int inflowType;
-        float nacelle_cd;
-        float nacelle_area;
-        float air_density;
-    };
+//! A data structure to hold all turbine related information
+struct turbineDataType {
+    //!Integer id for every turbine
+    int TurbID;
+    //! The FAST Input file name. Typically a .fst file.
+    std::string FASTInputFileName;
+    //! The restart/checkpoint file name. 
+    std::string FASTRestartFileName;
+    //! The position of the base of the turbine in global coordinates
+    std::vector<float> TurbineBasePos;
+    //! The approximate position of the hub of the turbine in global coordinates
+    std::vector<double> TurbineHubPos;
+    //! Number of blades 
+    int numBlades;
+    //! Number of velocity nodes (AeroDyn) per blade
+    int numVelPtsBlade;
+    //! Number of velocity nodes (AeroDyn) on the tower
+    int numVelPtsTwr;
+    //! Total number of velocity nodes (AeroDyn)
+    int numVelPts;
+    //! Desired number of actuator points on each blade
+    int numForcePtsBlade;
+    //! Desired number of actuator points on the tower
+    int numForcePtsTwr;
+    //! Total number of actuator points
+    int numForcePts;
+    //! Inflow Type - 1 (InflowWind) or 2 (Externally specified)
+    int inflowType;
+    //! Drag coefficient of nacelle
+    float nacelle_cd;
+    //! Frontal area of the nacelle
+    float nacelle_area;
+    //! Air density around this turbine
+    float air_density;
+};
 
 //! An id to indicate whether a particular actuator point is on the hub, node or tower    
 enum ActuatorNodeType {
@@ -68,15 +78,24 @@ enum simStartType {
   simStartType_END    
 };
 
+//! A data structure to hold all velocity and force node information
 struct turbVelForceNodeDataType {
-    std::vector<double> x_vel;        // Blade location at velocity nodes
-    std::vector<double> xdot_vel;     // Blade velocity at velocity nodes
-    std::vector<double> vel_vel;      // Sampled velocity at velocity nodes
-    std::vector<double> x_force;      // Blade location at force nodes
-    std::vector<double> xdot_force;   // Blade velocity at force nodes
-    std::vector<double> orient_force; // Blade orientation at force nodes
-    std::vector<double> vel_force;    // Sampled velocity at force nodes
-    std::vector<double> force;        // Actuator force at force nodes
+    //! Blade location at velocity nodes
+    std::vector<double> x_vel;
+    //! Blade velocity at velocity nodes
+    std::vector<double> xdot_vel;
+    //! Sampled velocity at velocity nodes
+    std::vector<double> vel_vel;
+    //! Blade location at force nodes
+    std::vector<double> x_force;
+    //! Blade velocity at force nodes
+    std::vector<double> xdot_force;
+    //! Blade orientation at force nodes
+    std::vector<double> orient_force;
+    //! Sampled velocity at force nodes
+    std::vector<double> vel_force;
+    //! Actuator force at force nodes
+    std::vector<double> force;
     double x_vel_resid;
     double xdot_vel_resid;
     double vel_vel_resid;
@@ -87,6 +106,7 @@ struct turbVelForceNodeDataType {
     double force_resid;
 };
 
+//! An enum to keep track of information stored at different time steps
 enum timeStep {
     nm2 = 0,
     nm1 = 1,
@@ -114,24 +134,25 @@ class fastInputs {
   bool debug;
   //! Start time of the simulation
   double tStart;
-    //! Start type of the simulation: 'init', 'trueRestart' or 'restartDriverInitFAST'.
+  //! Start type of the simulation: 'init', 'trueRestart' or 'restartDriverInitFAST'.
   simStartType simStart;
-    //!Restart files will be written every so many time stneps
+  //!Restart files will be written every so many time stneps
   int nEveryCheckPoint;
-    //! Max time of the simulation
+  //! Max time of the simulation
   double tMax;
-    //! Time step for FAST. All turbines should have the same time step.
+  //! Time step for FAST. All turbines should have the same time step.
   double dtFAST;
+  //! Number of OpenFAST time steps per unit time step of the driver program
   int nSubsteps;
 
-    //! Supercontroller status: True/False.
+  //! Supercontroller status: True/False.
   bool scStatus;
-    //! Name of the dynamic library containing the supercontroller implementation
+  //! Name of the dynamic library containing the supercontroller implementation
   std::string scLibFile;
-    //! Number of inputs and output to the supercontroller from/to each turbine
+  //! Number of inputs and output to the supercontroller from/to each turbine
   int numScInputs, numScOutputs;
 
-    //! Vector of turbine specific input data
+  //! Vector of turbine specific input data
   std::vector<turbineDataType>  globTurbineData;
 
   // Constructor 
@@ -267,13 +288,21 @@ class OpenFAST {
   void init();
   //! Call FAST->solution0 for all turbines
   void solution0();
+  //! Initialize velocity and force node data 
   void init_velForceNodeData();
+  //! Set up before every OpenFAST time step
   void prework();
+  //! Update states to next time step by calling FAST_AdvanceStates_T and CalcOutputs_And_SolveForInputs
   void update_states_driver_time_step();
+  //! Copy the final predicted states from step t_global_next to actual states for that step
   void advance_to_next_driver_time_step();
+  //! Set external inputs for OpenFAST modules by interpolating to substep
   void send_data_to_openfast(double ss_time);
+  //! Set external inputs for OpenFAST modules at time step 't'
   void send_data_to_openfast(fast::timeStep t);
+  //! Get ouput data from OpenFAST modules 
   void get_data_from_openfast(fast::timeStep t);
+  //! Extrapolate velocity and force node data to time step 'n+1' using data at 'n', 'n-1' and 'n-2'
   void predict_states();
   //! Advance all turbines by 1 OpenFAST timestep. Also write velocity data at the Aerodyn nodes for all turbines to 'velData.h5'
   void step();
@@ -284,7 +313,9 @@ class OpenFAST {
   //! Call FAST->end for all turbines
   void end();
 
+  //! Read velocity and force node data at time step 'n', 'n-1' and 'n-2' to allow for a clean restart
   void readRestartFile(int iTurbLoc, int n_t_global);
+  //! Write velocity and force node data at time step 'n', 'n-1' and 'n-2' to allow for a clean restart    
   void writeRestartFile(int iTurbLoc, int n_t_global);
     
   //! Compute the nacelle force
@@ -392,7 +423,8 @@ class OpenFAST {
 
   //! Allocate memory for data structures for all turbines on this processor
   void allocateMemory();
-  void allocateMemory2(int iTurbLoc);  //Allocate more memory for each turbine after intialization/restart
+  //! Allocate more memory for each turbine after intialization/restart    
+  void allocateMemory2(int iTurbLoc);  
 
   //! Get the nacelle drag coefficient of local turbine number 'iTurbLoc'
   float get_nacelleCdLoc(int iTurbLoc) { return turbineData[iTurbLoc].nacelle_cd; }

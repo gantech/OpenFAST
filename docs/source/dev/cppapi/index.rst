@@ -22,9 +22,9 @@ All inputs to the OpenFAST class are expected through an object of the :class:`f
    :protected-members:
    :undoc-members:
 
-The object of :class:`~fast::fastInputs` class is expected hold a struct vector of type :class:`~fast::globTurbineDataType` and size of the number of turbines in the simulation.
+The object of :class:`~fast::fastInputs` class is expected hold a struct vector of type :class:`~fast::turbineDataType` and size of the number of turbines in the simulation.
 
-.. doxygenstruct:: fast::globTurbineDataType
+.. doxygenstruct:: fast::turbineDataType
    :members:
    :private-members:
                   
