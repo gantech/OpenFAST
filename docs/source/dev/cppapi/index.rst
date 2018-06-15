@@ -46,7 +46,7 @@ The CFD solver is expected to be the *driver program* for actuator line FSI simu
 
 .. _actuatorline-css:
 
-.. figure:: files/css_actuatorLine.pdf
+.. figure:: files/css_actuatorline.pdf
    :align: center
    :width: 100%
 
