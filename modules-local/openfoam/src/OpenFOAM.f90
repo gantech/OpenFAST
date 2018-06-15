@@ -91,7 +91,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
    ELSEIF ( p_FAST%CompAero  == Module_AD ) THEN ! AeroDyn 15 needs these velocities
       OpFM%p%NumBl = InitInp%NumBl
 
-      OpFM%p%NnodesVel = OpFM%p%NnodesVel + u_AD%TowerMotion%NNodes                 ! tower nodes (if any)
+      OpFM%p%NnodesVel = OpFM%p%NnodesVel + y_AD%TowerLoad%NNodes                   ! tower nodes (if any)
       DO k=1,OpFM%p%NumBl
          OpFM%p%NnodesVel = OpFM%p%NnodesVel + u_AD%BladeMotion(k)%NNodes           ! blade nodes
       END DO
@@ -100,15 +100,15 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
       ! number of force nodes in the interface
    Opfm%p%NnodesForceBlade =  InitInp%NumActForcePtsBlade 
    OpFM%p%NnodesForceTower = InitInp%NumActForcePtsTower
-   OpFM%p%NnodesForce = 1 + OpFM%p%NumBl * InitInp%NumActForcePtsBlade + InitInp%NumActForcePtsTower
+   OpFM%p%NnodesForce = 1 + OpFM%p%NumBl * InitInp%NumActForcePtsBlade
 
    if ( y_AD%TowerLoad%NNodes > 0 ) then
       OpFM%p%NMappings = OpFM%p%NumBl + 1
+      OpFM%p%NnodesForce = OpFM%p%NnodesForce + InitInp%NumActForcePtsTower
    else
       OpFM%p%NMappings = OpFM%p%NumBl
+      OpFM%p%NnodesForceTower = 0
    end if
-
-   OpFM%p%NnodesForce = 1 +  OpFM%p%NumBl * InitInp%NumActForcePtsBlade + InitInp%NumActForcePtsTower
 
       ! air density, required for normalizing values sent to OpenFOAM:
    OpFM%p%AirDens = AirDens
@@ -401,17 +401,18 @@ SUBROUTINE SetOpFMPositions(p_FAST, u_AD14, u_AD, y_ED, y_BD, OpFM, ErrStat, Err
       END DO !J = 1,p%BldNodes ! Loop through the blade nodes / elements
    END DO !K = 1,p%NumBl
    
-   ! tower nodes
-   DO J=1,u_AD%TowerMotion%nnodes
-      Node = Node + 1
-      OpFM%u%pxVel(Node) = u_AD%TowerMotion%TranslationDisp(1,J) + u_AD%TowerMotion%Position(1,J)
-      OpFM%u%pyVel(Node) = u_AD%TowerMotion%TranslationDisp(2,J) + u_AD%TowerMotion%Position(2,J)
-      OpFM%u%pzVel(Node) = u_AD%TowerMotion%TranslationDisp(3,J) + u_AD%TowerMotion%Position(3,J)
-      OpFM%u%pxDotVel(Node) = u_AD%TowerMotion%TranslationVel(1,J)
-      OpFM%u%pyDotVel(Node) = u_AD%TowerMotion%TranslationVel(2,J)
-      OpFM%u%pzDotVel(Node) = u_AD%TowerMotion%TranslationVel(3,J)
-   END DO
-   
+   if (OpFM%p%NMappings .gt. OpFM%p%NumBl) then
+      ! tower nodes
+      DO J=1,u_AD%TowerMotion%nnodes
+         Node = Node + 1
+         OpFM%u%pxVel(Node) = u_AD%TowerMotion%TranslationDisp(1,J) + u_AD%TowerMotion%Position(1,J)
+         OpFM%u%pyVel(Node) = u_AD%TowerMotion%TranslationDisp(2,J) + u_AD%TowerMotion%Position(2,J)
+         OpFM%u%pzVel(Node) = u_AD%TowerMotion%TranslationDisp(3,J) + u_AD%TowerMotion%Position(3,J)
+         OpFM%u%pxDotVel(Node) = u_AD%TowerMotion%TranslationVel(1,J)
+         OpFM%u%pyDotVel(Node) = u_AD%TowerMotion%TranslationVel(2,J)
+         OpFM%u%pzDotVel(Node) = u_AD%TowerMotion%TranslationVel(3,J)
+      END DO
+   end if
    
    ! Do the Actuator Force nodes now
    Node = 1   ! displaced hub position 
@@ -588,9 +589,9 @@ SUBROUTINE SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_BD,
    !.......................
 
    ! mesh mapping from line2 mesh to point mesh
-   k = SIZE(u_AD%BladeMotion) + 1
-   
-#ifdef DEBUG_OPENFOAM   
+   DO K = OpFM%p%NumBl+1,OpFM%p%NMappings
+
+#ifdef DEBUG_OPENFOAM
    DO J = 1,u_AD%TowerMotion%NNodes
       write(aerodynForcesFile,*) u_AD%TowerMotion%TranslationDisp(1,j) + u_AD%TowerMotion%Position(1,j), ', ', u_AD%TowerMotion%TranslationDisp(2,j) + u_AD%TowerMotion%Position(2,j), ', ', u_AD%TowerMotion%TranslationDisp(3,j) + u_AD%TowerMotion%Position(3,j), ', ', OpFM%y%u(1 + OpFM%p%NumBl*u_AD%BladeMotion(k)%NNodes + j), ', ', OpFM%y%v(1 + OpFM%p%NumBl*u_AD%BladeMotion(k)%NNodes + j), ', ', OpFM%y%w(1 + OpFM%p%NumBl*u_AD%BladeMotion(k)%NNodes + j), ', ', y_AD%TowerLoad%Force(1,j), ', ', y_AD%TowerLoad%Force(2,j), ', ', y_AD%TowerLoad%Force(2,j)
    END DO
@@ -618,7 +619,9 @@ SUBROUTINE SetOpFMForces(p_FAST, p_AD14, u_AD14, y_AD14, u_AD, y_AD, y_ED, y_BD,
    close(aerodynForcesFile)
    close(actForcesFile)
 #endif
-   
+
+   END DO
+
 END SUBROUTINE SetOpFMForces
 !----------------------------------------------------------------------------------------------------------------------------------
 SUBROUTINE OpFM_SetWriteOutput( OpFM )
@@ -1154,7 +1157,8 @@ SUBROUTINE CalcForceActuatorPositionsBlade(p_OpFM, nBldEtaNodes, sBldEtaNodes, s
   CHARACTER(*),   PARAMETER                       :: RoutineName = 'CalcForceActuatorPositionsBlade'
   
   ! Now calculate the positions of the force nodes based on interpolation
-  DO I=1,p_OpFM%NnodesForceBlade ! Calculate the position of the force nodes
+  forceNodePositions(:,1) = structPositions(:,1)
+  DO I=2,p_OpFM%NnodesForceBlade-1 ! Calculate the position of the force nodes
      jLower=1
      do while ( ( (sBldEtaNodes(jLower) - p_OpFM%forceBldEtaNodes(I))*(sBldEtaNodes(jLower+1) - p_OpFM%forceBldEtaNodes(I)) .gt. 0) .and. (jLower .lt. nBldEtaNodes) )
         jLower = jLower + 1
@@ -1162,6 +1166,7 @@ SUBROUTINE CalcForceActuatorPositionsBlade(p_OpFM, nBldEtaNodes, sBldEtaNodes, s
      rInterp =  (p_OpFM%forceBldEtaNodes(I) - sBldEtaNodes(jLower))/(sBldEtaNodes(jLower+1)-sBldEtaNodes(jLower)) ! The location of this force node in (0,1) co-ordinates between the jLower and jLower+1 nodes
      forceNodePositions(:,I) = structPositions(:,jLower) + rInterp * (structPositions(:,jLower+1) - structPositions(:,jLower))
   END DO
+  forceNodePositions(:,p_OpFM%NnodesForceBlade) = structPositions(:,p_OpFM%NnodesForceBlade)
 
   RETURN
 
@@ -1185,9 +1190,9 @@ SUBROUTINE CalcForceActuatorPositionsTower(p_OpFM, nTwrEtaNodes, sTwrEtaNodes, s
 
   CHARACTER(*),   PARAMETER                       :: RoutineName = 'CalcForceActuatorPositionsTower'
   
-
   ! Now calculate the positions of the force nodes based on interpolation
-  DO I=1,p_OpFM%NnodesForceTower ! Calculate the position of the force nodes
+  forceNodePositions(:,1) = structPositions(:,1)
+  DO I=2,p_OpFM%NnodesForceTower-1 ! Calculate the position of the force nodes
      jLower=1
      do while ( ((sTwrEtaNodes(jLower) - p_OpFM%forceTwrEtaNodes(I))*(sTwrEtaNodes(jLower+1) - p_OpFM%forceTwrEtaNodes(I)) .gt. 0) .and. (jLower .lt. nTwrEtaNodes))
         jLower = jLower + 1
@@ -1195,6 +1200,7 @@ SUBROUTINE CalcForceActuatorPositionsTower(p_OpFM, nTwrEtaNodes, sTwrEtaNodes, s
      hInterp =  (p_OpFM%forceTwrEtaNodes(I) - sTwrEtaNodes(jLower))/(sTwrEtaNodes(jLower+1)-sTwrEtaNodes(jLower)) ! The location of this force node in (0,1) co-ordinates between the jLower and jLower+1 nodes
      forceNodePositions(:,I) = structPositions(:,jLower) + hInterp * (structPositions(:,jLower+1) - structPositions(:,jLower))
   END DO
+  forceNodePositions(:,p_OpFM%NnodesForceTower) = structPositions(:,p_OpFM%NnodesForceTower)
 
   RETURN
 
@@ -1231,14 +1237,16 @@ SUBROUTINE OpFM_CreateActForceBladeTowerNodes(p_OpFM, ErrStat, ErrMsg)
   p_OpFM%forceBldEtaNodes(p_OpFM%NnodesForceBlade) = 1.0
 
 
-  !Do the tower now
-  allocate(p_OpFM%forceTwrEtaNodes(p_OpFM%NnodesForceTower), stat=errStat2)
-  call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )  
-  dHforceNodes = 1.0/(p_OpFM%NnodesForceTower-1)
-  do i=1,p_OpFM%NnodesForceTower-1
-     p_OpFM%forceTwrEtaNodes(i) = (i-1)*dHForceNodes
-  end do
-  p_OpFM%forceTwrEtaNodes(p_OpFM%NnodesForceTower) = 1.0
+  if (p_OpFM%NMappings .gt. p_OpFM%NumBl) then
+     !Do the tower now
+     allocate(p_OpFM%forceTwrEtaNodes(p_OpFM%NnodesForceTower), stat=errStat2)
+     call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )  
+     dHforceNodes = 1.0/(p_OpFM%NnodesForceTower-1)
+     do i=1,p_OpFM%NnodesForceTower-1
+        p_OpFM%forceTwrEtaNodes(i) = (i-1)*dHForceNodes
+     end do
+     p_OpFM%forceTwrEtaNodes(p_OpFM%NnodesForceTower) = 1.0
+  end if
 
   return
 
@@ -1279,7 +1287,7 @@ SUBROUTINE OpFM_InterpolateForceNodesChord(InitOut_AD, p_OpFM, u_OpFM, ErrStat, 
      DO I=1,p_OpFM%NnodesForceBlade
         Node = Node + 1
         jLower=1
-        do while ( ( (AD_etaNodes(jLower) - p_OpFM%forceBldEtaNodes(I))*(AD_etaNodes(jLower+1) - p_OpFM%forceBldEtaNodes(I)) .gt. 0 ) .and. (jLower .le. nNodesBladeProps) )!Determine the closest two nodes at which the blade properties are specified
+        do while ( ( (AD_etaNodes(jLower) - p_OpFM%forceBldEtaNodes(I))*(AD_etaNodes(jLower+1) - p_OpFM%forceBldEtaNodes(I)) .gt. 0 ) .and. (jLower .lt. nNodesBladeProps) )!Determine the closest two nodes at which the blade properties are specified
            jLower = jLower + 1
         end do
         if (jLower .lt. nNodesBladeProps) then
@@ -1303,7 +1311,7 @@ SUBROUTINE OpFM_InterpolateForceNodesChord(InitOut_AD, p_OpFM, u_OpFM, ErrStat, 
      DO I=1,p_OpFM%NnodesForceTower
         Node = Node + 1
         jLower=1
-        do while ( ( (AD_etaNodes(jLower) - p_OpFM%forceTwrEtaNodes(I))*(AD_etaNodes(jLower+1) - p_OpFM%forceTwrEtaNodes(I)) .gt. 0) .and. (jLower .le. nNodesTowerProps) ) !Determine the closest two nodes at which the blade properties are specified
+        do while ( ( (AD_etaNodes(jLower) - p_OpFM%forceTwrEtaNodes(I))*(AD_etaNodes(jLower+1) - p_OpFM%forceTwrEtaNodes(I)) .gt. 0) .and. (jLower .lt. nNodesTowerProps) ) !Determine the closest two nodes at which the blade properties are specified
            jLower = jLower + 1
         end do
         if (jLower .lt. nNodesTowerProps) then

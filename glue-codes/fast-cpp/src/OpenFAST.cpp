@@ -1,5 +1,10 @@
 #include "OpenFAST.H"
 #include "hdf5.h"
+#include <iostream>
+#include <fstream>
+#include <cmath>
+
+int fast::OpenFAST::AbortErrLev = ErrID_Fatal; // abort error level; compare with NWTC Library
 
 //Constructor 
 fast::fastInputs::fastInputs():
@@ -73,6 +78,12 @@ void fast::OpenFAST::init() {
                 checkError(ErrStat, ErrMsg);
                 
                 timeZero = true;
+
+                turbineData[iTurb].numVelPtsTwr = o_t_FAST[iTurb].u_Len - turbineData[iTurb].numBlades*turbineData[iTurb].numVelPtsBlade - 1;
+                if(turbineData[iTurb].numVelPtsTwr == 0) {
+                    turbineData[iTurb].numForcePtsTwr = 0;
+                    std::cout << "Aerodyn doesn't want to calculate forces on the tower. All actuator points on the tower are turned off for turbine " << turbineMapProcToGlob[iTurb] << "." << std::endl ;
+                }
                 
                 allocateMemory2(iTurb);
                 
@@ -95,6 +106,12 @@ void fast::OpenFAST::init() {
                 
                 timeZero = true;
                 
+                turbineData[iTurb].numVelPtsTwr = o_t_FAST[iTurb].u_Len - turbineData[iTurb].numBlades*turbineData[iTurb].numVelPtsBlade - 1;
+                if(turbineData[iTurb].numVelPtsTwr == 0) {
+                    turbineData[iTurb].numForcePtsTwr = 0;
+                    std::cout << "Aerodyn doesn't want to calculate forces on the tower. All actuator points on the tower are turned off for turbine " << turbineMapProcToGlob[iTurb] << "." << std::endl ;
+                }
+
                 allocateMemory2(iTurb);
                 
                 get_data_from_openfast(fast::nm2);
@@ -300,16 +317,18 @@ void fast::OpenFAST::update_states_driver_time_step() {
         }
         
         get_data_from_openfast(fast::np1);
-        
-        for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            std::ofstream fastcpp_velocity_file;
-            fastcpp_velocity_file.open("fastcpp_residual.csv", std::ios_base::app) ;
-            fastcpp_velocity_file << "Time step " << nt_global << " Velocity residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].vel_force_resid << std::endl ;
-            fastcpp_velocity_file << "          " << nt_global << " Position residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].x_force_resid << std::endl ;
-            fastcpp_velocity_file << "          " << nt_global << " Force residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].force_resid << std::endl ;
-            fastcpp_velocity_file.close() ;
-        }
 
+        if ( isDebug() ) {
+            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+                std::ofstream fastcpp_velocity_file;
+                fastcpp_velocity_file.open("fastcpp_residual." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv", std::ios_base::app) ;
+                fastcpp_velocity_file << "Time step " << nt_global << " Velocity residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].vel_force_resid << std::endl ;
+                fastcpp_velocity_file << "          " << nt_global << " Position residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].x_force_resid << std::endl ;
+                fastcpp_velocity_file << "          " << nt_global << " Force residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].force_resid << std::endl ;
+                fastcpp_velocity_file.close() ;
+            }
+        }
+        
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
             velForceNodeData[iTurb][fast::np1].x_vel_resid = 0.0;
             velForceNodeData[iTurb][fast::np1].xdot_vel_resid = 0.0;
@@ -327,17 +346,40 @@ void fast::OpenFAST::update_states_driver_time_step() {
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
             FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
+
+            // Compute the force from the nacelle only if the drag coefficient is
+            //   greater than zero
+            if (get_nacelleCdLoc(iTurb) > 0.) {
+
+                calc_nacelle_force (
+                             
+                                    o_t_FAST[iTurb].u[0], 
+                                    o_t_FAST[iTurb].v[0], 
+                                    o_t_FAST[iTurb].w[0], 
+                                    get_nacelleCdLoc(iTurb), 
+                                    get_nacelleAreaLoc(iTurb), 
+                                    get_airDensityLoc(iTurb), 
+                                    i_f_FAST[iTurb].fx[0], 
+                                    i_f_FAST[iTurb].fy[0], 
+                                    i_f_FAST[iTurb].fz[0]
+
+                                    );
+
+            }
+            
         }
-      
+        
         get_data_from_openfast(fast::np1);
 
-        for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            std::ofstream fastcpp_velocity_file;
-            fastcpp_velocity_file.open("fastcpp_residual.csv", std::ios_base::app) ;
-            fastcpp_velocity_file << "Time step " << nt_global << " Velocity residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].vel_force_resid << std::endl ;
-            fastcpp_velocity_file << "          " << nt_global << " Position residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].x_force_resid << std::endl ;
-            fastcpp_velocity_file << "          " << nt_global << " Force residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].force_resid << std::endl ;
-            fastcpp_velocity_file.close() ;
+        if ( isDebug() ) {
+            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+                std::ofstream fastcpp_velocity_file;
+                fastcpp_velocity_file.open("fastcpp_residual." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv", std::ios_base::app) ;
+                fastcpp_velocity_file << "Time step " << nt_global << " Velocity residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].vel_force_resid << std::endl ;
+                fastcpp_velocity_file << "          " << nt_global << " Position residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].x_force_resid << std::endl ;
+                fastcpp_velocity_file << "          " << nt_global << " Force residual at the force nodes = " << velForceNodeData[iTurb][fast::np1].force_resid << std::endl ;
+                fastcpp_velocity_file.close() ;
+            }
         }
 
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
@@ -370,7 +412,7 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
             if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
                 
                 std::ofstream fastcpp_velocity_file;
-                fastcpp_velocity_file.open("fastcpp_velocity.csv") ;
+                fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
                 fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
                 for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
                     fastcpp_velocity_file << i_f_FAST[iTurb].pxVel[iNode] << ", " << i_f_FAST[iTurb].pyVel[iNode] << ", " << i_f_FAST[iTurb].pzVel[iNode] << ", " << o_t_FAST[iTurb].u[iNode] << ", " << o_t_FAST[iTurb].v[iNode] << ", " << o_t_FAST[iTurb].w[iNode] << " " << std::endl ;           
@@ -384,7 +426,7 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
         
             if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
                 std::ofstream actuatorForcesFile;
-                actuatorForcesFile.open("actuator_forces.csv") ;
+                actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
                 actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
                 for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
                     actuatorForcesFile << i_f_FAST[iTurb].pxForce[iNode] << ", " << i_f_FAST[iTurb].pyForce[iNode] << ", " << i_f_FAST[iTurb].pzForce[iNode] << ", " << i_f_FAST[iTurb].fx[iNode] << ", " << i_f_FAST[iTurb].fy[iNode] << ", " << i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;           
@@ -492,7 +534,7 @@ void fast::OpenFAST::step(double ss_time) {
         if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
             
             std::ofstream fastcpp_velocity_file;
-            fastcpp_velocity_file.open("fastcpp_velocity.csv") ;
+            fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
             fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
             for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
                 fastcpp_velocity_file << i_f_FAST[iTurb].pxVel[iNode] << ", " << i_f_FAST[iTurb].pyVel[iNode] << ", " << i_f_FAST[iTurb].pzVel[iNode] << ", " << o_t_FAST[iTurb].u[iNode] << ", " << o_t_FAST[iTurb].v[iNode] << ", " << o_t_FAST[iTurb].w[iNode] << " " << std::endl ;           
@@ -510,7 +552,7 @@ void fast::OpenFAST::step(double ss_time) {
         
         if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
             std::ofstream actuatorForcesFile;
-            actuatorForcesFile.open("actuator_forces.csv") ;
+            actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
             actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
             for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
                 actuatorForcesFile << i_f_FAST[iTurb].pxForce[iNode] << ", " << i_f_FAST[iTurb].pyForce[iNode] << ", " << i_f_FAST[iTurb].pzForce[iNode] << ", " << i_f_FAST[iTurb].fx[iNode] << ", " << i_f_FAST[iTurb].fy[iNode] << ", " << i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;           
@@ -554,7 +596,7 @@ void fast::OpenFAST::step() {
         if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
             
             std::ofstream fastcpp_velocity_file;
-            fastcpp_velocity_file.open("fastcpp_velocity.csv") ;
+            fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
             fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
             for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
                 fastcpp_velocity_file << i_f_FAST[iTurb].pxVel[iNode] << ", " << i_f_FAST[iTurb].pyVel[iNode] << ", " << i_f_FAST[iTurb].pzVel[iNode] << ", " << o_t_FAST[iTurb].u[iNode] << ", " << o_t_FAST[iTurb].v[iNode] << ", " << o_t_FAST[iTurb].w[iNode] << " " << std::endl ;           
@@ -570,10 +612,30 @@ void fast::OpenFAST::step() {
         get_data_from_openfast(fast::np1);
         FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
+
+        // Compute the force from the nacelle only if the drag coefficient is
+        //   greater than zero
+        if (get_nacelleCdLoc(iTurb) > 0.) {
+
+            calc_nacelle_force (
+                             
+                o_t_FAST[iTurb].u[0], 
+                o_t_FAST[iTurb].v[0], 
+                o_t_FAST[iTurb].w[0], 
+                get_nacelleCdLoc(iTurb), 
+                get_nacelleAreaLoc(iTurb), 
+                get_airDensityLoc(iTurb), 
+                i_f_FAST[iTurb].fx[0], 
+                i_f_FAST[iTurb].fy[0], 
+                i_f_FAST[iTurb].fz[0]
+
+                );
+
+        }
         
         if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
             std::ofstream actuatorForcesFile;
-            actuatorForcesFile.open("actuator_forces.csv") ;
+            actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
             actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
             for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
                 actuatorForcesFile << i_f_FAST[iTurb].pxForce[iNode] << ", " << i_f_FAST[iTurb].pyForce[iNode] << ", " << i_f_FAST[iTurb].pzForce[iNode] << ", " << i_f_FAST[iTurb].fx[iNode] << ", " << i_f_FAST[iTurb].fy[iNode] << ", " << i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;           
@@ -625,8 +687,34 @@ void fast::OpenFAST::stepNoWrite() {
         
         // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
         // (note OpenFOAM could do subcycling around this step)
-        FAST_OpFM_Step(&iTurb, &ErrStat, ErrMsg);
+        FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
+        send_data_to_openfast(fast::np1);
+        FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
+        get_data_from_openfast(fast::np1);
+        FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
+
+        // Compute the force from the nacelle only if the drag coefficient is
+        //   greater than zero
+        if (get_nacelleCdLoc(iTurb) > 0.) {
+
+            calc_nacelle_force (
+                             
+                o_t_FAST[iTurb].u[0], 
+                o_t_FAST[iTurb].v[0], 
+                o_t_FAST[iTurb].w[0], 
+                get_nacelleCdLoc(iTurb), 
+                get_nacelleAreaLoc(iTurb), 
+                get_airDensityLoc(iTurb), 
+                i_f_FAST[iTurb].fx[0], 
+                i_f_FAST[iTurb].fy[0], 
+                i_f_FAST[iTurb].fz[0]
+
+                );
+
+        }
         
     }
     
@@ -638,6 +726,36 @@ void fast::OpenFAST::stepNoWrite() {
     nt_global = nt_global + 1;
     
 }
+
+void fast::OpenFAST::calc_nacelle_force(
+        const float & u, 
+        const float & v, 
+        const float & w, 
+        const float & cd, 
+        const float & area, 
+        const float & rho,
+        float & fx, 
+        float & fy, 
+        float & fz) {
+            // Calculate the force on the nacelle (fx,fy,fz) given the 
+            //   velocity sampled at the nacelle point (u,v,w), 
+            //   drag coefficient 'cd' and nacelle area 'area'
+    
+            // The velocity magnitude
+            float Vmag = std::sqrt(u * u + v * v + w * w);
+    
+            // Velocity correction based on Martinez-Tossas PhD Thesis 2017
+            // The correction samples the velocity at the center of the
+            // Gaussian kernel and scales it to obtain the inflow velocity 
+            float epsilon_d = std::sqrt(2.0 / M_PI * cd * area);
+            float correction = 1. / (1.0 - cd * area /
+                                        (4.0 * M_PI * epsilon_d * epsilon_d));
+    
+            // Compute the force for each velocity component
+            fx = rho * 1./2. * cd * area * Vmag * u * correction * correction;
+            fy = rho * 1./2. * cd * area * Vmag * v * correction * correction;
+            fz = rho * 1./2. * cd * area * Vmag * w * correction * correction;
+        }
 
 void fast::OpenFAST::setInputs(const fast::fastInputs & fi ) {
     
@@ -830,10 +948,10 @@ void fast::OpenFAST::interpolateVel_ForceToVelNodes() {
         
         if ( isDebug() ) {
             std::ofstream actuatorVelFile;
-            actuatorVelFile.open("actuator_velocity.csv") ;
+            actuatorVelFile.open("actuator_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
             actuatorVelFile << "# x, y, z, Vx, Vy, Vz" << std::endl ;
             for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
-                actuatorVelFile << i_f_FAST[iTurb].pxForce[iNode] << ", " << i_f_FAST[iTurb].pyForce[iNode] << ", " << i_f_FAST[iTurb].pzForce[iNode] << ", " << forceNodeVel[iTurb][iNode][0] << ", " << forceNodeVel[iTurb][iNode][1] << ", " << forceNodeVel[iTurb][iNode][2] << " " << std::endl ;
+                actuatorVelFile << velForceNodeData[iTurb][fast::np1].force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::np1].force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::np1].force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::np1].vel_force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::np1].vel_force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::np1].vel_force[iNode*3+0] << " " << std::endl ;
             }
             actuatorVelFile.close() ;
         }
@@ -1041,7 +1159,6 @@ void fast::OpenFAST::allocateMemory() {
             turbineAllocFile.flush();
             turbineAllocFile.close() ;
         }
-        
     }
     
     
@@ -1053,7 +1170,6 @@ void fast::OpenFAST::allocateMemory() {
     }
     
     turbineData.resize(nTurbinesProc);
-    forceNodeVel.resize(nTurbinesProc);
     velForceNodeData.resize(nTurbinesProc);
     
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
@@ -1101,10 +1217,7 @@ void fast::OpenFAST::allocateMemory2(int iTurbLoc) {
         turbineData[iTurbLoc].numVelPts = 1 + turbineData[iTurbLoc].numVelPtsTwr + turbineData[iTurbLoc].numBlades * turbineData[iTurbLoc].numVelPtsBlade ;
         
         int nfpts = get_numForcePtsLoc(iTurbLoc);
-        forceNodeVel[iTurbLoc].resize(nfpts);
-        
         int nvelpts = get_numVelPtsLoc(iTurbLoc);
-        for (int k = 0; k < nfpts; k++) forceNodeVel[iTurbLoc][k].resize(3) ;
         
         for(int k=0; k<4; k++) {
             velForceNodeData[iTurbLoc][k].x_vel.resize(3*nvelpts) ;
@@ -1185,7 +1298,7 @@ void fast::OpenFAST::readVelocityData(int nTimesteps) {
     for (int iTurb=0; iTurb < nTurbines; iTurb++) {
         int nVelPts = get_numVelPtsLoc(iTurb) ;
         velNodeData[iTurb].resize(nTimesteps*nVelPts*6) ;
-        hid_t dset_id = H5Dopen2(velDataFile, ("/turbine" + std::to_string(iTurb)).c_str(), H5P_DEFAULT);
+        hid_t dset_id = H5Dopen2(velDataFile, ("/turbine" + std::to_string(turbineMapProcToGlob[iTurb])).c_str(), H5P_DEFAULT);
         hid_t dspace_id = H5Dget_space(dset_id);
         
         hsize_t start[3]; start[1] = 0; start[2] = 0;
@@ -1239,7 +1352,7 @@ hid_t fast::OpenFAST::openVelocityDataFile(bool createFile) {
             H5Pset_chunk(dcpl_id, 3, chunk_dims);
             
             hid_t dataSpace = H5Screate_simple(3, dims, NULL);
-            hid_t dataSet = H5Dcreate(velDataFile, ("/turbine" + std::to_string(iTurb)).c_str(), H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, dcpl_id, H5P_DEFAULT);    
+            hid_t dataSet = H5Dcreate(velDataFile, ("/turbine" + std::to_string(turbineMapProcToGlob[iTurb])).c_str(), H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, dcpl_id, H5P_DEFAULT);    
             
             herr_t status = H5Pclose(dcpl_id);
             status = H5Dclose(dataSet);
@@ -1262,6 +1375,20 @@ herr_t fast::OpenFAST::closeVelocityDataFile(int nt_global, hid_t velDataFile) {
 }
 
 
+void fast::OpenFAST::backupVelocityDataFile(int curTimeStep, hid_t & velDataFile) {
+
+    closeVelocityDataFile(curTimeStep, velDataFile);
+        
+    std::ifstream source("velDatafile." + std::to_string(worldMPIRank) + ".h5", std::ios::binary);
+    std::ofstream dest("velDatafile." + std::to_string(worldMPIRank) + ".h5." + std::to_string(curTimeStep) + ".bak", std::ios::binary);
+
+    dest << source.rdbuf();
+    source.close();
+    dest.close();
+
+    velDataFile = openVelocityDataFile(false);
+}
+
 void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, OpFM_InputType_t iData, OpFM_OutputType_t oData) {
     
     hsize_t start[3]; start[0] = iTimestep; start[1] = 0; start[2] = 0;
@@ -1280,7 +1407,7 @@ void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, O
         tmpVelData[iNode*6 + 5] = oData.w[iNode];
     }
     
-    hid_t dset_id = H5Dopen2(h5File, ("/turbine" + std::to_string(iTurb)).c_str(), H5P_DEFAULT);
+    hid_t dset_id = H5Dopen2(h5File, ("/turbine" + std::to_string(turbineMapProcToGlob[iTurb])).c_str(), H5P_DEFAULT);
     hid_t dspace_id = H5Dget_space(dset_id);
     H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, start, NULL, count, NULL);
     hid_t mspace_id = H5Screate_simple(3, count, NULL);  

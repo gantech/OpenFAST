@@ -1,11 +1,13 @@
 .. _cppapi:
 
-How to use the OpenFAST C++ API
-===============================
+OpenFAST C++ Application Programming Interface
+==============================================
 
 **Under construction.**
 
-The C++ API is defined and implemented in the :class:`~fast::OpenFAST` class. Any user who wants to write a glue-code for OpenFAST in C++ should instantiate an object of the OpenFAST class and use it to drive the simulation of turbines. A sample glue-code `FAST_Prog.cpp <https://github.com/OpenFAST/openfast/blob/dev/glue-codes/fast-cpp/src/FAST_Prog.cpp>`_ is provided as a demonstration of the usage of the C++ API. The glue-code allows for the simulation of multiple turbines using OpenFAST in serial or in parallel over multiple processors. The message passing interface (MPI) is used to run the different instances of turbines in parallel. An abbrievated version of FAST_Prog.cpp is shown below. The highlighted lines indicate the use of the OpenFAST class.
+OpenFAST provides a C++ application programming interface (API) to drive wind turbine simulations from an external program in C++. The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. The C++ API can also be used to create an external driver program or glue code that runs OpenFAST simulations of several wind turbines in parallel. 
+
+The C++ API is defined and implemented in the :class:`~fast::OpenFAST` class. Any user who wants to write a glue-code for OpenFAST in C++ should instantiate an object of the OpenFAST class and use it to drive the simulation of turbines. A sample glue-code `FAST_Prog.cpp <https://github.com/OpenFAST/openfast/blob/dev/glue-codes/openfast-cpp/src/FAST_Prog.cpp>`_ is provided as a demonstration of the usage of the C++ API. The glue-code allows for the simulation of multiple turbines using OpenFAST in serial or in parallel over multiple processors. The message passing interface (MPI) is used to run the different instances of turbines in parallel. An abbrievated version of FAST_Prog.cpp is shown below. The highlighted lines indicate the use of the OpenFAST class.
 
 .. literalinclude:: files/FAST_Prog.cpp
    :emphasize-lines: 1,27,28,32,36,38,40,45,49
@@ -40,7 +42,7 @@ The C++ API was developed mainly to integrate OpenFAST with Computational Fluid 
 
    Illustration of transfer of velocity, loads and deflection between a CFD solver and OpenFAST through the C++ API for actuator line applications.
 
-The current implementation of the C++ API for OpenFAST allows for a serial staggered FSI scheme between the fluid (CFD) and structural (OpenFAST) solver. :numref:`actuatorline-css` shows a suggested implementation of a loosely coupled serial staggered FSI scheme to move the simulation from time step `n` to `n+1` for actuator line applications. A strongly coupled FSI scheme can be constructed through the repetition of the coupling algorithm in :numref:`actuatorline-css` through "outer" iterations.
+The CFD solver is expected to be the *driver program* for actuator line FSI simulations coupled to OpenFAST. The C++ API allows for *substepping* where the driver timestep is an integral multiple of the OpenFAST time step (:math:`\Delta_t^{CFD} = n \Delta_t^{OpenFAST}`.) The current implementation of the C++ API for OpenFAST allows for a serial staggered FSI scheme between the fluid (CFD) and structural (OpenFAST) solver. :numref:`actuatorline-css` shows a suggested implementation of a loosely coupled serial staggered FSI scheme to move the simulation from time step `n` to `n+1` for actuator line applications. A strongly coupled FSI scheme can be constructed through the repetition of the coupling algorithm in :numref:`actuatorline-css` through "outer" iterations.
 
 .. _actuatorline-css:
 
@@ -101,74 +103,87 @@ OpenFAST uses different spatial meshes for the various modules :cite:`fastv8ModF
 Implementation
 --------------
 
-The mapping of loads and deflections to the actuator points is performed in the :class:`OpenFOAM` module in OpenFAST. This section provides an overview of the :func:`OpFM_Init` subroutine that creates the actuator points and sets up the mapping of loads and deflections.
+The C++ API uses the C-Fortran interface to call the same functions as the Fortran driver internally to advance the OpenFAST in time. FAST_Library.f90 contains all the functions that can be called from the C++ API. Some of the corresponding functions between the C++ API and the Fortran module are shown in the following table.
 
-.. code-block:: fortran
-
-   OpFM%p%NnodesVel = OpFM%p%NnodesVel + u_AD%TowerMotion%NNodes                 ! tower nodes (if any)
-   DO k=1,OpFM%p%NumBl
-      OpFM%p%NnodesVel = OpFM%p%NnodesVel + u_AD%BladeMotion(k)%NNodes           ! blade nodes
-   END DO
-
-   OpFm%p%NnodesForceBlade =  InitInp%NumActForcePtsBlade 
-   OpFM%p%NnodesForceTower = InitInp%NumActForcePtsTower
-   OpFM%p%NnodesForce = 1 + OpFM%p%NumBl * InitInp%NumActForcePtsBlade + InitInp%NumActForcePtsTower
-   
-A uniformly distributed set of actuator force nodes are created with a desired number of points using linear interpolation of the nodes in the structural model in the subroutine :func:`OpFM_CreateActForceBladeTowerNodes`.
-
-.. code-block:: fortran
-
-  !Do the blade first
-  allocate(p_OpFM%forceBldRnodes(p_OpFM%NnodesForceBlade), stat=errStat2)
-  dRforceNodes = p_OpFM%BladeLength/p_OpFM%NnodesForceBlade
-  do i=1,p_OpFM%NnodesForceBlade-1
-     p_OpFM%forceBldRnodes(i) =  (i-1)*dRforceNodes
-  end do
-  p_OpFM%forceBldRnodes(p_OpFM%NnodesForceBlade) = p_OpFM%BladeLength
-
-
-  !Do the tower now
-  allocate(p_OpFM%forceTwrHnodes(p_OpFM%NnodesForceTower), stat=errStat2)
-  dRforceNodes = p_OpFM%TowerHeight/p_OpFM%NnodesForceTower
-  do i=1,p_OpFM%NnodesForceTower-1
-     p_OpFM%forceTwrHnodes(i) = (i-1)*dRforceNodes
-  end do
-  p_OpFM%forceTwrHnodes(p_OpFM%NnodesForceTower) = p_OpFM%TowerHeight
-
-
-The chord values associated with the AeroDynamic mesh are mapped to the actuator force mesh using linear interpolation in :func:`OpFM_InterpolateForceNodesChord`. :func:`OpFM_CreateActForceMotionsMesh` creates a `OpenFAST` mesh with the new actuator force nodes using the following procedure:
-
-1. :func:`OpFM_CreateTmpActForceMotionsMesh` first creates a temporary mesh at the new actuator force nodes with no :samp:`RefOrientation` and the correct :samp:`Orientation`:
-   
-    * :func:`CreateTmpStructModelMesh` creates a copy of the structural model mesh (ElastoDyn or BeamDyn) with no :samp:`RefOrientation` and the correct :samp:`Orientation`.
-    * :func:`CalcForceActuatorPositionsBlade` and :func:`CalcForceActuatorPositionsTower` uses linear interpolation to calculate the positions of the actuator force nodes from the structural model mesh at a desired number of points.
-    * The mesh mapping procedure of `OpenFAST` is used to map the orientations of the structural model to the temporary mesh containing the actuator force nodes.
+.. table::
       
-2. The temporary mesh with the actuator force nodes is copied to the :samp:`OpFM%m%ActForceMotions` with the correct :samp:`RefOrientation`.
+   +------------------------------------+---------------------------------+-------------------------------+
+   | C++ API - OpenFAST.cpp             | Fortran - FAST_Library.f90      | FAST_Subs.f90                 |
+   +====================================+=================================+===============================+
+   | init()                             | FAST_OpFM_Init                  | FAST_InitializeAll_T          |
+   +------------------------------------+---------------------------------+-------------------------------+
+   | solution0()                        | FAST_OpFM_Solution0             | FAST_Solution0_T              |
+   +------------------------------------+---------------------------------+-------------------------------+
+   | prework()                          | FAST_OpFM_Prework               | FAST_Prework_T                |
+   +------------------------------------+---------------------------------+-------------------------------+
+   |                                    | FAST_OpFM_Store_SS              | FAST_Store_SS                 |
+   +------------------------------------+---------------------------------+-------------------------------+
+   | update_states_driver_time_step()   | FAST_OpFM_UpdateStates          | FAST_UpdateStates_T           |
+   +------------------------------------+---------------------------------+-------------------------------+
+   |                                    | FAST_OpFM_Reset_SS              | FAST_Reset_SS                 |
+   +------------------------------------+---------------------------------+-------------------------------+
+   | advance_to_next_driver_time_step() | FAST_OpFM_AdvanceToNextTimeStep | FAST_AdvanceToNextTimeStep_T  |
+   +------------------------------------+---------------------------------+-------------------------------+
 
-The rest of the :func:`OpFM_Init` function creates a mapping between the Structural mesh and the Actuator force node positions and the Aerodyn loads and the point forces at the Actuator force nodes respectively.
+The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three different subroutines `FAST_Prework_T`, `FAST_UpdateStates_T` and `FAST_AdvanceToNextTimeStep_T` to allow for multiple *outer* iterations with external driver programs. Extra subroutines `FAST_Store_SS` and `FAST_Reset_SS` are introduced to move OpenFAST back by more than 1 time step when using *sub-stepping* with external driver programs. The typical order in which the Fortran subroutines will be accessed when using the C++ API from an external driver program is shown below.
 
 .. code-block:: fortran
 
-   ! create the mapping data structures:
-   DO k=1,OpFM%p%NumBl
-      IF (p_FAST%CompElast == Module_ED ) THEN
-         call MeshMapCreate( y_ED%BladeLn2Mesh(k), OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Point_Motions(k),  ErrStat2, ErrMsg2 );
-      ELSEIF (p_FAST%CompElast == Module_BD ) THEN
-         !Not implemented yet
-      END IF
-      call MeshMapCreate( y_AD%BladeLoad(k), OpFM%m%ActForceLoads(k), OpFM%m%Line2_to_Point_Loads(k),  ErrStat2, ErrMsg2 );
-   END DO
-   
-   do k=OpFM%p%NumBl+1,OpFM%p%NMappings
-      call MeshMapCreate( y_ED%TowerLn2Mesh, OpFM%m%ActForceMotions(k), OpFM%m%Line2_to_Point_Motions(k),  ErrStat2, ErrMsg2 );
+   call FAST_OpFM_Init
+
+   call FAST_OpFM_Solution0
+
+   do i=1, nTimesteps
       
-      if ( y_AD%TowerLoad%nnodes > 0 ) then ! we can have an input mesh on the tower without having an output mesh.
-         call MeshMapCreate( y_AD%TowerLoad, OpFM%m%ActForceLoads(k), OpFM%m%Line2_to_Point_Loads(k),  ErrStat2, ErrMsg2 );
+      if (nSubsteps .gt. 1)
+            call FAST_OpFM_Store_SS
+      else
+            call FAST_OpFM_Prework
       end if
       
+      do iOuter=1, nOuterIterations
+
+         if (nSubsteps .gt. 1)
+
+            if (iOuter .ne. 1) then
+               ! Reset OpenFAST back when not the first pass
+               call FAST_OpFM_Reset_SS
+               
+            end if 
+            
+            do j=1, nSubsteps
+
+               ! Set external inputs into modules here for the substep
+               call FAST_OpFM_Prework
+               call FAST_OpFM_UpdateStates
+               call FAST_OpFM_AdvanceToNextTimeStep
+
+            end do !Substeps
+
+         else
+
+            call FAST_OpFM_UpdateStates
+            
+         end if
+
+      end do !Outer iterations
+
+      if (nSubsteps .gt. 1) then
+
+         ! Nothing to do here
+         
+      else
+
+         call FAST_OpFM_AdvanceToNextTimeStep
+         
+      end if
+
    end do
-   
+
+
+
+The mapping of loads and deflections to the actuator points is performed in the :class:`OpenFOAM` module in OpenFAST. 
+
 
 Test for mapping procedure
 --------------------------

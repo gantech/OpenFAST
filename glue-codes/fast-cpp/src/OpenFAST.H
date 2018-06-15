@@ -2,9 +2,6 @@
 #define OpenFAST_h
 #include "FAST_Library.h"
 #include "sys/stat.h"
-#include "math.h"
-#include <iostream>
-#include <fstream>
 #include <string>
 #include <cstring>
 #include <stdexcept>
@@ -12,6 +9,7 @@
 #include <set>
 #include <map>
 #include "dlfcn.h"
+//TODO: The skip MPICXX is put in place primarily to get around errors in OpenFOAM. This will cause problems if the driver program uses C++ API for MPI.
 #ifndef OMPI_SKIP_MPICXX
  #define OMPI_SKIP_MPICXX
 #endif
@@ -45,6 +43,9 @@ namespace fast {
         int numForcePtsTwr;
         int numForcePts;
         int inflowType;
+        float nacelle_cd;
+        float nacelle_area;
+        float air_density;
     };
 
 //! An id to indicate whether a particular actuator point is on the hub, node or tower    
@@ -178,7 +179,7 @@ class OpenFAST {
   //! The starting time step number
   int ntStart;      
   //! Restart files will be written every so many time stneps
-  int nEveryCheckPoint;    
+  int nEveryCheckPoint;
 
   std::vector<turbineDataType> globTurbineData; //All turbines
   std::vector<turbineDataType> turbineData;   // Only for turbines on the proc
@@ -249,6 +250,7 @@ class OpenFAST {
   //! Error status and Error message to communicate with OpenFAST
   int ErrStat;
   char ErrMsg[INTERFACE_STRING_LENGTH];  // make sure this is the same size as IntfStrLen in FAST_Library.f90
+  static int AbortErrLev;
 
  public: 
 
@@ -285,6 +287,17 @@ class OpenFAST {
   void readRestartFile(int iTurbLoc, int n_t_global);
   void writeRestartFile(int iTurbLoc, int n_t_global);
     
+  //! Compute the nacelle force
+  void calc_nacelle_force(const float & u,
+                          const float & v,
+                          const float & w,
+                          const float & cd,
+                          const float & area,
+                          const float & rho,
+                          float & fx,
+                          float & fy,
+                          float & fz);
+                        
   //! Open 'velData.h5' file to in preparation to write velocity data for all turbines
   hid_t openVelocityDataFile(bool createFile);
   //! Read velocity data at the Aerodyn nodes for all turbines from 'velData.h5'
@@ -293,6 +306,8 @@ class OpenFAST {
   void writeVelocityData(hid_t h5file, int iTurb, int iTimestep, OpFM_InputType_t iData, OpFM_OutputType_t oData);
   //! Close 'velData.h5' file 
   herr_t closeVelocityDataFile(int nt_global, hid_t velDataFile);
+  //! Backup the velocity data file
+  void backupVelocityDataFile(int curTimeStep, hid_t & velDataFile);
 
   //! Allocate turbine number 'iTurbGlob' to the processor with global MPI rank 'procNo'
   void setTurbineProcNo(int iTurbGlob, int procNo) { turbineMapGlobToProc[iTurbGlob] = procNo; }
@@ -343,6 +358,13 @@ class OpenFAST {
   //! Get the total number of turbines in the simulation
   int get_nTurbinesGlob() { return nTurbinesGlob; } 
 
+  //! Get the nacelle drag coefficient of turbine number 'iTurbGlob'
+  float get_nacelleArea(int iTurbGlob) { return get_nacelleAreaLoc(get_localTurbNo(iTurbGlob)); }
+  //! Get the nacelle area of turbine number 'iTurbGlob'
+  float get_nacelleCd(int iTurbGlob) { return get_nacelleCdLoc(get_localTurbNo(iTurbGlob)); }
+  //! Get the air density around turbine number 'iTurbGlob'
+  float get_airDensity(int iTurbGlob) { return get_airDensityLoc(get_localTurbNo(iTurbGlob)); }
+    
   //! Get the number of blades in turbine number 'iTurbGlob'
   int get_numBlades(int iTurbGlob) { return get_numBladesLoc(get_localTurbNo(iTurbGlob)); }
   //! Get the number of Aerodyn/velocity nodes on each blade in turbine number 'iTurbGlob'
@@ -371,29 +393,36 @@ class OpenFAST {
   //! Allocate memory for data structures for all turbines on this processor
   void allocateMemory();
   void allocateMemory2(int iTurbLoc);  //Allocate more memory for each turbine after intialization/restart
-  
-    //! Get the number of blades in local turbine number 'iTurbLoc'
+
+  //! Get the nacelle drag coefficient of local turbine number 'iTurbLoc'
+  float get_nacelleCdLoc(int iTurbLoc) { return turbineData[iTurbLoc].nacelle_cd; }
+  //! Get the nacelle area of local turbine number 'iTurbLoc'    
+  float get_nacelleAreaLoc(int iTurbLoc) { return turbineData[iTurbLoc].nacelle_area; }
+  //! Get the air density around local turbine number 'iTurbLoc'    
+  float get_airDensityLoc(int iTurbLoc) { return turbineData[iTurbLoc].air_density; }
+    
+  //! Get the number of blades in local turbine number 'iTurbLoc'
   int get_numBladesLoc(int iTurbLoc) { return turbineData[iTurbLoc].numBlades; }
-    //! Get the number of Aerodyn/velocity nodes on each blade in local turbine number 'iTurbLoc'
+  //! Get the number of Aerodyn/velocity nodes on each blade in local turbine number 'iTurbLoc'
   int get_numVelPtsBladeLoc(int iTurbLoc) { return turbineData[iTurbLoc].numVelPtsBlade; }
-    //! Get the number of Aerodyn/velocity nodes on the tower in local turbine number 'iTurbLoc'
+  //! Get the number of Aerodyn/velocity nodes on the tower in local turbine number 'iTurbLoc'
   int get_numVelPtsTwrLoc(int iTurbLoc) { return turbineData[iTurbLoc].numVelPtsTwr; }
-    //! Get the total number of Aerodyn/velocity nodes in local turbine number 'iTurbLoc'
+  //! Get the total number of Aerodyn/velocity nodes in local turbine number 'iTurbLoc'
   int get_numVelPtsLoc(int iTurbLoc) { return turbineData[iTurbLoc].numVelPts; }
-    //! Get the number of Actuator/force nodes on each blade in local turbine number 'iTurbLoc'
+  //! Get the number of Actuator/force nodes on each blade in local turbine number 'iTurbLoc'
   int get_numForcePtsBladeLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePtsBlade; }
-    //! Get the number of Actuator/force nodes on the tower in local turbine number 'iTurbLoc'
+  //! Get the number of Actuator/force nodes on the tower in local turbine number 'iTurbLoc'
   int get_numForcePtsTwrLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePtsTwr; }
-    //! Get the total number of Actuator/force nodes in local turbine number 'iTurbLoc'
+  //! Get the total number of Actuator/force nodes in local turbine number 'iTurbLoc'
   int get_numForcePtsLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePts; }
 
   void loadSuperController(const fastInputs & fi);
   void fillScInputsGlob() ;
   void fillScOutputsLoc() ;
 
-    //! An example function to set velocities at the Aerodyn nodes    
+  //! An example function to set velocities at the Aerodyn nodes    
   void setExpLawWindSpeed(int iTurbLoc) ; // An example to set velocities at the Aerodyn nodes
-    //! Apply the velocity data at the Aerodyn nodes in 'velData' to turbine number 'iTurb' at time step 'iPrestart' through the data structure 'cDriver_Output_to_FAST'
+  //! Apply the velocity data at the Aerodyn nodes in 'velData' to turbine number 'iTurb' at time step 'iPrestart' through the data structure 'cDriver_Output_to_FAST'
   void applyVelocityData(int iPrestart, int iTurb, OpFM_OutputType_t o_t_FAST, std::vector<double> & velData) ;
 
 };

@@ -53,7 +53,6 @@ typedef ^       ^       ReKi            forceBldEtaNodes             {:}     "Lo
 typedef ^       ^       ReKi            forceTwrEtaNodes             {:}     "Location of tower force nodes in [0-1] coordinates"  -
 
 
-
 # ..... OpenFOAM_InputType data .......................................................................................................
 typedef	^	InputType	ReKi	pxVel	{:}	-	-	"x position of velocity interface (Aerodyn) nodes"	"m"
 typedef	^	InputType	ReKi	pyVel	{:}	-	-	"y position of velocity interface (Aerodyn) nodes"	"m"
