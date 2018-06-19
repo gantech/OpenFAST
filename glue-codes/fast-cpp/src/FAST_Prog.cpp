@@ -36,12 +36,12 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
 
     YAML::Node cDriverInp = YAML::LoadFile(cInterfaceInputFile);
 
-    fi.nTurbinesGlob = cDriverInp["nTurbinesGlob"].as<int>();
+    fi.nTurbinesGlob = cDriverInp["n_turbines_glob"].as<int>();
 
     if (fi.nTurbinesGlob > 0) {
       
-      if(cDriverInp["dryRun"]) {
-	fi.dryRun = cDriverInp["dryRun"].as<bool>();
+      if(cDriverInp["dry_run"]) {
+	fi.dryRun = cDriverInp["dry_run"].as<bool>();
       } 
       
       if(cDriverInp["debug"]) {
@@ -59,30 +59,30 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
           }
       }
       
-      if(cDriverInp["simStart"]) {
-	if (cDriverInp["simStart"].as<std::string>() == "init") {
+      if(cDriverInp["sim_start"]) {
+	if (cDriverInp["sim_start"].as<std::string>() == "init") {
 	  fi.simStart = fast::init;
-	} else if(cDriverInp["simStart"].as<std::string>() == "trueRestart") {
+	} else if(cDriverInp["sim_start"].as<std::string>() == "trueRestart") {
 	  fi.simStart = fast::trueRestart;
-	} else if(cDriverInp["simStart"].as<std::string>() == "restartDriverInitFAST") {
+	} else if(cDriverInp["sim_start"].as<std::string>() == "restartDriverInitFAST") {
 	  fi.simStart = fast::restartDriverInitFAST;
 	} else {
-	  throw std::runtime_error("simStart is not well defined in the input file");
+	  throw std::runtime_error("sim_start is not well defined in the input file");
 	}
       }
       
-      fi.tStart = cDriverInp["tStart"].as<double>();
-      *tEnd = cDriverInp["tEnd"].as<double>();
-      fi.nEveryCheckPoint = cDriverInp["nEveryCheckPoint"].as<int>();
+      fi.tStart = cDriverInp["t_start"].as<double>();
+      *tEnd = cDriverInp["t_end"].as<double>();
+      fi.nEveryCheckPoint = cDriverInp["n_checkpoint"].as<int>();
       fi.dtFAST = cDriverInp["dtFAST"].as<double>();
-      fi.nSubsteps = cDriverInp["nSubsteps"].as<int>();
-      fi.tMax = cDriverInp["tMax"].as<double>(); // tMax is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
+      fi.nSubsteps = cDriverInp["n_substeps"].as<int>();
+      fi.tMax = cDriverInp["t_max"].as<double>(); // t_max is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file. Choose this carefully as FAST writes the output file only at this point if you choose the binary file output.
       
-      if(cDriverInp["superController"]) {
-	fi.scStatus = cDriverInp["superController"].as<bool>();
-	fi.scLibFile = cDriverInp["scLibFile"].as<std::string>();
-	fi.numScInputs = cDriverInp["numScInputs"].as<int>();
-	fi.numScOutputs = cDriverInp["numScOutputs"].as<int>();
+      if(cDriverInp["super_controller"]) {
+	fi.scStatus = cDriverInp["super_controller"].as<bool>();
+	fi.scLibFile = cDriverInp["sc_libfile"].as<std::string>();
+	fi.numScInputs = cDriverInp["num_scinputs"].as<int>();
+	fi.numScOutputs = cDriverInp["num_scoutputs"].as<int>();
       }
       
       fi.globTurbineData.resize(fi.nTurbinesGlob);
