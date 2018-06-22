@@ -341,10 +341,10 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
          RETURN
       END IF
       
-   ALLOCATE( BD%x(           p_FAST%nBeams,2), &
-             BD%xd(          p_FAST%nBeams,2), &
-             BD%z(           p_FAST%nBeams,2), &
-             BD%OtherSt(     p_FAST%nBeams,2), &
+   ALLOCATE( BD%x(           p_FAST%nBeams,4), &
+             BD%xd(          p_FAST%nBeams,4), &
+             BD%z(           p_FAST%nBeams,4), &
+             BD%OtherSt(     p_FAST%nBeams,4), &
              BD%p(           p_FAST%nBeams  ), &
              BD%u(           p_FAST%nBeams  ), &
              BD%y(           p_FAST%nBeams  ), &
@@ -642,10 +642,12 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
             InitInData_OpFM%StructBldEtaNodes(bldNodes_ED*k) = 1.0
          end do
       END IF
+      
       ALLOCATE(InitInData_OpFM%StructTwrEtaNodes(SIZE(InitOutData_ED%TwrHNodes)+2),  STAT=ErrStat2)
       InitInData_OpFM%StructTwrEtaNodes(1) = 0.0
       InitInData_OpFM%StructTwrEtaNodes(2:SIZE(InitOutData_ED%TwrHNodes)+1) = InitOutData_ED%TwrHNodes(:)/InitOutData_ED%TowerFlexL
       InitInData_OpFM%StructTwrEtaNodes(SIZE(InitOutData_ED%TwrHNodes)+2) = 1.0
+
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating OpFM%InitInput.",ErrStat,ErrMsg,RoutineName)
          CALL Cleanup()
@@ -1130,10 +1132,10 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
          RETURN
       END IF
       
-     ALLOCATE( IceD%x(           IceDim,2), &
-               IceD%xd(          IceDim,2), &
-               IceD%z(           IceDim,2), &
-               IceD%OtherSt(     IceDim,2), &
+     ALLOCATE( IceD%x(           IceDim,4), &
+               IceD%xd(          IceDim,4), &
+               IceD%z(           IceDim,4), &
+               IceD%OtherSt(     IceDim,4), &
                IceD%p(           IceDim  ), &
                IceD%u(           IceDim  ), &
                IceD%y(           IceDim  ), &

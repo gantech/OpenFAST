@@ -45,10 +45,10 @@ typedef	^	^	MeshMapType	Line2_to_Point_Motions	{:}	-	-	"mapping data structure t
 typedef	OpenFOAM/OpFM	ParameterType	ReKi	AirDens	-	-	-	"Air density for normalization of loads sent to OpenFOAM"	kg/m^3
 typedef	OpenFOAM/OpFM	ParameterType	IntKi	NumBl	-	-	-	"Number of blades"	-
 typedef	OpenFOAM/OpFM	ParameterType	IntKi	NMappings	-	-	-	"Number of mappings"	-
-typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesVel	-	-	-	"number of velocity nodes on FAST v8-OpenFOAM interface"	-
-typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForce	-	-	-	"number of force nodes on FAST v8-OpenFOAM interface"	-
-typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForceBlade	-	-	-	"number of force nodes on FAST v8-OpenFOAM interface"	-
-typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForceTower	-	-	-	"number of force nodes on FAST v8-OpenFOAM interface"	-
+typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesVel	-	-	-	"number of velocity nodes on OpenFAST-CFD interface"	-
+typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForce	-	-	-	"number of force nodes on OpenFAST-CFD interface"	-
+typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForceBlade	-	-	-	"number of force nodes on OpenFAST-CFD interface"	-
+typedef	OpenFOAM/OpFM	ParameterType	IntKi	NnodesForceTower	-	-	-	"number of force nodes on OpemFAST-CFD interface"	-
 typedef ^       ^       ReKi            forceBldEtaNodes             {:}     "Location of blade force nodes in [0-1] co-ordinates"  -
 typedef ^       ^       ReKi            forceTwrEtaNodes             {:}     "Location of tower force nodes in [0-1] coordinates"  -
 
