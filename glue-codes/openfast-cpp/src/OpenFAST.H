@@ -414,6 +414,9 @@ class OpenFAST {
   //! Compute the torque and thrust for turbine number 'iTurbGlob'
   void computeTorqueThrust(int iTurGlob, std::vector<double> &  torque, std::vector<double> &  thrust);
 
+  //! An example function to set velocities at the Aerodyn nodes using a power law wind profile using an exponent of 0.2 and a reference wind speed of 10 m/s at 90 meters.
+  void setExpLawWindSpeed() ; // An example to set velocities at the Aerodyn nodes    
+
  private:
 
   //! Check whether the error status is ok. If not quit gracefully by printing the error message
@@ -452,8 +455,6 @@ class OpenFAST {
   void fillScInputsGlob() ;
   void fillScOutputsLoc() ;
 
-  //! An example function to set velocities at the Aerodyn nodes    
-  void setExpLawWindSpeed(int iTurbLoc) ; // An example to set velocities at the Aerodyn nodes
   //! Apply the velocity data at the Aerodyn nodes in 'velData' to turbine number 'iTurb' at time step 'iPrestart' through the data structure 'cDriver_Output_to_FAST'
   void applyVelocityData(int iPrestart, int iTurb, ExtInfw_OutputType_t o_t_FAST, std::vector<double> & velData) ;
 

@@ -490,8 +490,11 @@ subroutine FAST_AL_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, Nu
    if (ErrStat >= AbortErrLev) then
       return
    end if
-   
-   call SetExternalInflow_pointers(iTurb, ExtInfw_Input_from_FAST, ExtInfw_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST)
+
+   InflowType = Turbine(iTurb)%p_FAST%CompInflow
+   if (InflowType == 2) then
+      call SetExternalInflow_pointers(iTurb, ExtInfw_Input_from_FAST, ExtInfw_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST)
+   end if
                         
    ! 7-Sep-2015: OpenFAST doesn't restrict the number of nodes on each blade mesh to be the same, so if this DOES ever change,
    ! we'll need to make ExternalInflow less tied to the AeroDyn mapping.
@@ -509,7 +512,6 @@ subroutine FAST_AL_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, Nu
       NumTwrElem_c = 0
    END IF   
 
-   InflowType = Turbine(iTurb)%p_FAST%CompInflow
    
 end subroutine FAST_AL_CFD_Init
 !==================================================================================================================================

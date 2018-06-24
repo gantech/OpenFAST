@@ -76,7 +76,7 @@ void fast::OpenFAST::init() {
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
                 FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                 checkError(ErrStat, ErrMsg);
-                
+
                 timeZero = true;
 
                 turbineData[iTurb].numVelPtsTwr = o_t_FAST[iTurb].u_Len - turbineData[iTurb].numBlades*turbineData[iTurb].numVelPtsBlade - 1;
@@ -84,7 +84,6 @@ void fast::OpenFAST::init() {
                     turbineData[iTurb].numForcePtsTwr = 0;
                     std::cout << "Aerodyn doesn't want to calculate forces on the tower. All actuator points on the tower are turned off for turbine " << turbineMapProcToGlob[iTurb] << "." << std::endl ;
                 }
-                
                 allocateMemory2(iTurb);
                 
                 get_data_from_openfast(fast::nm2);
@@ -810,17 +809,19 @@ void fast::OpenFAST::checkError(const int ErrStat, const char * ErrMsg){
     
 }
 
-void fast::OpenFAST::setExpLawWindSpeed(int iTurbLoc){
+void fast::OpenFAST::setExpLawWindSpeed(){
     
-    // routine sets the u-v-w wind speeds used in FAST and the SuperController inputs
-    int nVelPts = get_numVelPts(iTurbLoc);
-    int iTurbGlob = turbineMapProcToGlob[iTurbLoc];
-    for (int j = 0; j < nVelPts; j++){
-        std::vector<double> coords(3,0.0);
-        std::vector<double> tmpVel(3,0.0);
-        getVelNodeCoordinates(coords, j, iTurbGlob, fast::np1);
-        tmpVel[0] = (float) 10.0*pow((coords[2] / 90.0), 0.2); // 0.2 power law wind profile using reference 10 m/s at 90 meters
-        setVelocity(tmpVel, j, iTurbGlob);
+    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+        // routine sets the u-v-w wind speeds used in FAST 
+        int nVelPts = get_numVelPts(iTurb);
+        int iTurbGlob = turbineMapProcToGlob[iTurb];
+        for (int j = 0; j < nVelPts; j++){
+            std::vector<double> coords(3,0.0);
+            std::vector<double> tmpVel(3,0.0);
+            getVelNodeCoordinates(coords, j, iTurbGlob, fast::np1);
+            tmpVel[0] = (float) 10.0*pow((coords[2] / 90.0), 0.2); // 0.2 power law wind profile using reference 10 m/s at 90 meters
+            setVelocity(tmpVel, j, iTurbGlob);
+        }
     }
 }
 
@@ -1148,7 +1149,7 @@ void fast::OpenFAST::allocateMemory() {
         turbineProcs[nProcsWithTurbines] = *p;
         nProcsWithTurbines++ ;
     }
-    
+
     if (dryRun) {
         if (nTurbinesProc > 0) {
             std::ofstream turbineAllocFile;
@@ -1168,7 +1169,7 @@ void fast::OpenFAST::allocateMemory() {
     if (MPI_COMM_NULL != fastMPIComm) {
         MPI_Comm_rank(fastMPIComm, &fastMPIRank);
     }
-    
+
     turbineData.resize(nTurbinesProc);
     velForceNodeData.resize(nTurbinesProc);
     
@@ -1188,10 +1189,10 @@ void fast::OpenFAST::allocateMemory() {
         velForceNodeData[iTurb].resize(4); // To hold data for 4 time steps
         
     }
-    
+
     // Allocate memory for Turbine datastructure for all turbines
     FAST_AllocateTurbines(&nTurbinesProc, &ErrStat, ErrMsg);
-    
+
     // Allocate memory for ExtInfw Input types in FAST
     i_f_FAST.resize(nTurbinesProc) ;
     o_t_FAST.resize(nTurbinesProc) ;

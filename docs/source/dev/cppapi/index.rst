@@ -110,35 +110,35 @@ The C++ API uses the C-Fortran interface to call the same functions as the Fortr
    +------------------------------------+---------------------------------+-------------------------------+
    | C++ API - OpenFAST.cpp             | Fortran - FAST_Library.f90      | FAST_Subs.f90                 |
    +====================================+=================================+===============================+
-   | init()                             | FAST_OpFM_Init                  | FAST_InitializeAll_T          |
+   | init()                             | FAST_AL_CFD_Init                | FAST_InitializeAll_T          |
    +------------------------------------+---------------------------------+-------------------------------+
-   | solution0()                        | FAST_OpFM_Solution0             | FAST_Solution0_T              |
+   | solution0()                        | FAST_CFD_Solution0              | FAST_Solution0_T              |
    +------------------------------------+---------------------------------+-------------------------------+
-   | prework()                          | FAST_OpFM_Prework               | FAST_Prework_T                |
+   | prework()                          | FAST_CFD_Prework                | FAST_Prework_T                |
    +------------------------------------+---------------------------------+-------------------------------+
-   |                                    | FAST_OpFM_Store_SS              | FAST_Store_SS                 |
+   |                                    | FAST_CFD_Store_SS               | FAST_Store_SS                 |
    +------------------------------------+---------------------------------+-------------------------------+
-   | update_states_driver_time_step()   | FAST_OpFM_UpdateStates          | FAST_UpdateStates_T           |
+   | update_states_driver_time_step()   | FAST_CFD_UpdateStates           | FAST_UpdateStates_T           |
    +------------------------------------+---------------------------------+-------------------------------+
-   |                                    | FAST_OpFM_Reset_SS              | FAST_Reset_SS                 |
+   |                                    | FAST_CFD_Reset_SS               | FAST_Reset_SS                 |
    +------------------------------------+---------------------------------+-------------------------------+
-   | advance_to_next_driver_time_step() | FAST_OpFM_AdvanceToNextTimeStep | FAST_AdvanceToNextTimeStep_T  |
+   | advance_to_next_driver_time_step() | FAST_CFD_AdvanceToNextTimeStep  | FAST_AdvanceToNextTimeStep_T  |
    +------------------------------------+---------------------------------+-------------------------------+
 
 The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three different subroutines `FAST_Prework_T`, `FAST_UpdateStates_T` and `FAST_AdvanceToNextTimeStep_T` to allow for multiple *outer* iterations with external driver programs. Extra subroutines `FAST_Store_SS` and `FAST_Reset_SS` are introduced to move OpenFAST back by more than 1 time step when using *sub-stepping* with external driver programs. The typical order in which the Fortran subroutines will be accessed when using the C++ API from an external driver program is shown below.
 
 .. code-block:: fortran
 
-   call FAST_OpFM_Init
+   call FAST_AL_CFD_Init
 
-   call FAST_OpFM_Solution0
+   call FAST_CFD_Solution0
 
    do i=1, nTimesteps
       
       if (nSubsteps .gt. 1)
-            call FAST_OpFM_Store_SS
+            call FAST_CFD_Store_SS
       else
-            call FAST_OpFM_Prework
+            call FAST_CFD_Prework
       end if
       
       do iOuter=1, nOuterIterations
@@ -147,22 +147,22 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
 
             if (iOuter .ne. 1) then
                ! Reset OpenFAST back when not the first pass
-               call FAST_OpFM_Reset_SS
+               call FAST_CFD_Reset_SS
                
             end if 
             
             do j=1, nSubsteps
 
                ! Set external inputs into modules here for the substep
-               call FAST_OpFM_Prework
-               call FAST_OpFM_UpdateStates
-               call FAST_OpFM_AdvanceToNextTimeStep
+               call FAST_CFD_Prework
+               call FAST_CFD_UpdateStates
+               call FAST_CFD_AdvanceToNextTimeStep
 
             end do !Substeps
 
          else
 
-            call FAST_OpFM_UpdateStates
+            call FAST_CFD_UpdateStates
             
          end if
 
@@ -174,7 +174,7 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
          
       else
 
-         call FAST_OpFM_AdvanceToNextTimeStep
+         call FAST_CFD_AdvanceToNextTimeStep
          
       end if
 
@@ -182,7 +182,7 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
 
 
 
-The mapping of loads and deflections to the actuator points is performed in the :class:`OpenFOAM` module in OpenFAST. 
+The mapping of loads and deflections to the actuator points is performed in the :class:`ExternalInflow` module in OpenFAST. 
 
 
 Test for mapping procedure
