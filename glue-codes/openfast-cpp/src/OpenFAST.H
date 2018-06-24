@@ -214,9 +214,9 @@ class OpenFAST {
   std::vector<std::vector<turbVelForceNodeDataType>> velForceNodeData; 
 
   //! Data structure to get forces and deflections from OpenFAST
-  std::vector<OpFM_InputType_t> i_f_FAST; // Input from OpenFAST
+  std::vector<ExtInfw_InputType_t> i_f_FAST; // Input from OpenFAST
   //! Data structure to send velocity information to OpenFAST    
-  std::vector<OpFM_OutputType_t> o_t_FAST; // Output to OpenFAST
+  std::vector<ExtInfw_OutputType_t> o_t_FAST; // Output to OpenFAST
 
   //! Data structure to get inputs to supercontroller from turbines in OpenFAST
   std::vector<SC_InputType_t> sc_i_f_FAST;
@@ -334,7 +334,7 @@ class OpenFAST {
   //! Read velocity data at the Aerodyn nodes for all turbines from 'velData.h5'
   void readVelocityData(int nTimesteps);
   //! Write velocity data at the Aerodyn nodes for all turbines to 'velData.h5'  
-  void writeVelocityData(hid_t h5file, int iTurb, int iTimestep, OpFM_InputType_t iData, OpFM_OutputType_t oData);
+  void writeVelocityData(hid_t h5file, int iTurb, int iTimestep, ExtInfw_InputType_t iData, ExtInfw_OutputType_t oData);
   //! Close 'velData.h5' file 
   herr_t closeVelocityDataFile(int nt_global, hid_t velDataFile);
   //! Backup the velocity data file
@@ -455,7 +455,7 @@ class OpenFAST {
   //! An example function to set velocities at the Aerodyn nodes    
   void setExpLawWindSpeed(int iTurbLoc) ; // An example to set velocities at the Aerodyn nodes
   //! Apply the velocity data at the Aerodyn nodes in 'velData' to turbine number 'iTurb' at time step 'iPrestart' through the data structure 'cDriver_Output_to_FAST'
-  void applyVelocityData(int iPrestart, int iTurb, OpFM_OutputType_t o_t_FAST, std::vector<double> & velData) ;
+  void applyVelocityData(int iPrestart, int iTurb, ExtInfw_OutputType_t o_t_FAST, std::vector<double> & velData) ;
 
 };
 

@@ -51,7 +51,7 @@ void fast::OpenFAST::init() {
             
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
                 /* note that this will set nt_global inside the FAST library */
-                FAST_OpFM_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &ntStart, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                FAST_AL_CFD_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &ntStart, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                 checkError(ErrStat, ErrMsg);
                 nt_global = ntStart;
                 
@@ -74,7 +74,7 @@ void fast::OpenFAST::init() {
             // this calls the Init() routines of each module
             
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-                FAST_OpFM_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                 checkError(ErrStat, ErrMsg);
                 
                 timeZero = true;
@@ -101,7 +101,7 @@ void fast::OpenFAST::init() {
         case fast::restartDriverInitFAST:
             
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-                FAST_OpFM_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &i_f_FAST[iTurb], &o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                 checkError(ErrStat, ErrMsg);
                 
                 timeZero = true;
@@ -174,10 +174,10 @@ void fast::OpenFAST::solution0() {
         
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
             
-            FAST_OpFM_Solution0(&iTurb, &ErrStat, ErrMsg);
+            FAST_CFD_Solution0(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
             
-            FAST_OpFM_InitIOarrays_SS(&iTurb, &ErrStat, ErrMsg);
+            FAST_CFD_InitIOarrays_SS(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);       
         }
         
@@ -277,7 +277,7 @@ void fast::OpenFAST::prework() {
     if (nSubsteps_ > 1) {
         
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            FAST_OpFM_Store_SS(&iTurb, &nt_global, &ErrStat, ErrMsg) ;
+            FAST_CFD_Store_SS(&iTurb, &nt_global, &ErrStat, ErrMsg) ;
             checkError(ErrStat, ErrMsg);
         }
         
@@ -289,7 +289,7 @@ void fast::OpenFAST::prework() {
         }
         
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+            FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
         }
     }
@@ -305,7 +305,7 @@ void fast::OpenFAST::update_states_driver_time_step() {
 
         if (!firstPass_) {
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-                FAST_OpFM_Reset_SS(&iTurb, &nSubsteps_, &ErrStat, ErrMsg);
+                FAST_CFD_Reset_SS(&iTurb, &nSubsteps_, &ErrStat, ErrMsg);
                 checkError(ErrStat, ErrMsg);
             }
             nt_global = nt_global - nSubsteps_;
@@ -344,7 +344,7 @@ void fast::OpenFAST::update_states_driver_time_step() {
         send_data_to_openfast(fast::np1);
         
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+            FAST_CFD_UpdateStates(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
 
             // Compute the force from the nacelle only if the drag coefficient is
@@ -421,7 +421,7 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
                 
             }
             
-            FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+            FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
         
             if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
@@ -445,7 +445,7 @@ void fast::OpenFAST::advance_to_next_driver_time_step() {
     }
 
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-        FAST_OpFM_WriteOutput(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_WriteOutput(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
     }
         
@@ -526,7 +526,7 @@ void fast::OpenFAST::step(double ss_time) {
         // setExpLawWindSpeed(iTurb);
         
         // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
-        // (note OpenFOAM could do subcycling around this step)
+        // (note CFD could do subcycling around this step)
         
         if (turbineData[iTurb].inflowType == 2)
             writeVelocityData(velNodeDataFile, iTurb, nt_global, i_f_FAST[iTurb], o_t_FAST[iTurb]);
@@ -542,12 +542,12 @@ void fast::OpenFAST::step(double ss_time) {
             fastcpp_velocity_file.close() ;
         }
         
-        FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         send_data_to_openfast(ss_time);
-        FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_UpdateStates(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
-        FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         
         if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
@@ -588,7 +588,7 @@ void fast::OpenFAST::step() {
         // setExpLawWindSpeed(iTurb);
         
         // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
-        // (note OpenFOAM could do subcycling around this step)
+        // (note CFD could do subcycling around this step)
         
         if (turbineData[iTurb].inflowType == 2)
             writeVelocityData(velNodeDataFile, iTurb, nt_global, i_f_FAST[iTurb], o_t_FAST[iTurb]);
@@ -604,13 +604,13 @@ void fast::OpenFAST::step() {
             fastcpp_velocity_file.close() ;
         }
         
-        FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         send_data_to_openfast(fast::np1);
-        FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_UpdateStates(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         get_data_from_openfast(fast::np1);
-        FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
 
         // Compute the force from the nacelle only if the drag coefficient is
@@ -686,14 +686,14 @@ void fast::OpenFAST::stepNoWrite() {
         // setExpLawWindSpeed(iTurb);
         
         // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
-        // (note OpenFOAM could do subcycling around this step)
-        FAST_OpFM_Prework(&iTurb, &ErrStat, ErrMsg);
+        // (note CFD could do subcycling around this step)
+        FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         send_data_to_openfast(fast::np1);
-        FAST_OpFM_UpdateStates(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_UpdateStates(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         get_data_from_openfast(fast::np1);
-        FAST_OpFM_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+        FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
 
         // Compute the force from the nacelle only if the drag coefficient is
@@ -1192,7 +1192,7 @@ void fast::OpenFAST::allocateMemory() {
     // Allocate memory for Turbine datastructure for all turbines
     FAST_AllocateTurbines(&nTurbinesProc, &ErrStat, ErrMsg);
     
-    // Allocate memory for OpFM Input types in FAST
+    // Allocate memory for ExtInfw Input types in FAST
     i_f_FAST.resize(nTurbinesProc) ;
     o_t_FAST.resize(nTurbinesProc) ;
     
@@ -1389,7 +1389,7 @@ void fast::OpenFAST::backupVelocityDataFile(int curTimeStep, hid_t & velDataFile
     velDataFile = openVelocityDataFile(false);
 }
 
-void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, OpFM_InputType_t iData, OpFM_OutputType_t oData) {
+void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, ExtInfw_InputType_t iData, ExtInfw_OutputType_t oData) {
     
     hsize_t start[3]; start[0] = iTimestep; start[1] = 0; start[2] = 0;
     int nVelPts = get_numVelPtsLoc(iTurb) ;
@@ -1423,7 +1423,7 @@ void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, O
     
 }
 
-void fast::OpenFAST::applyVelocityData(int iPrestart, int iTurb, OpFM_OutputType_t o_t_FAST, std::vector<double> & velData) {
+void fast::OpenFAST::applyVelocityData(int iPrestart, int iTurb, ExtInfw_OutputType_t o_t_FAST, std::vector<double> & velData) {
     
     int nVelPts = get_numVelPtsLoc(iTurb);
     for (int j = 0; j < nVelPts; j++){
