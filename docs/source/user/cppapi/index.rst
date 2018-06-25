@@ -72,7 +72,11 @@ Common input file options
 
 .. confval:: n_checkpoint
 
-   Restart files will be written every so many time steps   
+   Restart files will be written every so many time steps
+
+.. confval:: set_exp_law_wind
+
+   Boolean value of True/False. When true, set velocity at the Aerodyn nodes using a power law wind profile using an exponent of 0.2 and a reference wind speed of 10 m/s at 90 meters. This option is useful to test the setup for actuator line simulations in individual mode before running massive CFD simulations. 
 
 Turbine specific input options
 ------------------------------

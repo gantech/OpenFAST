@@ -25,6 +25,8 @@ dt_FAST:  0.00625
 n_substeps: 1
 #Restart files will be written every so many time steps
 n_checkpoint: 160
+#Set velocity at the the turbine using an exponential law profile.
+set_exp_law_wind: false
 
 Turbine0:
   #The position of the turbine base for actuator-line simulations

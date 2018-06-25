@@ -3,9 +3,7 @@
 OpenFAST C++ Application Programming Interface
 ==============================================
 
-**Under construction.**
-
-OpenFAST provides a C++ application programming interface (API) to drive wind turbine simulations from an external program in C++. The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. The C++ API can also be used to create an external driver program or glue code that runs OpenFAST simulations of several wind turbines in parallel. 
+OpenFAST provides a C++ application programming interface (API) to drive wind turbine simulations from an external program in C++. The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. It currently supports FSI simulations using the actuator line method with plans to support blade-resolved FSI simulations in the near future. The C++ API can also be used to create an external driver program or glue code that runs OpenFAST simulations of several wind turbines in parallel. 
 
 The C++ API is defined and implemented in the :class:`~fast::OpenFAST` class. Any user who wants to write a glue-code for OpenFAST in C++ should instantiate an object of the OpenFAST class and use it to drive the simulation of turbines. A sample glue-code `FAST_Prog.cpp <https://github.com/OpenFAST/openfast/blob/dev/glue-codes/openfast-cpp/src/FAST_Prog.cpp>`_ is provided as a demonstration of the usage of the C++ API. The glue-code allows for the simulation of multiple turbines using OpenFAST in serial or in parallel over multiple processors. The message passing interface (MPI) is used to run the different instances of turbines in parallel. An abbrievated version of FAST_Prog.cpp is shown below. The highlighted lines indicate the use of the OpenFAST class.
 
@@ -182,8 +180,7 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
 
 
 
-The mapping of loads and deflections to the actuator points is performed in the :class:`ExternalInflow` module in OpenFAST. 
-
+The mapping of loads and deflections to the actuator points is performed in the :class:`ExternalInflow` module in OpenFAST. The C++ API supports the use of both BeamDyn and ElastoDyn to model the blades. When using BeamDyn to model the blade, the C++ API requires the use of only 1 finite element for each blade along with the choice of trapezoidal quadrature for actuator line simulations.
 
 Test for mapping procedure
 --------------------------
