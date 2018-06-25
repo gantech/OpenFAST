@@ -433,7 +433,7 @@ typedef	^	FAST_ModuleMapType	MeshMapType	SrvD_P_2_ED_P_N	-	-	-	"Map ServoDyn nac
 typedef	^	FAST_ModuleMapType	MeshMapType	ED_L_2_SrvD_P_T	-	-	-	"Map ElastoDyn tower line2 mesh to ServoDyn/TTMD point mesh"
 typedef	^	FAST_ModuleMapType	MeshMapType	SrvD_P_2_ED_P_T	-	-	-	"Map ServoDyn tower point mesh to ElastoDyn point load mesh on the tower"
 # ED/BD <-> AD (blades)
-typedef	^	FAST_ModuleMapType	MeshMapType	BDED_L_2_AD_L_B	{:}	-	-	"Map ElastoDyn BladeLn2Mesh point meshes OR BeamDyn BldMotion line2 meshes to AeroDyn14 InputMarkers OR AeroDyn BladeMotion line2 meshes"
+typedef	^	FAST_ModuleMapType	MeshMapType	BDED_L_2_AD_L_B	{:}	-	-	"Map ElastoDyn/BeamDyn BladeLn2Mesh point meshes OR BeamDyn BldMotion line2 meshes to AeroDyn14 InputMarkers OR AeroDyn BladeMotion line2 meshes"
 typedef	^	FAST_ModuleMapType	MeshMapType	AD_L_2_BDED_B	{:}	-	-	"Map AeroDyn14 InputMarkers or AeroDyn BladeLoad line2 meshes to ElastoDyn BladePtLoad point meshes or BeamDyn BldMotion line2 meshes"
 typedef	^	FAST_ModuleMapType	MeshMapType	BD_L_2_BD_L	{:}	-	-	"Map BeamDyn BldMotion output meshes to locations on the BD input DistrLoad mesh stored in MeshMapType%y_BD_BldMotion_4Loads (BD input and output meshes are not siblings and in fact have nodes at different locations"
 # ED <-> AD (tower, hub, blade root)
@@ -442,7 +442,13 @@ typedef	^	FAST_ModuleMapType	MeshMapType	AD_L_2_ED_P_T	-	-	-	"Map AeroDyn14 Twr_
 typedef	^	FAST_ModuleMapType	MeshMapType	ED_P_2_AD_P_R	{:}	-	-	"Map ElastoDyn BladeRootMotion point meshes to AeroDyn BladeRootMotion point meshes"
 typedef	^	FAST_ModuleMapType	MeshMapType	ED_P_2_AD_P_H	-	-	-	"Map ElastoDyn HubPtMotion point mesh to AeroDyn HubMotion point mesh"
 # ED/BD <-> ExtLd (blades)
-typedef  ^  FAST_ModuleMapType   MeshMapType ExtLd_P_2_BDED_B  {:}   -  -  "Map ExtLoads InputMarkers to ElastoDyn BladePtLoad point meshes or BeamDyn BldMotion line2 meshes"
+typedef  ^  FAST_ModuleMapType   MeshMapType BDED_L_2_ExtLd_P_B  {:}  -  -  "Map ElastoDyn/BeamDyn BladeLn2Mesh point meshes OR BeamDyn BldMotion line2 meshes to ExtLoads point meshes"
+typedef  ^  FAST_ModuleMapType   MeshMapType ExtLd_P_2_BDED_B    {:}  -  -  "Map ExtLoads at points to ElastoDyn BladePtLoad point meshes or BeamDyn BldMotion line2 meshes"
+# ED <-> ExtLd (tower, hub, blade root)
+typedef  ^  FAST_ModuleMapType   MeshMapType ED_L_2_ExtLd_P_T   -   -  -  "Map ElastoDyn TowerLn2Mesh line2 mesh to ExtLoads point mesh"
+typedef  ^  FAST_ModuleMapType   MeshMapType ExtLd_P_2_ED_P_T   -   -  -  "Map ExtLoads TowerLoad point mesh to ElastoDyn TowerPtLoads point mesh"
+typedef  ^  FAST_ModuleMapType   MeshMapType ED_P_2_ExtLd_P_R  {:}  -  -  "Map ElastoDyn BladeRootMotion point meshes to ExtLoads BladeRootMotion point meshes"
+typedef  ^  FAST_ModuleMapType   MeshMapType ED_P_2_ExtLd_P_H   -   -  -  "Map ElastoDyn HubPtMotion point mesh to ExtLoads HubMotion point mesh"
 # IceF <-> SD
 typedef	^	FAST_ModuleMapType	MeshMapType	IceF_P_2_SD_P	-	-	-	"Map IceFloe point mesh to SubDyn y2Mesh point mesh"
 typedef	^	FAST_ModuleMapType	MeshMapType	SD_P_2_IceF_P	-	-	-	"Map SubDyn y2Mesh point mesh to IceFloe point mesh"
