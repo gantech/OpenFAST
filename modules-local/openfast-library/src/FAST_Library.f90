@@ -113,7 +113,7 @@ subroutine FAST_Sizes(iTurb, TMax, InitInpAry, InputFileName_c, AbortErrLev_c, N
    ErrMsg_c      = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
    
 #ifdef CONSOLE_FILE   
-   if (ErrStat /= ErrID_None) call wrscr1(trim(ErrMsg))
+   if (ErrStat .ne. ErrID_None) call wrscr1(trim(ErrMsg))
 #endif   
     
       ! return the names of the output channels
@@ -438,9 +438,9 @@ subroutine FAST_AL_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, Nu
    INTEGER(C_INT),         INTENT(IN   ) :: NumCtrl2SC       ! controller outputs = Supercontroller inputs
    INTEGER(C_INT),         INTENT(IN   ) :: NumActForcePtsBlade ! number of actuator line force points in blade
    INTEGER(C_INT),         INTENT(IN   ) :: NumActForcePtsTower ! number of actuator line force points in tower
-   REAL(C_FLOAT),          INTENT(IN   ) :: TurbPosn(3)      
+   REAL(C_FLOAT),          INTENT(IN   ) :: TurbPosn(3)
+   REAL(C_DOUBLE),         INTENT(IN   ) :: dt_c   
    INTEGER(C_INT),         INTENT(  OUT) :: AbortErrLev_c      
-   REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c
    INTEGER(C_INT),         INTENT(  OUT) :: InflowType    ! inflow type - 1 = From Inflow module, 2 = External
    INTEGER(C_INT),         INTENT(  OUT) :: NumBl_c      
    INTEGER(C_INT),         INTENT(  OUT) :: NumBlElem_c
@@ -481,20 +481,34 @@ subroutine FAST_AL_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, Nu
    CALL FAST_InitializeAll_T( t_initial, 1_IntKi, Turbine(iTurb), ErrStat, ErrMsg, InputFileName, ExternInitData )
 
       ! set values for return to ExternalInflow
-   AbortErrLev_c = AbortErrLev   
-   dt_c          = Turbine(iTurb)%p_FAST%dt
-   ErrStat_c     = ErrStat
-   ErrMsg        = TRIM(ErrMsg)//C_NULL_CHAR
-   ErrMsg_c      = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
-
-   if (ErrStat >= AbortErrLev) then
+   if (ErrStat .ne. ErrID_None) then
+      AbortErrLev_c = AbortErrLev
+      ErrStat_c = ErrStat
+      ErrMsg_c  = TRANSFER( TRIM(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
+      return
+   end if
+   
+   if ( abs(dt_c - Turbine(iTurb)%p_FAST%dt) .gt. 1e-6) then
+      CALL SetErrStat(ErrID_Fatal, "Time step specified in C++ API does not match with time step specified in OpenFAST input file.", ErrStat, ErrMsg, RoutineName )
+      ErrStat_c = ErrStat
+      ErrMsg_c  = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
       return
    end if
 
    InflowType = Turbine(iTurb)%p_FAST%CompInflow
-   if (InflowType == 2) then
-      call SetExternalInflow_pointers(iTurb, ExtInfw_Input_from_FAST, ExtInfw_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST)
+
+   if ( (InflowType ==2) .and. (NumActForcePtsBlade .eq. 0) .and. (NumActForcePtsTower .eq. 0) ) then
+      CALL SetErrStat(ErrID_Warn, "Number of actuator points is zero when inflow type is 2. Mapping of loads may not work. ", ErrStat, ErrMsg, RoutineName )
    end if
+
+   if ( (InflowType .ne. 2) .and. ((NumActForcePtsBlade .ne. 0) .or. (NumActForcePtsTower .ne. 0)) ) then
+      CALL SetErrStat(ErrID_Fatal, "Number of requested actuator points is non-zero when inflow type is not 2. Please set number of actuator points to zero when induction is turned on.", ErrStat, ErrMsg, RoutineName )
+      ErrStat_c = ErrStat
+      ErrMsg_c  = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
+      return
+   end if
+   
+   call SetExternalInflow_pointers(iTurb, ExtInfw_Input_from_FAST, ExtInfw_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST)
                         
    ! 7-Sep-2015: OpenFAST doesn't restrict the number of nodes on each blade mesh to be the same, so if this DOES ever change,
    ! we'll need to make ExternalInflow less tied to the AeroDyn mapping.
@@ -512,6 +526,8 @@ subroutine FAST_AL_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumSC2Ctrl, Nu
       NumTwrElem_c = 0
    END IF   
 
+   ErrStat_c     = ErrStat
+   ErrMsg_c      = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
    
 end subroutine FAST_AL_CFD_Init
 !==================================================================================================================================
@@ -540,7 +556,7 @@ subroutine FAST_CFD_Solution0(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_CF
       ! set values for return to ExternalInflow
    ErrStat_c     = ErrStat
    ErrMsg        = TRIM(ErrMsg)//C_NULL_CHAR
-   ErrMsg_c      = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
+   ErrMsg_c      = TRANSFER( ErrMsg, ErrMsg_c )
    
                         
 end subroutine FAST_CFD_Solution0
@@ -626,10 +642,20 @@ subroutine FAST_AL_CFD_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c,
    ErrMsg_c      = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
 
 #ifdef CONSOLE_FILE   
-   if (ErrStat /= ErrID_None) call wrscr1(trim(ErrMsg))
+   if (ErrStat .ne. ErrID_None) call wrscr1(trim(ErrMsg))
 #endif
 
    InflowType = Turbine(iTurb)%p_FAST%CompInflow
+
+   if (ErrStat .ne. ErrID_None) then
+      call wrscr1(trim(ErrMsg))
+      return
+   end if
+
+   if (dt_c == Turbine(iTurb)%p_FAST%dt) then
+      CALL SetErrStat(ErrID_Fatal, "Time step specified in C++ API does not match with time step specified in OpenFAST input file.", ErrStat, ErrMsg, RoutineName )
+      return
+   end if
    
    call SetExternalInflow_pointers(iTurb, ExtInfw_Input_from_FAST, ExtInfw_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST)
 

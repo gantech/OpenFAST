@@ -802,7 +802,7 @@ void fast::OpenFAST::checkError(const int ErrStat, const char * ErrMsg){
     if (ErrStat != ErrID_None){
         
         if (ErrStat >= AbortErrLev){
-            throw std::runtime_error(ErrMsg);
+            throw std::runtime_error(std::string(ErrMsg));
         }
         
     }
