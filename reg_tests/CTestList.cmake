@@ -61,9 +61,18 @@ function(of_regression TESTNAME LABEL)
   set(TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/executeOpenfastRegressionCase.py")
   set(OPENFAST_EXECUTABLE "${CTEST_OPENFAST_EXECUTABLE}")
   set(SOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/..")
-  set(BUILD_DIRECTORY "${CTEST_BINARY_DIR}/glue-codes/fast")
+  set(BUILD_DIRECTORY "${CTEST_BINARY_DIR}/glue-codes/openfast")
   regression(${TEST_SCRIPT} ${OPENFAST_EXECUTABLE} ${SOURCE_DIRECTORY} ${BUILD_DIRECTORY} ${TESTNAME} "${LABEL}")
 endfunction(of_regression)
+
+# openfast-cpp
+function(ofcpp_regression TESTNAME LABEL)
+  set(TEST_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/executeOpenfastcppRegressionCase.py")
+  set(OPENFASTCPP_EXECUTABLE "${CTEST_OPENFASTCPP_EXECUTABLE}")
+  set(SOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/..")
+  set(BUILD_DIRECTORY "${CTEST_BINARY_DIR}/glue-codes/openfast-cpp")
+  regression(${TEST_SCRIPT} ${OPENFASTCPP_EXECUTABLE} ${SOURCE_DIRECTORY} ${BUILD_DIRECTORY} ${TESTNAME} "${LABEL}")
+endfunction(ofcpp_regression)
 
 # beamdyn
 function(bd_regression TESTNAME LABEL)
@@ -106,8 +115,12 @@ of_regression("5MW_OC3Spar_DLL_WTurb_WavesIrr"         "openfast;elastodyn;aerod
 of_regression("5MW_OC4Semi_WSt_WavesWN"                "openfast;elastodyn;aerodyn15;servodyn;hydrodyn;moordyn")
 of_regression("5MW_Land_BD_DLL_WTurb"                  "openfast;beamdyn;aerodyn15;servodyn")
 
+#OpenFAST-C++ regression tests
+ofcpp_regression("5MW_Land_DLL_WTurb_cpp"              "openfast-cpp;elastodyn;aerodyn15;servodyn")
+
 # BeamDyn regression tests
-bd_regression("bd_static_cantilever_beam" "beamdyn;static")
-bd_regression("bd_isotropic_rollup"       "beamdyn;static")
-bd_regression("bd_curved_beam"            "beamdyn;static")
 bd_regression("bd_5MW_dynamic"            "beamdyn;dynamic")
+bd_regression("bd_curved_beam"            "beamdyn;static")
+bd_regression("bd_isotropic_rollup"       "beamdyn;static")
+bd_regression("bd_static_cantilever_beam" "beamdyn;static")
+bd_regression("bd_static_twisted_with_k1" "beamdyn;static")
