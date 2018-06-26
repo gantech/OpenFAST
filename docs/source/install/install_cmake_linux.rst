@@ -8,19 +8,6 @@ build system on Linux or Mac OS systems. Separate `CMake <https://cmake.org>`_ d
 provided for Windows Cygwin users: see :numref:`install_cmake_cygwin`. Also, some template
 build scripts are available in ``openfast/share``.
 
-Required software for building OpenFAST 
----------------------------------------
-
-In order to build OpenFAST using CMake, one needs the following minimum set of packages installed:
-
-- Fortran compiler (GNU compiler version above 4.6.0 or Intel compiler version above 11)
-
-- C/C++ compiler
-
-- GNU Make (version 3.81 or later)
-
-- CMake (version 2.8.12 or later)
-
 OpenFAST third party library dependencies
 -----------------------------------------
 
