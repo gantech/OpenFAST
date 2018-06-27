@@ -1156,6 +1156,66 @@ fast::ActuatorNodeType fast::OpenFAST::getForceNodeType(int iTurbGlob, int iNode
     
 }
 
+void fast::OpenFAST::getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nBlades = get_numBladesLoc(iTurbLoc);
+    int iRunTot = 0;
+    for (int i=0; i < nBlades; i++) {
+        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+        for(int j=0; j<nPtsBlade; j++) {
+            for (int k=0; k < 6; k++) {
+                bldDefl[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_def[iRunTot*6+k];
+                bldVel[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+k];
+            }
+            iRunTot++;
+        }
+    }
+    
+}
+
+void fast::OpenFAST::getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+    for (int i=0; i < nPtsTwr; i++) {
+        for (int j=0; j < 6; j++) {
+            twrDefl[i*6+j] = brFSIData[iTurbLoc][t].twr_def[i*6+j];
+            twrVel[i*6+j] = brFSIData[iTurbLoc][t].twr_vel[i*6+j];            
+        }
+    }
+    
+}
+
+void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iBlade, int iTurbGlob, fast::timeStep t) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nBlades = get_numBladesLoc(iTurbLoc);
+    int iRunTot = 0;
+    for (int i=0; i < nBlades; i++) {
+        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+        for(int j=0; j < nPtsBlade; j++) {
+            for(int k=0; k < 6; k++) {
+                brFSIData[iTurbLoc][t].bld_ld[6*iRunTot+k] = bldForces[6*iRunTot+k];
+            }
+            iRunTot++;
+        }
+    }
+    //TODO: May be calculate the residual as well. 
+}
+
+void fast::OpenFAST::setTowerForces(std::vector<double> & twrForces, int iTurbGlob, fast::timeStep t) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+    for (int i=0; i < nPtsTwr; i++)
+        for (int j=0; j < 6; j++) 
+            brFSIData[iTurbLoc][t].twr_ld[i*6+j] = twrForces[i*6+j];
+    //TODO: May be calculate the residual as well.     
+    
+}
+
+
 void fast::OpenFAST::allocateMemory() {
     
     for (int iTurb=0; iTurb < nTurbinesGlob; iTurb++) {
@@ -1202,6 +1262,7 @@ void fast::OpenFAST::allocateMemory() {
 
     turbineData.resize(nTurbinesProc);
     velForceNodeData.resize(nTurbinesProc);
+    brFSIData.resize(nTurbinesProc);
     
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
@@ -1216,8 +1277,10 @@ void fast::OpenFAST::allocateMemory() {
             turbineData[iTurb].TurbineBasePos[i] = globTurbineData[iTurbGlob].TurbineBasePos[i];
         turbineData[iTurb].numForcePtsBlade = globTurbineData[iTurbGlob].numForcePtsBlade;
         turbineData[iTurb].numForcePtsTwr = globTurbineData[iTurbGlob].numForcePtsTwr;
-        
-        velForceNodeData[iTurb].resize(4); // To hold data for 4 time steps
+
+        // To hold data for 4 time steps
+        velForceNodeData[iTurb].resize(4); 
+        brFSIData[iTurb].resize(4); 
         
     }
 
@@ -1238,8 +1301,30 @@ void fast::OpenFAST::allocateMemory() {
 }
 
 void fast::OpenFAST::allocateMemory2(int iTurbLoc) {
-    
-    if ( turbineData[iTurbLoc].inflowType == 2) {
+
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+        turbineData[iTurbLoc].nBRfsiPtsBlade = std::vector<int>(turbineData[iTurbLoc].numBlades,0);
+        turbineData[iTurbLoc].nBRfsiPtsTwr = 0;
+    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
+        turbineData[iTurbLoc].nBRfsiPtsBlade.resize(turbineData[iTurbLoc].numBlades);
+        int nTotBldNds = 0;
+        for(int i=0; i < turbineData[iTurbLoc].numBlades; i++) {
+            nTotBldNds += extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
+            turbineData[iTurbLoc].nBRfsiPtsBlade[i] = extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
+        }
+        turbineData[iTurbLoc].nBRfsiPtsTwr = extld_i_f_FAST[iTurbLoc].nTowerNodes;
+        
+        for(int k=0; k<4; k++) {
+            brFSIData[iTurbLoc][k].twr_def.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
+            brFSIData[iTurbLoc][k].twr_vel.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
+            brFSIData[iTurbLoc][k].bld_def.resize(6*nTotBldNds);
+            brFSIData[iTurbLoc][k].bld_vel.resize(6*nTotBldNds);
+            brFSIData[iTurbLoc][k].twr_ld.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
+            brFSIData[iTurbLoc][k].bld_ld.resize(6*nTotBldNds);
+        }
+    }
+
+    if ( (turbineData[iTurbLoc].sType == EXTINFLOW) && (turbineData[iTurbLoc].inflowType == 2) ) {
         //Inflow data is coming from external program like a CFD solver
         turbineData[iTurbLoc].numForcePts = 1 + turbineData[iTurbLoc].numForcePtsTwr + turbineData[iTurbLoc].numBlades * turbineData[iTurbLoc].numForcePtsBlade ;
         turbineData[iTurbLoc].numVelPts = 1 + turbineData[iTurbLoc].numVelPtsTwr + turbineData[iTurbLoc].numBlades * turbineData[iTurbLoc].numVelPtsBlade ;
@@ -1273,6 +1358,7 @@ void fast::OpenFAST::allocateMemory2(int iTurbLoc) {
         turbineData[iTurbLoc].numVelPtsBlade = 0;
         turbineData[iTurbLoc].numVelPts = 0;
     }
+
 }
 
 void fast::OpenFAST::allocateTurbinesToProcsSimple() {
@@ -1482,6 +1568,27 @@ void fast::OpenFAST::send_data_to_openfast(fast::timeStep t) {
                 extinfw_o_t_FAST[iTurb].w[iNodeVel] = velForceNodeData[iTurb][t].vel_vel[iNodeVel*3+2];
             }
         }
+
+        if(turbineData[iTurb].sType == EXTLOADS) {
+
+            int nBlades = turbineData[iTurb].numBlades;
+            int iRunTot = 0;
+            for(int i=0; i < nBlades; i++) {
+                int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[i];
+                for (int j=0; j < nPtsBlade; j++) {
+                    for (int k=0; k<6; k++) {
+                        extld_o_t_FAST[iTurb].bldLd[iRunTot*6+k] = brFSIData[iTurb][t].bld_ld[i];
+                    }
+                    iRunTot++;
+                }
+            }
+            
+            int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
+            for (int i=0; i < nPtsTwr*6; i++)
+                extld_o_t_FAST[iTurb].twrLd[i] = brFSIData[iTurb][t].twr_ld[i];
+
+        }
+        
     }
 }
 
@@ -1546,6 +1653,33 @@ void fast::OpenFAST::get_data_from_openfast(timeStep t) {
                 velForceNodeData[iTurb][t].force[i*3+2] = extinfw_i_f_FAST[iTurb].fz[i];
             }
         }
+
+        if(turbineData[iTurb].sType == EXTLOADS) {
+
+            int nBlades = turbineData[iTurb].numBlades;
+            int iRunTot = 0;
+            for (int i=0; i < nBlades; i++) {
+                int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[i];
+                for (int j=0; j < nPtsBlade; j++) {
+                    for (int k=0; k < 6; k++) {
+                        brFSIData[iTurb][t].bld_def[iRunTot*6+k] = extld_i_f_FAST[iTurb].bldDef[iRunTot*12+k];
+                        brFSIData[iTurb][t].bld_vel[iRunTot*6+k] = extld_i_f_FAST[iTurb].bldDef[iRunTot*12+6+k];
+                    }
+                    iRunTot++;
+                }
+            }
+            
+            int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
+            for (int i=0; i < nPtsTwr; i++) {
+                for (int j = 0; j < 6; j++) {
+                    brFSIData[iTurb][t].twr_def[i*6+j] = extld_i_f_FAST[iTurb].twrDef[i*12+j];
+                    brFSIData[iTurb][t].twr_vel[i*6+j] = extld_i_f_FAST[iTurb].twrDef[i*12+6+j];
+                }
+            }
+
+            //TODO: May be calculate the residual here as well
+        }
+        
     }
 }
 
