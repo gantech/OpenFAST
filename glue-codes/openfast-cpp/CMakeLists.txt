@@ -30,6 +30,7 @@ include_directories(${ZLIB_INCLUDES})
 include_directories(${LIBXML2_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/modules-local/openfast-library/src/)
 include_directories(${CMAKE_BINARY_DIR}/modules-local/externalinflow/)
+include_directories(${CMAKE_BINARY_DIR}/modules-local/extloads/)
 include_directories(${CMAKE_BINARY_DIR}/modules-local/supercontroller/)
 include_directories(${MPI_INCLUDE_PATH})
 

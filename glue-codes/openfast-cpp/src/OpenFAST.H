@@ -22,6 +22,13 @@
 
 namespace fast {
 
+//! An id to indicate the type of simulation for each turbine - Simple/Actuator with optional externally specified inflow or Blade-Resolved with externally specified loads
+enum simType {
+    EXTINFLOW = 0,
+    EXTLOADS  = 1,
+    simType_END
+};    
+    
 //! A data structure to hold all turbine related information
 struct turbineDataType {
     //!Integer id for every turbine
@@ -34,6 +41,8 @@ struct turbineDataType {
     std::vector<float> TurbineBasePos;
     //! The approximate position of the hub of the turbine in global coordinates
     std::vector<double> TurbineHubPos;
+    //! Simulation type
+    simType sType;
     //! Number of blades 
     int numBlades;
     //! Number of velocity nodes (AeroDyn) per blade
@@ -57,6 +66,7 @@ struct turbineDataType {
     //! Air density around this turbine
     float air_density;
 };
+
 
 //! An id to indicate whether a particular actuator point is on the hub, node or tower    
 enum ActuatorNodeType {
@@ -213,11 +223,16 @@ class OpenFAST {
   //! Array containing data at the velocity and force nodes    
   std::vector<std::vector<turbVelForceNodeDataType>> velForceNodeData; 
 
-  //! Data structure to get forces and deflections from OpenFAST
-  std::vector<ExtInfw_InputType_t> i_f_FAST; // Input from OpenFAST
-  //! Data structure to send velocity information to OpenFAST    
-  std::vector<ExtInfw_OutputType_t> o_t_FAST; // Output to OpenFAST
+  //! Data structure to get forces and deflections from ExternalInflow module in OpenFAST
+  std::vector<ExtInfw_InputType_t> extinfw_i_f_FAST; // Input from OpenFAST
+  //! Data structure to send velocity information to ExternalInflow module in OpenFAST    
+  std::vector<ExtInfw_OutputType_t> extinfw_o_t_FAST; // Output to OpenFAST
 
+  //! Data structure to get deflections from ExternalLoads module in OpenFAST
+  std::vector<ExtLdDX_InputType_t> extld_i_f_FAST; // Input from OpenFAST
+  //! Data structure to send force information to ExternalLoads module in OpenFAST    
+  std::vector<ExtLdDX_OutputType_t> extld_o_t_FAST; // Output to OpenFAST
+    
   //! Data structure to get inputs to supercontroller from turbines in OpenFAST
   std::vector<SC_InputType_t> sc_i_f_FAST;
   //! Data structure to send outputs from supercontroller to turbines in OpenFAST    
