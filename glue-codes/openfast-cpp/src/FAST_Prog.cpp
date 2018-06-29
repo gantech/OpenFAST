@@ -16,6 +16,15 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
   } else {
       turbNode["turb_id"] = iTurb;
   }
+  if (turbNode["sim_type"]) {
+      if (turbNode["sim_type"].as<std::string>() == "ext-loads") {
+          fi.globTurbineData[iTurb].sType = fast::EXTLOADS;
+      } else {
+          fi.globTurbineData[iTurb].sType = fast::EXTINFLOW;
+      }
+  } else {
+      fi.globTurbineData[iTurb].sType = fast::EXTINFLOW;
+  }
   if (turbNode["FAST_input_filename"]) {
       fi.globTurbineData[iTurb].FASTInputFileName = turbNode["FAST_input_filename"].as<std::string>() ;  
   } else {
@@ -65,7 +74,7 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
   }
 }
 
-void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd, int * couplingMode, bool * setExpLawWind) {
+void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd, int * couplingMode, bool * setExpLawWind, bool * setUniformXBladeForces) {
 
   fi.comm = MPI_COMM_WORLD;
 
@@ -146,6 +155,12 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
       } else {
           *setExpLawWind = false;
       }
+
+      if(cDriverInp["set_uniform_x_blade_forces"]) {
+          *setUniformXBladeForces = cDriverInp["set_uniform_x_blade_forces"].as<bool>();
+      } else {
+          *setUniformXBladeForces = false;
+      }
       
       if(cDriverInp["super_controller"]) {
 	fi.scStatus = cDriverInp["super_controller"].as<bool>();
@@ -188,12 +203,13 @@ int main() {
   double tEnd ; // This doesn't belong in the FAST - C++ interface 
   int ntStart, ntEnd ; // This doesn't belong in the FAST - C++ interface
   bool setExpLawWind; // Set wind speed at Aerodyn nodes based on an exponential profile. Useful for testing the C++ API before running actuator line simulations.
+  bool setUniformXBladeForces; // Set uniform X blade forces on all blade nodes
 
   std::string cDriverInputFile="cDriver.i";
   fast::OpenFAST FAST;
   fast::fastInputs fi ;
   try {
-      readInputFile(fi, cDriverInputFile, &tEnd, &couplingMode, &setExpLawWind);
+      readInputFile(fi, cDriverInputFile, &tEnd, &couplingMode, &setExpLawWind, &setUniformXBladeForces);
   }
   catch( const std::runtime_error & ex) {
     std::cerr << ex.what() << std::endl ;
@@ -223,7 +239,9 @@ int main() {
         if (couplingMode == 0) {
             // If running with a CFD solver, sample velocities at the actuator/velocity nodes here
             if (setExpLawWind)
-                FAST.setExpLawWindSpeed();   
+                FAST.setExpLawWindSpeed();
+            if (setUniformXBladeForces)
+                FAST.setUniformXBladeForces();
             for (int iSubstep=1; iSubstep < fi.nSubsteps+1; iSubstep++)
                 FAST.step();
             // Get forces at actuator nodes and advance CFD solve by one time step here

@@ -188,7 +188,8 @@ void fast::OpenFAST::solution0() {
         // for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
         //     setExpLawWindSpeed(iTurb);
         // }
-        
+
+        std::cout << "Running solution0 " << std::endl ;
         if(scStatus) {
             
             sc->init(nTurbinesGlob, numScInputs, numScOutputs);
@@ -1192,15 +1193,17 @@ void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iBlade,
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
     int iRunTot = 0;
-    for (int i=0; i < nBlades; i++) {
-        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
-        for(int j=0; j < nPtsBlade; j++) {
-            for(int k=0; k < 6; k++) {
-                brFSIData[iTurbLoc][t].bld_ld[6*iRunTot+k] = bldForces[6*iRunTot+k];
-            }
-            iRunTot++;
+    for (int i=0; i < iBlade; i++)
+        iRunTot += turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+
+    int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[iBlade];    
+    for(int j=0; j < nPtsBlade; j++) {
+        for(int k=0; k < 6; k++) {
+            brFSIData[iTurbLoc][t].bld_ld[6*iRunTot+k] = bldForces[6*iRunTot+k];
         }
+        iRunTot++;
     }
+    
     //TODO: May be calculate the residual as well. 
 }
 
@@ -1215,6 +1218,25 @@ void fast::OpenFAST::setTowerForces(std::vector<double> & twrForces, int iTurbGl
     
 }
 
+//! Sets a uniform X force at all blade nodes 
+void fast::OpenFAST::setUniformXBladeForces() {
+    
+    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+        int iTurbGlob = turbineMapProcToGlob[iTurb];
+        int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
+        std::vector<double> fsiForceTower(6*nPtsTwr,0.0);
+        setTowerForces(fsiForceTower, iTurbGlob, fast::np1);
+            
+        int nBlades = get_numBladesLoc(iTurb);
+        for(int iBlade=0; iBlade < nBlades; iBlade++) {
+            int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[iBlade];
+            std::vector<double> fsiForceBlade(6*nPtsBlade, 0.0);
+            for(int i=0; i < nPtsBlade; i++)
+                fsiForceBlade[i*6] = 5e-4; // X component of force
+            setBladeForces(fsiForceBlade, iBlade, iTurbGlob, fast::np1);
+        }
+    }
+}
 
 void fast::OpenFAST::allocateMemory() {
     

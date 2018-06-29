@@ -417,13 +417,13 @@ class OpenFAST {
 
 
   //! Get the blade deflections array 'bldDefl' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
-    void getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVell, int iBlade, int iTurbGlob, fast::timeStep t);
-    //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
-    void getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t);
-    //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
-    void setBladeForces(std::vector<double> & bldForce, int iBlade, int iTurbGlob, fast::timeStep t);
-    //! Set the tower force array 'twrForce' of turbine number 'iTurbGlob' at time step 't'
-    void setTowerForces(std::vector<double> & twrForce, int iTurbGlob, fast::timeStep t);
+  void getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t);
+  //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
+  void getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t);
+  //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
+  void setBladeForces(std::vector<double> & bldForce, int iBlade, int iTurbGlob, fast::timeStep t);
+  //! Set the tower force array 'twrForce' of turbine number 'iTurbGlob' at time step 't'
+  void setTowerForces(std::vector<double> & twrForce, int iTurbGlob, fast::timeStep t);
     
     
   //! Get the starting time step of the simulation
@@ -469,7 +469,10 @@ class OpenFAST {
   void computeTorqueThrust(int iTurGlob, std::vector<double> &  torque, std::vector<double> &  thrust);
 
   //! An example function to set velocities at the Aerodyn nodes using a power law wind profile using an exponent of 0.2 and a reference wind speed of 10 m/s at 90 meters.
-  void setExpLawWindSpeed() ; // An example to set velocities at the Aerodyn nodes    
+  void setExpLawWindSpeed() ; 
+
+  //! An example function to set a uniform X force at all blade nodes
+  void setUniformXBladeForces();
 
  private:
 
