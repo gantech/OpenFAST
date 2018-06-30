@@ -23,7 +23,7 @@
 !**********************************************************************************************************************************
 !> ExtLoads is a time-domain loads module for horizontal-axis wind turbines.
 module ExtLoads
-    
+
    use NWTC_Library
    use ExtLoads_Types
    
@@ -111,8 +111,18 @@ subroutine ExtLd_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMsg )
 
       ! Initialize the NWTC Subroutine Library
 
-   call NWTC_Init( EchoLibVer=.FALSE. )
-
+      ! Set parameters here
+   p%NumBlds = InitInp%NumBlades
+   call AllocAry(p%NumBldNds, p%NumBlds, 'NumBldNds', ErrStat2,ErrMsg2)
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+     if (ErrStat >= AbortErrLev) then
+        call Cleanup()
+        return
+     end if
+   p%NumBldNds(:) = InitInp%NumBldNodes(:)
+   p%nTotBldNds = sum(p%NumBldNds(:))
+   p%NumTwrNds = InitInp%NumTwrNds
+   p%TwrAero = InitInp%TwrAero
 
       !............................................................................................
       ! Define and initialize inputs here 
@@ -270,6 +280,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
                        ,Orientation     = .true.    &
                        ,TranslationDisp = .true.    &
                        ,TranslationVel  = .true.    &
+                       ,RotationVel = .true.        &
                       )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
@@ -299,6 +310,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       u%TowerMotion%Orientation     = u%TowerMotion%RefOrientation
       u%TowerMotion%TranslationDisp = 0.0_R8Ki
       u%TowerMotion%TranslationVel  = 0.0_ReKi
+      u%TowerMotion%RotationVel = 0.0_ReKi
       
    end if ! we compute tower loads
    
@@ -313,6 +325,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
                        ,ErrMess   = ErrMsg2         &
                        ,Orientation     = .true.    &
                        ,TranslationDisp = .true.    &
+                       ,TranslationVel  = .true.    &
                        ,RotationVel     = .true.    &
                       )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
@@ -333,12 +346,19 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
          
       u%HubMotion%Orientation     = u%HubMotion%RefOrientation
       u%HubMotion%TranslationDisp = 0.0_R8Ki
-      u%HubMotion%RotationVel     = 0.0_ReKi   
+      u%HubMotion%TranslationVel = 0.0_R8Ki
+      u%HubMotion%RotationVel     = 0.0_R8Ki   
       
          !................
          ! blades
          !................
-   
+
+      allocate( u%BladeRootMotion(p%NumBlds), STAT = ErrStat2 )
+      if (ErrStat2 /= 0) then
+         call SetErrStat( ErrID_Fatal, 'Error allocating u%BladeRootMotion array.', ErrStat, ErrMsg, RoutineName )
+         return
+      end if
+      
       allocate( u%BladeMotion(p%NumBlds), STAT = ErrStat2 )
       if (ErrStat2 /= 0) then
          call SetErrStat( ErrID_Fatal, 'Error allocating u%BladeMotion array.', ErrStat, ErrMsg, RoutineName )
@@ -346,6 +366,38 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       end if
       
       do k=1,p%NumBlds
+
+
+         call MeshCreate ( BlankMesh = u%BladeRootMotion(k)     &
+              ,IOS       = COMPONENT_INPUT &
+              ,Nnodes    = 1               &
+              ,ErrStat   = ErrStat2        &
+              ,ErrMess   = ErrMsg2         &
+              ,Orientation     = .true.    &
+              ,TranslationDisp = .true.    &
+              ,TranslationVel  = .true.    &
+              ,RotationVel     = .true.    &
+              )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         
+         if (errStat >= AbortErrLev) return
+         
+         call MeshPositionNode(u%BladeRootMotion(k), 1, InitInp%BldRootPos(:,k), errStat2, errMsg2, InitInp%BldRootOrient(:,:,k))
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         
+         call MeshConstructElement( u%BladeRootMotion(k), ELEMENT_POINT, errStat2, errMsg2, p1=1 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         
+         call MeshCommit(u%BladeRootMotion(k), errStat2, errMsg2 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         
+         if (errStat >= AbortErrLev) return
+         
+         u%BladeRootMotion(k)%Orientation     = u%BladeRootMotion(k)%RefOrientation
+         u%BladeRootMotion(k)%TranslationDisp = 0.0_R8Ki
+         u%BladeRootMotion(k)%TranslationVel  = 0.0_R8Ki
+         u%BladeRootMotion(k)%RotationVel     = 0.0_R8Ki   
+         
          call MeshCreate ( BlankMesh = u%BladeMotion(k)                     &
                           ,IOS       = COMPONENT_INPUT                      &
                           ,Nnodes    = InitInp%NumBldNodes(k) &
@@ -354,6 +406,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
                           ,Orientation     = .true.                         &
                           ,TranslationDisp = .true.                         &
                           ,TranslationVel  = .true.                         &
+                          ,RotationVel = .true.                             &
                          )
                call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
@@ -387,7 +440,8 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       
          u%BladeMotion(k)%Orientation     = u%BladeMotion(k)%RefOrientation
          u%BladeMotion(k)%TranslationDisp = 0.0_R8Ki
-         u%BladeMotion(k)%TranslationVel  = 0.0_ReKi
+         u%BladeMotion(k)%TranslationVel  = 0.0_R8Ki
+         u%BladeMotion(k)%RotationVel = 0.0_R8Ki
    
    end do !k=numBlades
 
@@ -442,23 +496,23 @@ subroutine ConvertInpDataForExtProg(u, p, errStat, errMsg )
          call BD_CrvExtractCrv(u%TowerMotion%Orientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
          call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
 
-         u%DX_u%twrDef((j-1)*12+1:3) = u%TowerMotion%TranslationDisp(:,j)
-         u%DX_u%twrDef((j-1)*12+4:6) = u%TowerMotion%TranslationVel(:,j)
-         u%DX_u%twrDef((j-1)*12+7:9) = wm_crv
-         u%DX_u%twrDef((j-1)*12+10:12) = u%TowerMotion%RotationVel(:,j)
+         u%DX_u%twrDef((j-1)*12+1:(j-1)*12+3) = u%TowerMotion%TranslationDisp(:,j)
+         u%DX_u%twrDef((j-1)*12+4:(j-1)*12+6) = u%TowerMotion%TranslationVel(:,j)
+         u%DX_u%twrDef((j-1)*12+7:(j-1)*12+9) = wm_crv
+         u%DX_u%twrDef((j-1)*12+10:(j-1)*12+12) = u%TowerMotion%RotationVel(:,j)
       end do
    end if
 
    jTot = 1
    do k=1,p%NumBlds
-      do j=1,p%NumBldNds(k)         
+      do j=1,p%NumBldNds(k)
          call BD_CrvExtractCrv(u%BladeMotion(k)%Orientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
          call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
 
-         u%DX_u%bldDef((jTot-1)*12+1:3) = u%BladeMotion(k)%TranslationDisp(:,j)
-         u%DX_u%twrDef((jTot-1)*12+4:6) = u%BladeMotion(k)%TranslationVel(:,j)
-         u%DX_u%twrDef((jTot-1)*12+7:9) = wm_crv
-         u%DX_u%twrDef((jTot-1)*12+10:12) = u%BladeMotion(k)%RotationVel(:,j)
+         u%DX_u%bldDef((jTot-1)*12+1:(jTot-1)*12+3) = u%BladeMotion(k)%TranslationDisp(:,j)
+         u%DX_u%bldDef((jTot-1)*12+4:(jTot-1)*12+6) = u%BladeMotion(k)%TranslationVel(:,j)
+         u%DX_u%bldDef((jTot-1)*12+7:(jTot-1)*12+9) = wm_crv
+         u%DX_u%bldDef((jTot-1)*12+10:(jTot-1)*12+12) = u%BladeMotion(k)%RotationVel(:,j)
          jTot = jTot+1
       end do
    end do
@@ -493,16 +547,16 @@ subroutine ConvertOpDataForExtProg(y, p, errStat, errMsg )
 
    if (p%TwrAero) then
       do j=1,p%NumTwrNds
-         y%TowerLoad%Force(:,j) = y%DX_y%twrLd((j-1)*6+1:3)
-         y%TowerLoad%Moment(:,j) = y%DX_y%twrLd((j-1)*6+4:6)
+         y%TowerLoad%Force(:,j) = y%DX_y%twrLd((j-1)*6+1:(j-1)*6+3)
+         y%TowerLoad%Moment(:,j) = y%DX_y%twrLd((j-1)*6+4:(j-1)*6+6)
       end do
    end if
 
    jTot = 1
    do k=1,p%NumBlds
       do j=1,p%NumBldNds(k)
-         y%BladeLoad(k)%Force(:,j) = y%DX_y%bldLd((jTot-1)*6+1:3)
-         y%BladeLoad(k)%Moment(:,j) = y%DX_y%bldLd((jTot-1)*6+4:6)
+         y%BladeLoad(k)%Force(:,j) = y%DX_y%bldLd((jTot-1)*6+1:(jTot-1)*6+3)
+         y%BladeLoad(k)%Moment(:,j) = y%DX_y%bldLd((jTot-1)*6+4:(jTot-1)*6+6)
          jTot = jTot+1
       end do
    end do

@@ -25,6 +25,10 @@ typedef	^	                InitInputType	Logical	TwrAero	        -	.false.	-	"Fla
 typedef ^                       InitInputType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes for each blade"  -
 typedef	^	                InitInputType	ReKi	HubPos	{3}	-	-	"X-Y-Z reference position of hub"	m
 typedef	^	                InitInputType	R8Ki	HubOrient	{3}{3}	-	-	"DCM reference orientation of hub"	-
+typedef	^	                InitInputType	ReKi	NacellePos	{3}	-	-	"X-Y-Z reference position of Nacelle"	m
+typedef	^	                InitInputType	R8Ki    NacelleOrient	{3}{3}	-	-	"DCM reference orientation of Nacelle"	-
+typedef	^	                InitInputType	ReKi	BldRootPos	{:}{:}	-	-	"X-Y-Z reference position of each blade root (3 x NumBlades)"	m
+typedef	^	                InitInputType	R8Ki	BldRootOrient	{:}{:}{:}	-	-	"DCM reference orientation of blade root (3x3 x NumBlades )"	-
 typedef	^	                InitInputType	ReKi	BldPos	{:}{:}{:}	-	-	"X-Y-Z reference position of each blade (3 x NumBladeNodesMax x NumBlades)"	m
 typedef	^	                InitInputType	R8Ki	BldOrient	{:}{:}{:}{:}	-	-	"DCM reference orientation of blade (3x3 x NumBladeNodesMax x NumBlades )"	-
 typedef	^	                InitInputType	ReKi	TwrPos	{:}{:}	-	-	"X-Y-Z reference position of tower (3 x NumTowerNodes)"	m
@@ -66,7 +70,6 @@ typedef	^	ParameterType	IntKi	NumBlds      -       -       -       "Number of bl
 typedef ^       ParameterType   IntKi   NumBldNds   {:}      -       -       "Number of blade nodes for each blade"  -
 typedef ^       ParameterType   IntKi   nTotBldNds   -       -       -       "Total number of blade nodes"   -
 typedef	^	ParameterType	Logical	TwrAero	        -	.FALSE.	-	"Flag that tells this module if the tower aero is on."	-
-typdef  ^       ParameterType   Logical TwrAero        -     .FALSE.   -       "Option to enable/disable tower aerodynamics " -
 typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes"  -
 
 

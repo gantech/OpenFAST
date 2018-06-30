@@ -3803,19 +3803,19 @@ SUBROUTINE ResetRemapFlags(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, Srv
 
    ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
-      ExtLd%Input(1)%HubMotion%RemapFlag = .FALSE.
+      ExtLd%u%HubMotion%RemapFlag = .FALSE.
 
-      IF ( ExtLd%Input(1)%TowerMotion%Committed ) THEN
-          ExtLd%Input(1)%TowerMotion%RemapFlag = .FALSE.
+      IF ( ExtLd%u%TowerMotion%Committed ) THEN
+          ExtLd%u%TowerMotion%RemapFlag = .FALSE.
 
          IF ( ExtLd%y%TowerLoad%Committed ) THEN
             ExtLd%y%TowerLoad%RemapFlag = .FALSE.
          END IF
       END IF
 
-      DO k=1,SIZE( ExtLd%Input(1)%BladeMotion )
-         ExtLd%Input(1)%BladeRootMotion(k)%RemapFlag = .FALSE.
-         ExtLd%Input(1)%BladeMotion(    k)%RemapFlag = .FALSE.
+      DO k=1,SIZE( ExtLd%u%BladeMotion )
+         ExtLd%u%BladeRootMotion(k)%RemapFlag = .FALSE.
+         ExtLd%u%BladeMotion(    k)%RemapFlag = .FALSE.
                 ExtLd%y%BladeLoad(      k)%RemapFlag = .FALSE.
       END DO
       
@@ -4138,7 +4138,7 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, 
       
    ELSE IF ( p_FAST%CompAero == Module_ExtLd ) THEN ! ED-ExtLd and/or BD-ExtLd
 
-      NumBl = SIZE(ExtLd%Input(1)%BladeRootMotion) ! Get number of blades
+      NumBl = SIZE(ExtLd%u%BladeRootMotion) ! Get number of blades
 
       ! Allocate memory for mapping between ED and ExtLoad blade root meshes
       ALLOCATE( MeshMapData%ED_P_2_ExtLd_P_R(NumBl), STAT=ErrStat2 )
@@ -4149,12 +4149,12 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, 
 
       ! Create the the mesh mapping for mapping between ED and ExtLoad blade root meshes
       DO K=1,NumBl
-         CALL MeshMapCreate( ED%Output(1)%BladeRootMotion(K), ExtLd%Input(1)%BladeRootMotion(K), MeshMapData%ED_P_2_ExtLd_P_R(K), ErrStat2, ErrMsg2 )
+         CALL MeshMapCreate( ED%Output(1)%BladeRootMotion(K), ExtLd%u%BladeRootMotion(K), MeshMapData%ED_P_2_ExtLd_P_R(K), ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ED_P_2_ExtLd_P_R('//TRIM(Num2LStr(K))//')' )
       END DO
 
       ! Hub point mesh
-      CALL MeshMapCreate( ED%Output(1)%HubPtMotion, ExtLd%Input(1)%HubMotion, MeshMapData%ED_P_2_ExtLd_P_H, ErrStat2, ErrMsg2 )
+      CALL MeshMapCreate( ED%Output(1)%HubPtMotion, ExtLd%u%HubMotion, MeshMapData%ED_P_2_ExtLd_P_H, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ED_P_2_ExtLd_P_H' )
 
       ! Blade meshes: (allocate two mapping data structures to number of blades, then allocate data inside the structures)
@@ -4169,7 +4169,7 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, 
 
          DO K=1,NumBl
             ! Create mapping for ElastoDyn BldMotion line2 meshes to ExtLoads point mesh
-            CALL MeshMapCreate( ED%Output(1)%BladeLn2Mesh(K), ExtLd%Input(1)%BladeMotion(K), MeshMapData%BDED_L_2_ExtLd_P_B(K), ErrStat2, ErrMsg2 )
+            CALL MeshMapCreate( ED%Output(1)%BladeLn2Mesh(K), ExtLd%u%BladeMotion(K), MeshMapData%BDED_L_2_ExtLd_P_B(K), ErrStat2, ErrMsg2 )
             CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':BDED_L_2_ExtLd_P_B('//TRIM(Num2LStr(K))//')' )
             ! Create mapping for ExtLoads point mesh to ElastoDyn BldMotion line2 mesh
             CALL MeshMapCreate( ExtLd%y%BladeLoad(K), ED%Input(1)%BladePtLoads(K),  MeshMapData%ExtLd_P_2_BDED_B(K), ErrStat2, ErrMsg2 )
@@ -4181,7 +4181,7 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, 
          ! connect ExtLoads mesh with BeamDyn
          DO K=1,NumBl
             ! Create mapping for BeamDyn BldMotion line2 meshes to ExtLoads point mesh
-            CALL MeshMapCreate( BD%y(k)%BldMotion, ExtLd%Input(1)%BladeMotion(K), MeshMapData%BDED_L_2_ExtLd_P_B(K), ErrStat2, ErrMsg2 )
+            CALL MeshMapCreate( BD%y(k)%BldMotion, ExtLd%u%BladeMotion(K), MeshMapData%BDED_L_2_ExtLd_P_B(K), ErrStat2, ErrMsg2 )
             CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':BDED_L_2_ExtLd_P_B('//TRIM(Num2LStr(K))//')' )
             ! Create mapping for ExtLoads point mesh to BeamDyn BldMotion line2 mesh
             CALL MeshMapCreate( ExtLd%y%BladeLoad(K), BD%Input(1,k)%DistrLoad,  MeshMapData%ExtLd_P_2_BDED_B(K), ErrStat2, ErrMsg2 )
@@ -4221,15 +4221,15 @@ SUBROUTINE InitModuleMappings(p_FAST, ED, BD, AD14, AD, ExtLd, HD, SD, ExtPtfm, 
       ENDIF ! ( p_FAST%CompElast == Module_BD )
 
       ! Tower mesh:
-      IF ( ExtLd%Input(1)%TowerMotion%Committed ) THEN
-         CALL MeshMapCreate( ED%Output(1)%TowerLn2Mesh, ExtLd%Input(1)%TowerMotion, MeshMapData%ED_L_2_ExtLd_P_T, ErrStat2, ErrMsg2 )
+      IF ( ExtLd%u%TowerMotion%Committed ) THEN
+         CALL MeshMapCreate( ED%Output(1)%TowerLn2Mesh, ExtLd%u%TowerMotion, MeshMapData%ED_L_2_ExtLd_P_T, ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ED_L_2_ExtLd_P_T' )
 
          IF ( ExtLd%y%TowerLoad%Committed ) THEN
             CALL MeshMapCreate( ExtLd%y%TowerLoad, ED%Input(1)%TowerPtLoads,  MeshMapData%ExtLd_P_2_ED_P_T, ErrStat2, ErrMsg2 )
             CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName//':ExtLd_P_2_ED_P_T' )
          END IF ! ( ExtLd%y%TowerLoad%Committed )
-      END IF ! ( ExtLd%Input(1)%TowerMotion%Committed )
+      END IF ! ( ExtLd%u%TowerMotion%Committed )
       
    END IF ! ( p_FAST%CompAero == Module_ExtLd )
    
@@ -4686,7 +4686,7 @@ end if
 
    ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
-      CALL ExtLd_InputSolve_NoIfW( p_FAST, ExtLd%Input(1), ED%Output(1), BD, MeshMapData, ErrStat2, ErrMsg2 )
+      CALL ExtLd_InputSolve_NoIfW( p_FAST, ExtLd%u, ED%Output(1), BD, MeshMapData, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
       IF ( p_FAST%CompInflow == MODULE_IfW .OR. p_FAST%CompInflow == MODULE_ExtInfw ) THEN
@@ -4983,7 +4983,7 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
    ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
       ! note that this uses BD outputs, which are from the previous step (and need to be initialized)
-      CALL ExtLd_InputSolve_NoIfW( p_FAST, ExtLd%Input(1), ED%Output(1), BD, MeshMapData, ErrStat2, ErrMsg2 )
+      CALL ExtLd_InputSolve_NoIfW( p_FAST, ExtLd%u, ED%Output(1), BD, MeshMapData, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
          
    END IF
@@ -5032,7 +5032,7 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
          CALL SetErrStat(ErrID_Fatal,'p_FAST%CompInflow option not setup to work with ExtLoads module.',ErrStat,ErrMsg,RoutineName)
       ENDIF
 
-      CALL ExtLd_CalcOutput( this_time, ExtLd%Input(1), ExtLd%p, ExtLd%x(this_state), ExtLd%xd(this_state), ExtLd%z(this_state), &
+      CALL ExtLd_CalcOutput( this_time, ExtLd%u, ExtLd%p, ExtLd%x(this_state), ExtLd%xd(this_state), ExtLd%z(this_state), &
                              ExtLd%OtherSt(this_state), ExtLd%y, ExtLd%m, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
          
@@ -5068,10 +5068,10 @@ SUBROUTINE SolveOption2(this_time, this_state, p_FAST, m_FAST, ED, BD, AD14, AD,
               
       
    !bjj: note ED%Input(1) may be a sibling mesh of output, but ED%u is not (routine may update something that needs to be shared between siblings)      
-   CALL ED_InputSolve( p_FAST, ED%Input(1), ED%Output(1), AD14%p, AD14%y, AD%y, ExtLd%y, SrvD%y, AD%Input(1), ExtLd%Input(1), SrvD%Input(1), MeshMapData, ErrStat2, ErrMsg2 )
+   CALL ED_InputSolve( p_FAST, ED%Input(1), ED%Output(1), AD14%p, AD14%y, AD%y, ExtLd%y, SrvD%y, AD%Input(1), ExtLd%u, SrvD%Input(1), MeshMapData, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    
-   CALL BD_InputSolve( p_FAST, BD, AD%y, AD%Input(1), ExtLd%y, ExtLd%Input(1), MeshMapData, ErrStat2, ErrMsg2 )
+   CALL BD_InputSolve( p_FAST, BD, AD%y, AD%Input(1), ExtLd%y, ExtLd%u, MeshMapData, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    
             
@@ -5595,20 +5595,7 @@ SUBROUTINE FAST_ExtrapInterpMods( t_global_next, p_FAST, y_FAST, m_FAST, ED, BD,
 
       ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
-         CALL ExtLd_Input_ExtrapInterp( ExtLd%Input, ExtLd%InputTimes, ExtLd%u, t_global_next, ErrStat2, ErrMsg2 )
-         CALL SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName )
-
-         ! Shift "window" of ExtLd%Input
-         DO j = p_FAST%InterpOrder, 1, -1
-            CALL ExtLd_CopyInput ( ExtLd%Input(j),  ExtLd%Input(j+1),  MESH_UPDATECOPY, Errstat2, ErrMsg2 )
-            CALL SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName )
-
-            ExtLd%InputTimes(j+1)  = ExtLd%InputTimes(j)
-         END DO
-
-         CALL ExtLd_CopyInput ( ExtLd%u,  ExtLd%Input(1),  MESH_UPDATECOPY, Errstat2, ErrMsg2 )
-         CALL SetErrStat( ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName )
-         ExtLd%InputTimes(1)  = t_global_next
+         ! Don't need to do anything here. ExtLoads does not have inputs at different times
          
       END IF  ! CompAero      
       

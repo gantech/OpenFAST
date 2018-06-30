@@ -189,7 +189,6 @@ void fast::OpenFAST::solution0() {
         //     setExpLawWindSpeed(iTurb);
         // }
 
-        std::cout << "Running solution0 " << std::endl ;
         if(scStatus) {
             
             sc->init(nTurbinesGlob, numScInputs, numScOutputs);
@@ -642,6 +641,9 @@ void fast::OpenFAST::step() {
         get_data_from_openfast(fast::np1);
         FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
+        FAST_CFD_WriteOutput(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
+        
 
         // Compute the force from the nacelle only if the drag coefficient is
         //   greater than zero
@@ -724,6 +726,8 @@ void fast::OpenFAST::stepNoWrite() {
         checkError(ErrStat, ErrMsg);
         get_data_from_openfast(fast::np1);
         FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
+        checkError(ErrStat, ErrMsg);
+        FAST_CFD_WriteOutput(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
 
         // Compute the force from the nacelle only if the drag coefficient is

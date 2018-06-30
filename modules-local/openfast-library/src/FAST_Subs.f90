@@ -533,7 +533,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       
          ! set initialization data for ExtLoads
          CALL ExtLd_SetInitInput(InitInData_ExtLd, InitOutData_ED, ED%Output(1), InitOutData_BD, BD%y(:), p_FAST, ExternInitData, ErrStat2, ErrMsg2)
-         CALL ExtLd_Init( InitInData_ExtLd, ExtLd%Input(1), ExtLd%p, ExtLd%y, ExtLd%m, p_FAST%dt_module( MODULE_AD ), InitOutData_ExtLd, ErrStat2, ErrMsg2 )
+         CALL ExtLd_Init( InitInData_ExtLd, ExtLd%u, ExtLd%p, ExtLd%y, ExtLd%m, p_FAST%dt_module( MODULE_ExtLd ), InitOutData_ExtLd, ErrStat2, ErrMsg2 )
          CALL SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
          
          p_FAST%ModuleInitialized(Module_ExtLd) = .TRUE.
@@ -1816,7 +1816,7 @@ SUBROUTINE ValidateInputData(p, ErrStat, ErrMsg)
    
    IF (p%CompElast == Module_BD .and. p%CompAero == Module_AD14 ) CALL SetErrStat( ErrID_Fatal, 'AeroDyn14 cannot be used when BeamDyn is used. Change CompAero or CompElast in the FAST input file.', ErrStat, ErrMsg, RoutineName )
 
-   if ( (p%CompAero == Module_ExtLd) .and. (p%CompInflow .ne. Module_Unknown) ) call SetErrStat(ErrID_Fatal, 'Inflow module cannot be used when ExtLoads is used. Change CompAero or CompInflow in the OpenFAST input file.', ErrStat, ErrMsg, RoutineName)
+   if ( (p%CompAero == Module_ExtLd) .and. (p%CompInflow .ne. Module_NONE) ) call SetErrStat(ErrID_Fatal, 'Inflow module cannot be used when ExtLoads is used. Change CompAero or CompInflow in the OpenFAST input file.', ErrStat, ErrMsg, RoutineName)
    
 !   IF ( p%InterpOrder < 0 .OR. p%InterpOrder > 2 ) THEN
    IF ( p%InterpOrder < 1 .OR. p%InterpOrder > 2 ) THEN
@@ -3464,6 +3464,28 @@ SUBROUTINE ExtLd_SetInitInput(InitInData_ExtLd, InitOutData_ED, y_ED, InitOutDat
          InitInData_ExtLd%NumBldNodes(k) = tmp
       end do
    END IF
+
+   IF (.NOT. ALLOCATED( InitInData_ExtLd%BldRootPos) ) THEN
+      ALLOCATE( InitInData_ExtLd%BldRootPos( 3, InitInData_ExtLd%NumBlades), STAT = ErrStat )
+      IF ( ErrStat /= 0 ) THEN
+         ErrStat = ErrID_Fatal
+         ErrMsg = ' Error allocating space for InitInData_ExtLd%BldRootPos.'
+         RETURN
+      ELSE
+         ErrStat = ErrID_None !reset to ErrID_None, just in case ErrID_None /= 0
+      END IF
+   END IF
+
+   IF (.NOT. ALLOCATED( InitInData_ExtLd%BldRootOrient) ) THEN
+      ALLOCATE( InitInData_ExtLd%BldRootOrient( 3, 3, InitInData_ExtLd%NumBlades), STAT = ErrStat )
+      IF ( ErrStat /= 0 ) THEN
+         ErrStat = ErrID_Fatal
+         ErrMsg = ' Error allocating space for InitInData_ExtLd%BldRootOrient.'
+         RETURN
+      ELSE
+         ErrStat = ErrID_None !reset to ErrID_None, just in case ErrID_None /= 0
+      END IF
+   END IF
    
    IF (.NOT. ALLOCATED( InitInData_ExtLd%BldPos) ) THEN
       ALLOCATE( InitInData_ExtLd%BldPos( 3, nMaxBldNds, InitInData_ExtLd%NumBlades), STAT = ErrStat )
@@ -3489,11 +3511,15 @@ SUBROUTINE ExtLd_SetInitInput(InitInData_ExtLd, InitOutData_ED, y_ED, InitOutDat
 
    IF (p_FAST%CompElast == Module_ED ) THEN
       DO k=1,InitInData_ExtLd%NumBlades
+         InitInData_ExtLd%BldRootPos(:,k) = y_ED%BladeRootMotion(k)%position(:,1)
+         InitInData_ExtLd%BldRootOrient(:,:,k) = y_ED%BladeRootMotion(k)%orientation(:,:,1)
          InitInData_ExtLd%BldPos(:,:,k) = y_ED%BladeLn2Mesh(k)%position(:,:)
          InitInData_ExtLd%BldOrient(:,:,:,k) = y_ED%BladeLn2Mesh(k)%orientation(:,:,:)
       END DO
    ELSE IF (p_FAST%CompElast == Module_BD ) THEN
       DO k=1,InitInData_ExtLd%NumBlades
+         InitInData_ExtLd%BldRootPos(:,k) = y_ED%BladeRootMotion(k)%position(:,1)
+         InitInData_ExtLd%BldRootOrient(:,:,k) = y_ED%BladeRootMotion(k)%orientation(:,:,1)
          InitInData_ExtLd%BldPos(:,:,k) = y_BD(k)%BldMotion%position(:,:)
          InitInData_ExtLd%BldOrient(:,:,:,k) = y_BD(k)%BldMotion%orientation(:,:,:)
       END DO
@@ -3542,6 +3568,9 @@ SUBROUTINE ExtLd_SetInitInput(InitInData_ExtLd, InitOutData_ED, y_ED, InitOutDat
 
    InitInData_ExtLd%HubPos             = y_ED%HubPtMotion%Position(:,1)
    InitInData_ExtLd%HubOrient          = y_ED%HubPtMotion%RefOrientation(:,:,1)
+
+   InitInData_ExtLd%NacellePos         = y_ED%NacelleMotion%Position(:,1)
+   InitInData_ExtLd%NacelleOrient      = y_ED%NacelleMotion%RefOrientation(:,:,1)
    
    RETURN
   
@@ -6567,7 +6596,7 @@ SUBROUTINE FAST_AdvanceToNextTimeStep(t_initial, n_t_global, p_FAST, y_FAST, m_F
    ErrMsg  = ""
    
    t_global_next = t_initial + (n_t_global+1)*p_FAST%DT  ! = m_FAST%t_global + p_FAST%dt
-      
+
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
    !! ## Step 3: Save all final variables (advance to next time)
    !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -6910,8 +6939,8 @@ SUBROUTINE FAST_Solution(t_initial, n_t_global, p_FAST, y_FAST, m_FAST, ED, BD, 
    ErrStat = ErrID_None
    ErrMsg  = ""
    
-   t_global_next = t_initial + (n_t_global+1)*p_FAST%DT  ! = m_FAST%t_global + p_FAST%dt
-                       
+   t_global_next = t_initial + (n_t_global+1)*p_FAST%DT  ! = m_FAST%t_global + p_FAST%dt   
+   
       !! determine if the Jacobian should be calculated this time
    IF ( m_FAST%calcJacobian ) THEN ! this was true (possibly at initialization), so we'll advance the time for the next calculation of the Jacobian
       

@@ -422,7 +422,7 @@ subroutine FAST_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, NumOuts_c, d
       
 end subroutine FAST_Restart 
 !==================================================================================================================================
-subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumActForcePtsBlade, NumActForcePtsTower, TurbPosn, AbortErrLev_c, dt_c, NumBl_c, &
+subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, AbortErrLev_c, dt_c, NumBl_c, &
      ExtLd_Input_from_FAST, ExtLd_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_BR_CFD_Init')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_CFD_Init
    IMPLICIT NONE 
@@ -434,8 +434,6 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumActForcePts
    REAL(C_DOUBLE),         INTENT(IN   ) :: TMax      
    CHARACTER(KIND=C_CHAR), INTENT(IN   ) :: InputFileName_c(IntfStrLen)      
    INTEGER(C_INT),         INTENT(IN   ) :: TurbID           ! Need not be same as iTurb
-   INTEGER(C_INT),         INTENT(IN   ) :: NumActForcePtsBlade ! number of actuator line force points in blade
-   INTEGER(C_INT),         INTENT(IN   ) :: NumActForcePtsTower ! number of actuator line force points in tower
    REAL(C_FLOAT),          INTENT(IN   ) :: TurbPosn(3)
    REAL(C_DOUBLE),         INTENT(IN   ) :: dt_c   
    INTEGER(C_INT),         INTENT(  OUT) :: AbortErrLev_c      
@@ -469,8 +467,6 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumActForcePts
    ExternInitData%TurbineID = TurbID
    ExternInitData%TurbinePos = TurbPosn
    ExternInitData%SensorType = SensorType_None
-   ExternInitData%NumActForcePtsBlade = NumActForcePtsBlade
-   ExternInitData%NumActForcePtsTower = NumActForcePtsTower
 
    CALL FAST_InitializeAll_T( t_initial, 1_IntKi, Turbine(iTurb), ErrStat, ErrMsg, InputFileName, ExternInitData )
 
@@ -491,8 +487,8 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, NumActForcePts
 
    CompLoadsType = Turbine(iTurb)%p_FAST%CompAero
 
-   if ( (CompLoadsType .ne. 3) ) then
-      CALL SetErrStat(ErrID_Fatal, "CompAero is not set to 3 for use of the External Loads module. Use a different initialization call for this turbine.", ErrStat, ErrMsg, RoutineName )
+   if ( (CompLoadsType .ne. Module_ExtLd) ) then
+      CALL SetErrStat(ErrID_Fatal, "CompAero is not set to 3 for use of the External Loads module. Use a different C++ initialization call for this turbine.", ErrStat, ErrMsg, RoutineName )
       ErrStat_c = ErrStat
       ErrMsg_c  = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
       return
@@ -1032,7 +1028,11 @@ subroutine FAST_CFD_WriteOutput(iTurb, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_
    INTEGER(C_INT),         INTENT(  OUT) :: ErrStat_c      
    CHARACTER(KIND=C_CHAR), INTENT(  OUT) :: ErrMsg_c(IntfStrLen)      
    
-   CALL FAST_WriteOutput_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )                  
+   CALL FAST_WriteOutput_T( t_initial, n_t_global, Turbine(iTurb), ErrStat, ErrMsg )
+
+   ErrStat_c = ErrStat
+   ErrMsg = TRIM(ErrMsg)//C_NULL_CHAR
+   ErrMsg_c  = TRANSFER( ErrMsg//C_NULL_CHAR, ErrMsg_c )
 
 end subroutine FAST_CFD_WriteOutput 
 !==================================================================================================================================
