@@ -78,6 +78,7 @@ typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "
 typedef  ^  InputType   ExtLdDX_InputType  DX_u    -       -       -       "Data to send to external driver"
 typedef	^	InputType	MeshType	TowerMotion	-	-	-	"motion on the tower"	-
 typedef	^	InputType	MeshType	HubMotion	-	-	-	"motion on the hub"	-
+typedef	^	InputType	MeshType	NacelleMotion	-	-	-	"motion on the nacelle"	-
 typedef	^	InputType	MeshType	BladeRootMotion	{:}	-	-	"motion on each blade root"	-
 typedef	^	InputType	MeshType	BladeMotion	{:}	-	-	"motion on each blade"	-
 

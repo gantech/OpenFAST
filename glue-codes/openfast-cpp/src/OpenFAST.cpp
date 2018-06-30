@@ -1221,6 +1221,43 @@ void fast::OpenFAST::getTowerDeflections(std::vector<double> & twrDefl, std::vec
     
 }
 
+void fast::OpenFAST::getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    for (int j=0; j < 6; j++) 
+        hubRefPos[j] = brFSIData[iTurbLoc][fast::np1].hub_ref_pos[j];
+    
+}
+
+void fast::OpenFAST::getHubDeflection(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    for (int j=0; j < 6; j++) {
+        hubDefl[j] = brFSIData[iTurbLoc][t].hub_def[j];
+        hubVel[j] = brFSIData[iTurbLoc][t].hub_vel[j];            
+    }
+    
+}
+
+void fast::OpenFAST::getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    for (int j=0; j < 6; j++) 
+        nacRefPos[j] = brFSIData[iTurbLoc][fast::np1].nac_ref_pos[j];
+    
+}
+    
+
+void fast::OpenFAST::getNacelleDeflection(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t) {
+    
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    for (int j=0; j < 6; j++) {
+        nacDefl[j] = brFSIData[iTurbLoc][t].nac_def[j];
+        nacVel[j] = brFSIData[iTurbLoc][t].nac_vel[j];            
+    }
+    
+}
+
 void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iBlade, int iTurbGlob, fast::timeStep t) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);

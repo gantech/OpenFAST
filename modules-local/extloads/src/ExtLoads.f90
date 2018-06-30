@@ -352,6 +352,41 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       u%HubMotion%TranslationDisp = 0.0_R8Ki
       u%HubMotion%TranslationVel = 0.0_R8Ki
       u%HubMotion%RotationVel     = 0.0_R8Ki   
+
+         !................
+         ! nacelle
+         !................
+   
+      call MeshCreate ( BlankMesh = u%NacelleMotion     &
+                       ,IOS       = COMPONENT_INPUT &
+                       ,Nnodes    = 1               &
+                       ,ErrStat   = ErrStat2        &
+                       ,ErrMess   = ErrMsg2         &
+                       ,Orientation     = .true.    &
+                       ,TranslationDisp = .true.    &
+                       ,TranslationVel  = .true.    &
+                       ,RotationVel     = .true.    &
+                      )
+            call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+
+      if (errStat >= AbortErrLev) return
+                     
+      call MeshPositionNode(u%NacelleMotion, 1, InitInp%NacellePos, errStat2, errMsg2, InitInp%NacelleOrient)
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+         
+      call MeshConstructElement( u%NacelleMotion, ELEMENT_POINT, errStat2, errMsg2, p1=1 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+            
+      call MeshCommit(u%NacelleMotion, errStat2, errMsg2 )
+         call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
+            
+      if (errStat >= AbortErrLev) return
+
+         
+      u%NacelleMotion%Orientation     = u%NacelleMotion%RefOrientation
+      u%NacelleMotion%TranslationDisp = 0.0_R8Ki
+      u%NacelleMotion%TranslationVel = 0.0_R8Ki
+      u%NacelleMotion%RotationVel     = 0.0_R8Ki   
       
          !................
          ! blades
@@ -449,14 +484,24 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    
    end do !k=numBlades
 
+   ! Set the parameters first
+   u%DX_u%nTowerNodes = p%NumTwrNds
+   u%DX_u%nBlades = p%NumBlds
+   CALL AllocPAry( u%DX_u%nBladeNodes, p%NumBlds, 'nBladeNodes', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   u%DX_u%c_obj%nBladeNodes_Len = p%NumBlds; u%DX_u%c_obj%nBladeNodes = C_LOC( u%DX_u%nBladeNodes(1) )
+   u%DX_u%nBladeNodes(:) = p%NumBldNds(:)
 
-   ! Get the reference position first
+   ! Set the reference positions next
    CALL AllocPAry( u%DX_u%twrRefPos, p%NumTwrNds*6, 'twrRefPos', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( u%DX_u%bldRefPos, p%nTotBldNds*6, 'bldRefPos', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%hubRefPos, 6, 'hubRefPos', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%nacRefPos, 6, 'nacRefPos', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
    ! make sure the C versions are synced with these arrays
    u%DX_u%c_obj%twrRefPos_Len = p%NumTwrNds*6; u%DX_u%c_obj%twrRefPos = C_LOC( u%DX_u%twrRefPos(1) )
    u%DX_u%c_obj%bldRefPos_Len = p%nTotBldNds*6; u%DX_u%c_obj%bldRefPos = C_LOC( u%DX_u%bldRefPos(1) )
+   u%DX_u%c_obj%hubRefPos_Len = 6; u%DX_u%c_obj%hubRefPos = C_LOC( u%DX_u%hubRefPos(1) )
+   u%DX_u%c_obj%nacRefPos_Len = 6; u%DX_u%c_obj%nacRefPos = C_LOC( u%DX_u%nacRefPos(1) )
    
    if (p%TwrAero) then
       do j=1,p%NumTwrNds
@@ -480,26 +525,33 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       end do
    end do
 
-   
+   call BD_CrvExtractCrv(u%HubMotion%RefOrientation(:,:,1), wm_crv, ErrStat2, ErrMsg2)
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+   u%DX_u%hubRefPos(1:3) = u%HubMotion%Position(:,1)
+   u%DX_u%hubRefPos(4:6) = wm_crv
+
+   call BD_CrvExtractCrv(u%NacelleMotion%RefOrientation(:,:,1), wm_crv, ErrStat2, ErrMsg2)
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+   u%DX_u%nacRefPos(1:3) = u%NacelleMotion%Position(:,1)
+   u%DX_u%nacRefPos(4:6) = wm_crv
+
+   ! Now the displacements
    CALL AllocPAry( u%DX_u%twrDef, p%NumTwrNds*12, 'twrDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( u%DX_u%bldDef, p%nTotBldNds*12, 'bldDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%hubDef, 12, 'hubDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%nacDef, 12, 'nacDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
    
    ! make sure the C versions are synced with these arrays
    u%DX_u%c_obj%twrDef_Len = p%NumTwrNds*12; u%DX_u%c_obj%twrDef = C_LOC( u%DX_u%twrDef(1) )
    u%DX_u%c_obj%bldDef_Len = p%nTotBldNds*12; u%DX_u%c_obj%bldDef = C_LOC( u%DX_u%bldDef(1) )
-
-   u%DX_u%nTowerNodes = p%NumTwrNds
-   u%DX_u%nBlades = p%NumBlds
-   CALL AllocPAry( u%DX_u%nBladeNodes, p%NumBlds, 'nBladeNodes', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-   u%DX_u%c_obj%nBladeNodes_Len = p%NumBlds; u%DX_u%c_obj%nBladeNodes = C_LOC( u%DX_u%nBladeNodes(1) )
-   u%DX_u%nBladeNodes(:) = p%NumBldNds(:)
-   
+   u%DX_u%c_obj%hubDef_Len = 12; u%DX_u%c_obj%hubDef = C_LOC( u%DX_u%hubDef(1) )
+   u%DX_u%c_obj%nacDef_Len = 12; u%DX_u%c_obj%nacDef = C_LOC( u%DX_u%nacDef(1) )      
    call ConvertInpDataForExtProg(u, p, ErrStat2, ErrMsg2 )
    call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
    
 end subroutine Init_u
 !----------------------------------------------------------------------------------------------------------------------------------
-!> This routine converts the data in the meshes in the input into a simple array format that can be accessed by external programs
+!> This routine converts the displacement data in the meshes in the input into a simple array format that can be accessed by external programs
 subroutine ConvertInpDataForExtProg(u, p, errStat, errMsg )
 !..................................................................................................................................
   USE BeamDyn_IO, ONLY: BD_CrvExtractCrv
@@ -551,6 +603,22 @@ subroutine ConvertInpDataForExtProg(u, p, errStat, errMsg )
          jTot = jTot+1
       end do
    end do
+
+
+   call BD_CrvExtractCrv(u%HubMotion%Orientation(:,:,1), wm_crv, ErrStat2, ErrMsg2)
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+   u%DX_u%hubDef(1:3) = u%HubMotion%TranslationDisp(:,1)
+   u%DX_u%hubDef(4:6) = u%HubMotion%TranslationVel(:,1)
+   u%DX_u%hubDef(7:9) = wm_crv
+   u%DX_u%hubDef(10:12) = u%HubMotion%RotationVel(:,1)
+
+   call BD_CrvExtractCrv(u%NacelleMotion%Orientation(:,:,1), wm_crv, ErrStat2, ErrMsg2)
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+   u%DX_u%nacDef(1:3) = u%NacelleMotion%TranslationDisp(:,1)
+   u%DX_u%nacDef(4:6) = u%NacelleMotion%TranslationVel(:,1)
+   u%DX_u%nacDef(7:9) = wm_crv
+   u%DX_u%nacDef(10:12) = u%NacelleMotion%RotationVel(:,1)
+   
    
    
 end subroutine ConvertInpDataForExtProg

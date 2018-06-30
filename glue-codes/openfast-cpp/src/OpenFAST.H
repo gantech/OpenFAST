@@ -134,6 +134,19 @@ struct turbBRfsiDataType {
     std::vector<double> bld_def;
     //! Blade velocity
     std::vector<double> bld_vel;
+    //! Hub reference position    
+    std::vector<double> hub_ref_pos;
+    //! Hub deflections 
+    std::vector<double> hub_def;
+    //! Hub velocity
+    std::vector<double> hub_vel;
+    //! Nacelle reference position    
+    std::vector<double> nac_ref_pos;
+    //! Nacelle deflections 
+    std::vector<double> nac_def;
+    //! Nacelle velocity
+    std::vector<double> nac_vel;
+    
     //! Tower loads
     std::vector<double> twr_ld;
     //! Blade loads
@@ -420,14 +433,23 @@ class OpenFAST {
   double getChord(int iNode, int iTurbGlob);
 
 
-    //! Get the blade reference positions array 'bldRefPos' for blade 'iBlade' of turbine number 'iTurbGlob' 
-    void getBladeRefPositions(std::vector<double> & bldRefPos, int iBlade, int iTurbGlob);
-    //! Get the blade deflections array 'bldDefl' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
+  //! Get the blade reference positions array 'bldRefPos' for blade 'iBlade' of turbine number 'iTurbGlob' 
+  void getBladeRefPositions(std::vector<double> & bldRefPos, int iBlade, int iTurbGlob);
+  //! Get the blade deflections array 'bldDefl' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
   void getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t);
-    //! Get the tower reference positions array 'twrRefPos' of turbine number 'iTurbGlob' 
-    void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob);
+  //! Get the tower reference positions array 'twrRefPos' of turbine number 'iTurbGlob' 
+  void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob);
   //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
   void getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t);
+  //! Get the hub reference position array 'hubRefPos' of turbine number 'iTurbGlob' 
+  void getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob);
+  //! Get the hub deflections array 'hubDefl' of turbine number 'iTurbGlob' at time step 't'
+  void getHubDeflection(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t);
+    //! Get the nacelle reference position array 'nacRefPos' of turbine number 'iTurbGlob' 
+    void getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob);
+    //! Get the nacelle deflections array 'nacDefl' of turbine number 'iTurbGlob' at time step 't'
+    void getNacelleDeflection(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t);
+    
   //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
   void setBladeForces(std::vector<double> & bldForce, int iBlade, int iTurbGlob, fast::timeStep t);
   //! Set the tower force array 'twrForce' of turbine number 'iTurbGlob' at time step 't'
