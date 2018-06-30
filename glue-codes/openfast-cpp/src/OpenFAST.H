@@ -121,11 +121,15 @@ struct turbVelForceNodeDataType {
 };
 
 //! A data structure to hold all loads and deflections information for blade-resolved FSI simulations
-struct turbBRfsieDataType {
+struct turbBRfsiDataType {
+    //! Tower reference position
+    std::vector<double> twr_ref_pos;
     //! Tower deflections 
     std::vector<double> twr_def;
     //! Tower velocity
     std::vector<double> twr_vel;
+    //! Blade reference position
+    std::vector<double> bld_ref_pos;
     //! Blade deflections
     std::vector<double> bld_def;
     //! Blade velocity
@@ -249,7 +253,7 @@ class OpenFAST {
   //! Array containing data at the velocity and force nodes    
   std::vector<std::vector<turbVelForceNodeDataType>> velForceNodeData;
   //! Array containing forces and deflections data for blade-resolved FSI simulations.
-  std::vector<std::vector<turbBRfsieDataType>> brFSIData;
+  std::vector<std::vector<turbBRfsiDataType>> brFSIData;
 
   //! Data structure to get forces and deflections from ExternalInflow module in OpenFAST
   std::vector<ExtInfw_InputType_t> extinfw_i_f_FAST; // Input from OpenFAST
@@ -416,8 +420,12 @@ class OpenFAST {
   double getChord(int iNode, int iTurbGlob);
 
 
-  //! Get the blade deflections array 'bldDefl' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
+    //! Get the blade reference positions array 'bldRefPos' for blade 'iBlade' of turbine number 'iTurbGlob' 
+    void getBladeRefPositions(std::vector<double> & bldRefPos, int iBlade, int iTurbGlob);
+    //! Get the blade deflections array 'bldDefl' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
   void getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t);
+    //! Get the tower reference positions array 'twrRefPos' of turbine number 'iTurbGlob' 
+    void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob);
   //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
   void getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t);
   //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'

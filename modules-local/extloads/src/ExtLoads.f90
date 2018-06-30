@@ -239,6 +239,8 @@ end subroutine Init_y
 subroutine Init_u( u, p, InitInp, errStat, errMsg )
 !..................................................................................................................................
 
+  USE BeamDyn_IO, ONLY: BD_CrvExtractCrv
+  
    type(ExtLd_InputType),           intent(  out)  :: u                 !< Input data
    type(ExtLd_ParameterType),       intent(in   )  :: p                 !< Parameters
    type(ExtLd_InitInputType),       intent(in   )  :: InitInp           !< Input data for ExtLd initialization routine
@@ -253,8 +255,10 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    real(R8Ki)                                   :: orientation(3,3)  ! node reference orientation
    real(R8Ki)                                   :: orientationL(3,3) ! node local orientation
    
-   integer(intKi)                               :: j                 ! counter for nodes
-   integer(intKi)                               :: k                 ! counter for blades
+   real(R8Ki)                                   :: wm_crv(3)         ! Wiener-Milenkovic parameters
+   integer(IntKi)                               :: j                 ! counter for nodes
+   integer(IntKi)                               :: jTot              ! counter for blade nodes
+   integer(IntKi)                               :: k                 ! counter for blades
 
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
@@ -446,6 +450,37 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    end do !k=numBlades
 
 
+   ! Get the reference position first
+   CALL AllocPAry( u%DX_u%twrRefPos, p%NumTwrNds*6, 'twrRefPos', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%bldRefPos, p%nTotBldNds*6, 'bldRefPos', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   ! make sure the C versions are synced with these arrays
+   u%DX_u%c_obj%twrRefPos_Len = p%NumTwrNds*6; u%DX_u%c_obj%twrRefPos = C_LOC( u%DX_u%twrRefPos(1) )
+   u%DX_u%c_obj%bldRefPos_Len = p%nTotBldNds*6; u%DX_u%c_obj%bldRefPos = C_LOC( u%DX_u%bldRefPos(1) )
+   
+   if (p%TwrAero) then
+      do j=1,p%NumTwrNds
+         call BD_CrvExtractCrv(u%TowerMotion%RefOrientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
+         call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+
+         u%DX_u%twrRefPos((j-1)*6+1:(j-1)*6+3) = u%TowerMotion%Position(:,j)
+         u%DX_u%twrRefPos((j-1)*6+4:(j-1)*6+6) = wm_crv
+      end do
+   end if
+
+   jTot = 1
+   do k=1,p%NumBlds
+      do j=1,p%NumBldNds(k)
+         call BD_CrvExtractCrv(u%BladeMotion(k)%RefOrientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
+         call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+
+         u%DX_u%bldRefPos((jTot-1)*6+1:(jTot-1)*6+3) = u%BladeMotion(k)%Position(:,j)
+         u%DX_u%bldRefPos((jTot-1)*6+4:(jTot-1)*6+6) = wm_crv
+         jTot = jTot+1
+      end do
+   end do
+
+   
    CALL AllocPAry( u%DX_u%twrDef, p%NumTwrNds*12, 'twrDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( u%DX_u%bldDef, p%nTotBldNds*12, 'bldDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    

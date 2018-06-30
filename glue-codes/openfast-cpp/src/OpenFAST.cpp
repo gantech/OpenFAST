@@ -1161,6 +1161,23 @@ fast::ActuatorNodeType fast::OpenFAST::getForceNodeType(int iTurbGlob, int iNode
     
 }
 
+void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int iBlade, int iTurbGlob) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nBlades = get_numBladesLoc(iTurbLoc);
+    int iRunTot = 0;
+    for (int i=0; i < nBlades; i++) {
+        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+        for(int j=0; j<nPtsBlade; j++) {
+            for (int k=0; k < 6; k++) {
+                bldRefPos[iRunTot*6+k] = brFSIData[iTurbLoc][fast::np1].bld_ref_pos[iRunTot*6+k];
+            }
+            iRunTot++;
+        }
+    }
+    
+}
+
 void fast::OpenFAST::getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1174,6 +1191,18 @@ void fast::OpenFAST::getBladeDeflections(std::vector<double> & bldDefl, std::vec
                 bldVel[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+k];
             }
             iRunTot++;
+        }
+    }
+    
+}
+
+void fast::OpenFAST::getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+    for (int i=0; i < nPtsTwr; i++) {
+        for (int j=0; j < 6; j++) {
+            twrRefPos[i*6+j] = brFSIData[iTurbLoc][fast::np1].twr_ref_pos[i*6+j];
         }
     }
     
@@ -1339,7 +1368,10 @@ void fast::OpenFAST::allocateMemory2(int iTurbLoc) {
             turbineData[iTurbLoc].nBRfsiPtsBlade[i] = extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
         }
         turbineData[iTurbLoc].nBRfsiPtsTwr = extld_i_f_FAST[iTurbLoc].nTowerNodes;
-        
+
+        // Allocate memory for reference position only for 1 time step - np1
+        brFSIData[iTurbLoc][3].twr_ref_pos.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
+        brFSIData[iTurbLoc][3].bld_ref_pos.resize(6*nTotBldNds);
         for(int k=0; k<4; k++) {
             brFSIData[iTurbLoc][k].twr_def.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].twr_vel.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
