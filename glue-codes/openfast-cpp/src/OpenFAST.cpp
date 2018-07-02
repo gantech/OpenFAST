@@ -234,8 +234,9 @@ void fast::OpenFAST::get_refPositions(int iTurb) {
         for (int i=0; i < nBlades; i++) {
             int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[i];
             for (int j=0; j < nPtsBlade; j++) {
-                for (int k=0; k < 6; k++) {
-                    brFSIData[iTurb][fast::np1].bld_ref_pos[iRunTot*6+k] = extld_i_f_FAST[iTurb].bldRefPos[iRunTot*6+k];
+                for (int k=0; k < 3; k++) {
+                    brFSIData[iTurb][fast::np1].bld_ref_pos[iRunTot*6+k] = extld_i_f_FAST[iTurb].bldRefPos[iRunTot*6+k] + turbineData[iTurb].TurbineBasePos[k];
+                    brFSIData[iTurb][fast::np1].bld_ref_pos[iRunTot*6+k+3] = extld_i_f_FAST[iTurb].bldRefPos[iRunTot*6+k+3];                    
                 }
                 iRunTot++;
             }
@@ -243,8 +244,9 @@ void fast::OpenFAST::get_refPositions(int iTurb) {
         
         int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
         for (int i=0; i < nPtsTwr; i++) {
-            for (int j = 0; j < 6; j++) {
-                brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j];
+            for (int j = 0; j < 3; j++) {
+                brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j] + turbineData[iTurb].TurbineBasePos[i];
+                brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j+3] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j+3];
             }
         }
         
