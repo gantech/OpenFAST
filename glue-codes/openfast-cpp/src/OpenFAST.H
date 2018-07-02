@@ -362,6 +362,8 @@ class OpenFAST {
   void send_data_to_openfast(fast::timeStep t);
   //! Get ouput data from OpenFAST modules 
   void get_data_from_openfast(fast::timeStep t);
+  //! Get reference positions of nodes from OpenFAST
+  void get_refPositions(int iTurb);
   //! Extrapolate velocity and force node data to time step 'n+1' using data at 'n', 'n-1' and 'n-2'
   void predict_states();
   //! Advance all turbines by 1 OpenFAST timestep. Also write velocity data at the Aerodyn nodes for all turbines to 'velData.h5'
@@ -433,29 +435,31 @@ class OpenFAST {
   double getChord(int iNode, int iTurbGlob);
 
 
-  //! Get the blade reference positions array 'bldRefPos' for blade 'iBlade' of turbine number 'iTurbGlob' 
-  void getBladeRefPositions(std::vector<double> & bldRefPos, int iBlade, int iTurbGlob);
-  //! Get the blade deflections array 'bldDefl' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
-  void getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t);
+  //! Get the blade reference positions array 'bldRefPos' of turbine number 'iTurbGlob' 
+  void getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob);
+  //! Get the blade deflections array 'bldDefl' of turbine number 'iTurbGlob' at time step 't'
+    void getBladeDisplacements(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iTurbGlob, fast::timeStep t);
   //! Get the tower reference positions array 'twrRefPos' of turbine number 'iTurbGlob' 
   void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob);
   //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
-  void getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t);
+  void getTowerDisplacements(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t);
   //! Get the hub reference position array 'hubRefPos' of turbine number 'iTurbGlob' 
   void getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob);
   //! Get the hub deflections array 'hubDefl' of turbine number 'iTurbGlob' at time step 't'
-  void getHubDeflection(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t);
-    //! Get the nacelle reference position array 'nacRefPos' of turbine number 'iTurbGlob' 
-    void getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob);
-    //! Get the nacelle deflections array 'nacDefl' of turbine number 'iTurbGlob' at time step 't'
-    void getNacelleDeflection(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t);
-    
+  void getHubDisplacement(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t);
+  //! Get the nacelle reference position array 'nacRefPos' of turbine number 'iTurbGlob' 
+  void getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob);
+  //! Get the nacelle deflections array 'nacDefl' of turbine number 'iTurbGlob' at time step 't'
+  void getNacelleDisplacement(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t);
+   
   //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
-  void setBladeForces(std::vector<double> & bldForce, int iBlade, int iTurbGlob, fast::timeStep t);
+  void setBladeForces(std::vector<double> & bldForce, int iTurbGlob, fast::timeStep t);
   //! Set the tower force array 'twrForce' of turbine number 'iTurbGlob' at time step 't'
   void setTowerForces(std::vector<double> & twrForce, int iTurbGlob, fast::timeStep t);
     
-    
+
+  //! Get all turbine parametric data
+  void get_turbineParams(int iTurbGlob, turbineDataType & turbData);
   //! Get the starting time step of the simulation
   int get_ntStart() { return ntStart; }
   //! Return a boolean flag whether the simulation is dryRun

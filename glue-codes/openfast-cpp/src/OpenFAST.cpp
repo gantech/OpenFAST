@@ -110,6 +110,8 @@ void fast::OpenFAST::init() {
                 }
                     
                 allocateMemory2(iTurb);
+
+                get_refPositions(iTurb);
                 
                 get_data_from_openfast(fast::nm2);
                 get_data_from_openfast(fast::nm1);
@@ -219,6 +221,33 @@ void fast::OpenFAST::solution0() {
         if (scStatus) {
             fillScInputsGlob(); // Update inputs to super controller
         }
+    }
+    
+}
+
+void fast::OpenFAST::get_refPositions(int iTurb) {
+    
+    if(turbineData[iTurb].sType == EXTLOADS) {
+        
+        int nBlades = turbineData[iTurb].numBlades;
+        int iRunTot = 0;
+        for (int i=0; i < nBlades; i++) {
+            int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[i];
+            for (int j=0; j < nPtsBlade; j++) {
+                for (int k=0; k < 6; k++) {
+                    brFSIData[iTurb][fast::np1].bld_ref_pos[iRunTot*6+k] = extld_i_f_FAST[iTurb].bldRefPos[iRunTot*6+k];
+                }
+                iRunTot++;
+            }
+        }
+        
+        int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
+        for (int i=0; i < nPtsTwr; i++) {
+            for (int j = 0; j < 6; j++) {
+                brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j];
+            }
+        }
+        
     }
     
 }
@@ -832,6 +861,43 @@ void fast::OpenFAST::setInputs(const fast::fastInputs & fi ) {
     
 }
 
+void fast::OpenFAST::get_turbineParams(int iTurbGlob, turbineDataType & turbData) {
+
+    //TODO: Figure out a better copy operator for the turbineDataType struct
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    turbData.TurbID = turbineData[iTurbLoc].TurbID;
+    turbData.FASTInputFileName = turbineData[iTurbLoc].FASTInputFileName;
+    turbData.FASTRestartFileName = turbineData[iTurbLoc].FASTRestartFileName;
+    if(turbineData[iTurbLoc].TurbineBasePos.size() > 0) {
+        turbData.TurbineBasePos.resize(turbineData[iTurbLoc].TurbineBasePos.size());
+        for(int i=0; i < turbineData[iTurbLoc].TurbineBasePos.size(); i++)
+            turbData.TurbineBasePos[i] = turbineData[iTurbLoc].TurbineBasePos[i];
+    }
+    if(turbineData[iTurbLoc].TurbineHubPos.size() > 0) {
+        turbData.TurbineHubPos.resize(turbineData[iTurbLoc].TurbineHubPos.size());
+        for(int i=0; i < turbineData[iTurbLoc].TurbineHubPos.size(); i++)
+            turbData.TurbineHubPos[i] = turbineData[iTurbLoc].TurbineHubPos[i];
+    }
+    turbData.sType = turbineData[iTurbLoc].sType;
+    turbData.numBlades = turbineData[iTurbLoc].numBlades;
+    turbData.numVelPtsBlade = turbineData[iTurbLoc].numVelPtsBlade;
+    turbData.numVelPtsTwr = turbineData[iTurbLoc].numVelPtsTwr;
+    turbData.numVelPts = turbineData[iTurbLoc].numVelPts;
+    turbData.numForcePtsBlade = turbineData[iTurbLoc].numForcePtsBlade;
+    turbData.numForcePtsTwr = turbineData[iTurbLoc].numForcePtsTwr;
+    turbData.numForcePts = turbineData[iTurbLoc].numForcePts;
+    turbData.inflowType = turbineData[iTurbLoc].inflowType;
+    turbData.nacelle_cd = turbineData[iTurbLoc].nacelle_cd;
+    turbData.nacelle_area = turbineData[iTurbLoc].nacelle_area;
+    turbData.air_density = turbineData[iTurbLoc].air_density;
+    turbData.nBRfsiPtsBlade.resize(turbData.numBlades);
+    for (int i=0; i < turbData.numBlades; i++)
+        turbData.nBRfsiPtsBlade[i] = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+    turbData.nBRfsiPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+    
+}
+
+
 void fast::OpenFAST::checkError(const int ErrStat, const char * ErrMsg){
     
     if (ErrStat != ErrID_None){
@@ -1161,7 +1227,7 @@ fast::ActuatorNodeType fast::OpenFAST::getForceNodeType(int iTurbGlob, int iNode
     
 }
 
-void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int iBlade, int iTurbGlob) {
+void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
@@ -1178,7 +1244,7 @@ void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int i
     
 }
 
-void fast::OpenFAST::getBladeDeflections(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iBlade, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getBladeDisplacements(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iTurbGlob, fast::timeStep t) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
@@ -1208,7 +1274,7 @@ void fast::OpenFAST::getTowerRefPositions(std::vector<double> & twrRefPos, int i
     
 }
 
-void fast::OpenFAST::getTowerDeflections(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getTowerDisplacements(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
@@ -1229,7 +1295,7 @@ void fast::OpenFAST::getHubRefPosition(std::vector<double> & hubRefPos, int iTur
     
 }
 
-void fast::OpenFAST::getHubDeflection(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getHubDisplacement(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     for (int j=0; j < 6; j++) {
@@ -1248,7 +1314,7 @@ void fast::OpenFAST::getNacelleRefPosition(std::vector<double> & nacRefPos, int 
 }
     
 
-void fast::OpenFAST::getNacelleDeflection(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getNacelleDisplacement(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t) {
     
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     for (int j=0; j < 6; j++) {
@@ -1258,20 +1324,19 @@ void fast::OpenFAST::getNacelleDeflection(std::vector<double> & nacDefl, std::ve
     
 }
 
-void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iBlade, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iTurbGlob, fast::timeStep t) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
     int iRunTot = 0;
-    for (int i=0; i < iBlade; i++)
-        iRunTot += turbineData[iTurbLoc].nBRfsiPtsBlade[i];
-
-    int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[iBlade];    
-    for(int j=0; j < nPtsBlade; j++) {
-        for(int k=0; k < 6; k++) {
-            brFSIData[iTurbLoc][t].bld_ld[6*iRunTot+k] = bldForces[6*iRunTot+k];
+    for (int i=0; i < nBlades; i++) {
+        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+        for(int j=0; j < nPtsBlade; j++) {
+            for(int k=0; k < 6; k++) {
+                brFSIData[iTurbLoc][t].bld_ld[6*iRunTot+k] = bldForces[6*iRunTot+k];
+            }
+            iRunTot++;
         }
-        iRunTot++;
     }
     
     //TODO: May be calculate the residual as well. 
@@ -1298,13 +1363,14 @@ void fast::OpenFAST::setUniformXBladeForces() {
         setTowerForces(fsiForceTower, iTurbGlob, fast::np1);
             
         int nBlades = get_numBladesLoc(iTurb);
-        for(int iBlade=0; iBlade < nBlades; iBlade++) {
-            int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[iBlade];
-            std::vector<double> fsiForceBlade(6*nPtsBlade, 0.0);
-            for(int i=0; i < nPtsBlade; i++)
-                fsiForceBlade[i*6] = 5e-4; // X component of force
-            setBladeForces(fsiForceBlade, iBlade, iTurbGlob, fast::np1);
-        }
+        int nTotPtsBlade = 0;
+        for(int iBlade=0; iBlade < nBlades; iBlade++)
+            nTotPtsBlade += turbineData[iTurb].nBRfsiPtsBlade[iBlade];
+        std::vector<double> fsiForceBlade(6*nTotPtsBlade, 0.0);
+        for(int i=0; i < nTotPtsBlade; i++)
+            fsiForceBlade[i*6] = 5e-4; // X component of force
+        setBladeForces(fsiForceBlade, iTurbGlob, fast::np1);
+        
     }
 }
 
