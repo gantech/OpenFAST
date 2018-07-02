@@ -245,7 +245,7 @@ void fast::OpenFAST::get_refPositions(int iTurb) {
         int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
         for (int i=0; i < nPtsTwr; i++) {
             for (int j = 0; j < 3; j++) {
-                brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j] + turbineData[iTurb].TurbineBasePos[i];
+                brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j] + turbineData[iTurb].TurbineBasePos[j];
                 brFSIData[iTurb][fast::np1].twr_ref_pos[i*6+j+3] = extld_i_f_FAST[iTurb].twrRefPos[i*6+j+3];
             }
         }
@@ -1472,11 +1472,14 @@ void fast::OpenFAST::allocateMemory2(int iTurbLoc) {
             nTotBldNds += extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
             turbineData[iTurbLoc].nBRfsiPtsBlade[i] = extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
         }
-        turbineData[iTurbLoc].nBRfsiPtsTwr = extld_i_f_FAST[iTurbLoc].nTowerNodes;
+        turbineData[iTurbLoc].nBRfsiPtsTwr = extld_i_f_FAST[iTurbLoc].nTowerNodes[0];
+        std::cout << "Number of tower nodes = " << turbineData[iTurbLoc].nBRfsiPtsTwr;
 
         // Allocate memory for reference position only for 1 time step - np1
         brFSIData[iTurbLoc][3].twr_ref_pos.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
         brFSIData[iTurbLoc][3].bld_ref_pos.resize(6*nTotBldNds);
+        brFSIData[iTurbLoc][3].hub_ref_pos.resize(6);
+        brFSIData[iTurbLoc][3].nac_ref_pos.resize(6);
         for(int k=0; k<4; k++) {
             brFSIData[iTurbLoc][k].twr_def.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].twr_vel.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
@@ -1484,6 +1487,10 @@ void fast::OpenFAST::allocateMemory2(int iTurbLoc) {
             brFSIData[iTurbLoc][k].bld_vel.resize(6*nTotBldNds);
             brFSIData[iTurbLoc][k].twr_ld.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].bld_ld.resize(6*nTotBldNds);
+            brFSIData[iTurbLoc][k].hub_def.resize(6);
+            brFSIData[iTurbLoc][k].hub_vel.resize(6);
+            brFSIData[iTurbLoc][k].nac_def.resize(6);
+            brFSIData[iTurbLoc][k].nac_vel.resize(6);
         }
     }
 

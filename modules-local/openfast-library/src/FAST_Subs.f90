@@ -3513,8 +3513,12 @@ SUBROUTINE ExtLd_SetInitInput(InitInData_ExtLd, InitOutData_ED, y_ED, InitOutDat
       DO k=1,InitInData_ExtLd%NumBlades
          InitInData_ExtLd%BldRootPos(:,k) = y_ED%BladeRootMotion(k)%position(:,1)
          InitInData_ExtLd%BldRootOrient(:,:,k) = y_ED%BladeRootMotion(k)%orientation(:,:,1)
-         InitInData_ExtLd%BldPos(:,:,k) = y_ED%BladeLn2Mesh(k)%position(:,:)
-         InitInData_ExtLd%BldOrient(:,:,:,k) = y_ED%BladeLn2Mesh(k)%orientation(:,:,:)
+         !Deal with the weird node ordering in ElastoDyn where the blade root is the last node
+         InitInData_ExtLd%BldPos(:,1,k) = y_ED%BladeLn2Mesh(k)%position(:,nMaxBldNds)
+         InitInData_ExtLd%BldOrient(:,:,1,k) = y_ED%BladeLn2Mesh(k)%orientation(:,:,nMaxBldNds)
+         !Now fill in the rest of the nodes
+         InitInData_ExtLd%BldPos(:,2:nMaxBldNds,k) = y_ED%BladeLn2Mesh(k)%position(:,1:nMaxBldNds-1)
+         InitInData_ExtLd%BldOrient(:,:,2:nMaxBldNds,k) = y_ED%BladeLn2Mesh(k)%orientation(:,:,1:nMaxBldNds-1)
       END DO
    ELSE IF (p_FAST%CompElast == Module_BD ) THEN
       DO k=1,InitInData_ExtLd%NumBlades
@@ -3526,7 +3530,7 @@ SUBROUTINE ExtLd_SetInitInput(InitInData_ExtLd, InitOutData_ED, y_ED, InitOutDat
    END IF
 
    ! Tower mesh
-   InitInData_ExtLd%TwrAero = ExternInitData%TwrAero
+   InitInData_ExtLd%TwrAero = .true.
    if (InitInData_ExtLd%TwrAero) then
       InitInData_ExtLd%NumTwrNds = y_ED%TowerLn2Mesh%NNodes
       IF ( InitInData_ExtLd%NumTwrNds > 0 ) THEN

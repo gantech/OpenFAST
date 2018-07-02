@@ -122,7 +122,7 @@ subroutine ExtLd_Init( InitInp, u, p, y, m, interval, InitOut, ErrStat, ErrMsg )
    p%NumBldNds(:) = InitInp%NumBldNodes(:)
    p%nTotBldNds = sum(p%NumBldNds(:))
    p%NumTwrNds = InitInp%NumTwrNds
-   p%TwrAero = InitInp%TwrAero
+   p%TwrAero = .true.
 
       !............................................................................................
       ! Define and initialize inputs here 
@@ -485,8 +485,12 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    end do !k=numBlades
 
    ! Set the parameters first
-   u%DX_u%nTowerNodes = p%NumTwrNds
-   u%DX_u%nBlades = p%NumBlds
+   CALL AllocPAry( u%DX_u%nTowerNodes, 1, 'nTowerNodes', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   u%DX_u%c_obj%nTowerNodes_Len = 1; u%DX_u%c_obj%nTowerNodes = C_LOC( u%DX_u%nTowerNodes(1) )
+   u%DX_u%nTowerNodes(1) = p%NumTwrNds
+   CALL AllocPAry( u%DX_u%nBlades, 1, 'nBlades', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   u%DX_u%c_obj%nBlades_Len = 1; u%DX_u%c_obj%nBlades = C_LOC( u%DX_u%nBlades(1) )
+   u%DX_u%nBlades(1) = p%NumBlds
    CALL AllocPAry( u%DX_u%nBladeNodes, p%NumBlds, 'nBladeNodes', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    u%DX_u%c_obj%nBladeNodes_Len = p%NumBlds; u%DX_u%c_obj%nBladeNodes = C_LOC( u%DX_u%nBladeNodes(1) )
    u%DX_u%nBladeNodes(:) = p%NumBldNds(:)
@@ -509,6 +513,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
          call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
 
          u%DX_u%twrRefPos((j-1)*6+1:(j-1)*6+3) = u%TowerMotion%Position(:,j)
+         write(*,*) 'Tower - Node ', j, ' Position = (', u%TowerMotion%Position(1,j), ' ', u%TowerMotion%Position(2,j), ' ', u%TowerMotion%Position(3,j), ')'
          u%DX_u%twrRefPos((j-1)*6+4:(j-1)*6+6) = wm_crv
       end do
    end if
@@ -518,7 +523,6 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       do j=1,p%NumBldNds(k)
          call BD_CrvExtractCrv(u%BladeMotion(k)%RefOrientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
          call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
-
          u%DX_u%bldRefPos((jTot-1)*6+1:(jTot-1)*6+3) = u%BladeMotion(k)%Position(:,j)
          u%DX_u%bldRefPos((jTot-1)*6+4:(jTot-1)*6+6) = wm_crv
          jTot = jTot+1

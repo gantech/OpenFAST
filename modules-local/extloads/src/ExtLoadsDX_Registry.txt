@@ -26,9 +26,9 @@ typedef ^       InputType      R8Ki            twrRefPos     {:}     -       -  
 typedef ^       InputType      R8Ki            bldRefPos     {:}     -       -       "Reference position of the all blade nodes - to send to external driver"
 typedef ^       InputType      R8Ki            hubRefPos     {:}     -       -       "Reference position of the tower nodes - to send to external driver"
 typedef ^       InputType      R8Ki            nacRefPos     {:}     -       -       "Reference position of the all blade nodes - to send to external driver"
-typedef ^       InputType      IntKi           nBlades          -      -       -        "Number of blades"
-typedef ^       InputType      IntKi           nBladeNodes     {:}     -       -        "Number of blade nodes for each blade"  -
-typedef ^       InputType      IntKi           nTowerNodes      -      -       -        "Number of tower nodes for each blade"  -
+typedef ^       InputType      IntKi           nBlades       {:}     -       -       "Number of blades"
+typedef ^       InputType      IntKi           nBladeNodes   {:}     -       -       "Number of blade nodes for each blade"  -
+typedef ^       InputType      IntKi           nTowerNodes   {:}     -       -       "Number of tower nodes for each blade"  -
 
 # ..... Outputs ...................................................................................................................
 # Define outputs that are contained on the mesh here:

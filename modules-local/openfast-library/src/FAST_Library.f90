@@ -485,6 +485,8 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, Abor
       return
    end if
 
+   NumBl_c     = Turbine(iTurb)%ED%p%NumBl
+
    CompLoadsType = Turbine(iTurb)%p_FAST%CompAero
 
    if ( (CompLoadsType .ne. Module_ExtLd) ) then
@@ -786,7 +788,7 @@ subroutine FAST_BR_CFD_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c,
       ErrMsg_c  = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
       return
    end if
-   
+
    ! check that these are valid:
    IF (t_initial_out /= t_initial) CALL SetErrStat(ErrID_Fatal, "invalid value of t_initial.", ErrStat, ErrMsg, RoutineName )
    IF (NumTurbines_out /= 1) CALL SetErrStat(ErrID_Fatal, "invalid value of NumTurbines.", ErrStat, ErrMsg, RoutineName )
@@ -795,7 +797,7 @@ subroutine FAST_BR_CFD_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c,
    n_t_global_c  = n_t_global
    AbortErrLev_c = AbortErrLev   
    NumOuts_c     = min(MAXOUTPUTS, 1 + SUM( Turbine(iTurb)%y_FAST%numOuts )) ! includes time
-   numBlades_c   = Turbine(iTurb)%ad%p%numblades
+   numblades_c = Turbine(iTurb)%ED%p%NumBl
    dt_c          = Turbine(iTurb)%p_FAST%dt      
 
 #ifdef CONSOLE_FILE   
@@ -804,7 +806,7 @@ subroutine FAST_BR_CFD_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c,
 
    CompLoadsType = Turbine(iTurb)%p_FAST%CompAero
 
-   if ( (CompLoadsType .ne. 3) ) then
+   if ( (CompLoadsType .ne. Module_ExtLd) ) then
       CALL SetErrStat(ErrID_Fatal, "CompAero is not set to 3 for use of the External Loads module. Use a different initialization call for this turbine.", ErrStat, ErrMsg, RoutineName )
       ErrStat_c = ErrStat
       ErrMsg_c  = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
@@ -831,9 +833,19 @@ subroutine SetExtLoads_pointers(iTurb, ExtLd_iFromOF, ExtLd_oToOF)
    TYPE(ExtLdDX_InputType_C), INTENT(INOUT) :: ExtLd_iFromOF
    TYPE(ExtLdDX_OutputType_C),INTENT(INOUT) :: ExtLd_oToOF
 
+   ExtLd_iFromOF%twrRefPos_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrRefPos_Len; ExtLd_iFromOF%twrRefPos = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrRefPos
    ExtLd_iFromOF%twrDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDef_Len; ExtLd_iFromOF%twrDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDef
+   ExtLd_iFromOF%bldRefPos_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldRefPos_Len; ExtLd_iFromOF%bldRefPos = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldRefPos
    ExtLd_iFromOF%bldDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldDef_Len; ExtLd_iFromOF%bldDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldDef
+   ExtLd_iFromOF%nBlades_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBlades_Len; ExtLd_iFromOF%nBlades = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBlades   
    ExtLd_iFromOF%nBladeNodes_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBladeNodes_Len; ExtLd_iFromOF%nBladeNodes = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBladeNodes
+   ExtLd_iFromOF%nTowerNodes_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nTowerNodes_Len; ExtLd_iFromOF%nTowerNodes = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nTowerNodes   
+   
+   ExtLd_iFromOF%hubRefPos_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%hubRefPos_Len; ExtLd_iFromOF%hubRefPos = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%hubRefPos
+   ExtLd_iFromOF%hubDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%hubDef_Len; ExtLd_iFromOF%hubDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%hubDef
+
+   ExtLd_iFromOF%nacRefPos_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nacRefPos_Len; ExtLd_iFromOF%nacRefPos = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nacRefPos
+   ExtLd_iFromOF%nacDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nacDef_Len; ExtLd_iFromOF%nacDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nacDef
    
    ExtLd_oToOF%twrLd_Len   = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%twrLd_Len;  ExtLd_oToOF%twrLd = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%twrLd
    ExtLd_oToOF%bldLd_Len   = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%bldLd_Len;  ExtLd_oToOF%bldLd = Turbine(iTurb)%ExtLd%y%DX_y%c_obj%bldLd
