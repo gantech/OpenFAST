@@ -104,6 +104,7 @@ public:
     ~SuperController() ;
 
     void init(scInitOutData & scio, int inNTurbinesProc, std::map<int, int> iTurbineMapProcToGlob, MPI_Comm inFastMPIComm);
+    void allocateMemory();
 
     void load(int inNTurbinesGlob, std::string inScLibFile, scInitOutData & scio);
 
@@ -116,9 +117,11 @@ public:
 
     void advanceTime() ; //Advance states to time step 'n+1'
 
-    int writeRestartFile(int n_t_global);
+    void writeRestartFile(int n_t_global);
+    void writeFloatDataToHDF5(hid_t restartFile, int ndim, hsize_t * dims, std::string dsetName, float * data);
 
-    int readRestartFile(int n_t_global);
+    void readRestartFile(int n_t_global);
+    void readFloatDataFromHDF5(hid_t restartFile, std::string dsetName, float * data);
 
     void end() {} ;
 };
