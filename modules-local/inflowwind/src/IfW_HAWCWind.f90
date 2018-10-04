@@ -35,7 +35,7 @@ MODULE IfW_HAWCWind
    IMPLICIT                                     NONE
    PRIVATE
 
-   TYPE(ProgDesc),   PARAMETER               :: IfW_HAWCWind_Ver = ProgDesc( 'IfW_HAWCWind', 'v1.01.00', '14-Dec-2015' )
+   TYPE(ProgDesc),   PARAMETER               :: IfW_HAWCWind_Ver = ProgDesc( 'IfW_HAWCWind', '', '' )
 
    PUBLIC                                    :: IfW_HAWCWind_Init
    PUBLIC                                    :: IfW_HAWCWind_End
@@ -96,6 +96,7 @@ SUBROUTINE IfW_HAWCWind_Init(InitInp, p, MiscVars, Interval, InitOut, ErrStat, E
    p%RefHt        = InitInp%RefHt
    p%URef         = InitInp%URef
    p%InitPosition = 0.0_ReKi  ! bjj: someday we may want to let the users give an offset time/position
+   p%InitPosition(1) = InitInp%dx
 
    p%deltaXInv   = 1.0 / InitInp%dx
    p%deltaYInv   = 1.0 / InitInp%dy

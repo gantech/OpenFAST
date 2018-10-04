@@ -27,9 +27,16 @@ readTheDocs = os.environ.get('READTHEDOCS', None) == 'True'
 sourcedir = sys.argv[-2]
 builddir = sys.argv[-1]
 
+# Only build API docs if the user specifically requests it. On RTD we build it
+# all the time
+use_breathe = tags.has("use_breathe") or readTheDocs
+
+# Use this to turn Doxygen on or off
+useDoxygen=True
+
 # This function was adapted from https://gitlab.kitware.com/cmb/smtk
 # Only run when on readthedocs
-def runDoxygen(sourcfile, doxyfileIn, doxyfileOut):
+def runDoxygen(sourcefile, doxyfileIn, doxyfileOut):
     dx = open(os.path.join(sourcedir, doxyfileIn), 'r')
     cfg = dx.read()
     srcdir = os.path.abspath(os.path.join(os.getcwd(), '..'))
@@ -43,8 +50,13 @@ def runDoxygen(sourcfile, doxyfileIn, doxyfileOut):
     print 'Running Doxygen on %s' % doxyfileOut
     doxproc = subprocess.call(('doxygen', doxname))
 
-if readTheDocs:
-    runDoxygen(sourcedir, 'Doxyfile.in', 'Doxyfile')
+if readTheDocs and useDoxygen:
+    try:
+        runDoxygen(sourcedir, 'Doxyfile.rtd', 'Doxyfile')
+    except:
+        # Gracefully bailout if doxygen encounters errors
+        use_breathe = False
+        
 
 # -- General configuration ------------------------------------------------
 
@@ -64,6 +76,9 @@ extensions = [
               'sphinxcontrib.bibtex',
              ]
 
+if use_breathe:
+    extensions.append('breathe')
+
 autodoc_default_flags = ['members','show-inheritance','undoc-members']
 
 autoclass_content = 'both'
@@ -71,20 +86,21 @@ autoclass_content = 'both'
 mathjax_path = 'https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'
 
 # FIXME: Naively assuming build directory one level up locally, and two up on readthedocs
-if readTheDocs:
-    doxylink = {
-        'openfast' : (
-          os.path.join(builddir, '..', '..', 'openfast.tag'),
-          os.path.join('html')
-        )
-    }
-else:
-    doxylink = {
-        'openfast' : (
-          os.path.join(builddir, '..', 'openfast.tag'),
-          os.path.join('html')
-        )
-    }
+if useDoxygen:
+    if readTheDocs:
+        doxylink = {
+            'openfast' : (
+              os.path.join(builddir, '..', '..', 'openfast.tag'),
+              os.path.join('html')
+            )
+        }
+    else:
+        doxylink = {
+            'openfast' : (
+              os.path.join(builddir, '..', 'openfast.tag'),
+              os.path.join('html')
+            )
+        }
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -119,16 +135,22 @@ release = u'1.0'
 # Usually you set "language" from the command line for these cases.
 language = None
 
+#If true, figures, tables and code-blocks are automatically numbered if they 
+#have a caption. At same time, the numref role is enabled. For now, it works 
+#only with the HTML builder and LaTeX builder. Default is False.
+numfig = True
+
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # FIXME: Naively assuming build directory one level up locally, and two up on readthedocs
-if readTheDocs:
-   html_extra_path = [os.path.join(builddir, '..', '..', 'doxygen')]
-else:
-   html_extra_path = [os.path.join(builddir, '..', 'doxygen')]
+if useDoxygen:
+    if readTheDocs:
+        html_extra_path = [os.path.join(builddir, '..', '..', 'doxygen')]
+    else:
+        html_extra_path = [os.path.join(builddir, '..', 'doxygen')]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -143,7 +165,7 @@ todo_include_todos = False
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_logo = 'openfastlogo.jpg'
+html_logo = '_static/openfastlogo.jpg'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -213,3 +235,28 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+
+### Breathe configuration
+if readTheDocs:
+    breathe_projects = {
+        'openfast' : os.path.join(builddir, '../../', 'doxygen/xml/')
+    }
+else:
+    breathe_projects = {
+        'openfast' : os.path.join(builddir, '../', 'doxygen/xml/')
+    }
+
+breathe_default_project = "openfast"
+
+primary_domain = "cpp"
+
+def setup(app):
+    app.add_object_type("confval", "confval",
+                        objname="input file parameter",
+                        indextemplate="pair: %s; input file parameter")
+    app.add_object_type("cmakeval", "cmakeval",
+                        objname="CMake configuration value",
+                        indextemplate="pair: %s; CMake configuration")
+    
+    app.add_config_value("use_breathe", use_breathe, 'env')
+    app.add_config_value("readTheDocs", readTheDocs, 'env')

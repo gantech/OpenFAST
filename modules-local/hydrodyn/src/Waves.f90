@@ -20,10 +20,6 @@
 ! limitations under the License.
 !    
 !**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
-!**********************************************************************************************************************************
 MODULE Waves
 
    USE Waves_Types  
@@ -35,7 +31,7 @@ MODULE Waves
    
    PRIVATE
 
-   TYPE(ProgDesc), PARAMETER            :: Waves_ProgDesc = ProgDesc( 'Waves', 'v1.01.00', '23-Dec-2015' )
+   TYPE(ProgDesc), PARAMETER            :: Waves_ProgDesc = ProgDesc( 'Waves', '', '' )
 
    
       ! ..... Public Subroutines ...................................................................................................

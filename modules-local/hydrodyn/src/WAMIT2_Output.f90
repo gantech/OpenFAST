@@ -17,10 +17,6 @@
 ! limitations under the License.
 !    
 !**********************************************************************************************************************************
-! File last committed: $Date: 2014-09-08 12:48:21 -0600 (Mon, 08 Sep 2014) $
-! (File) Revision #: $Rev: 503 $
-! URL: $HeadURL: https://windsvn.nrel.gov/HydroDyn/branches/HydroDyn_2nd_order/Source/WAMIT2_Output.f90 $
-!**********************************************************************************************************************************
 MODULE WAMIT2_Output
 
       ! This MODULE stores variables used for output.
@@ -64,7 +60,7 @@ MODULE WAMIT2_Output
    INTEGER(IntKi), PARAMETER :: ParamIndxAry(6) =  (/ &                            ! This lists the index into AllOuts(:) of the allowed parameters ValidParamAry(:)
                                  WavesF2xi ,  WavesF2yi , WavesF2zi ,  WavesM2xi ,  WavesM2yi ,  WavesM2zi /)
    CHARACTER(ChanLen), PARAMETER :: ParamUnitsAry(6) =  (/ &                     ! This lists the units corresponding to the allowed parameters
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     "/)
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     "/)
    
 
    REAL(ReKi)               :: AllOuts(MaxWAMIT2Outputs)          ! Array of all possible outputs

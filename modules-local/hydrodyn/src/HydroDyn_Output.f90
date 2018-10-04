@@ -17,10 +17,6 @@
 ! limitations under the License.
 !    
 !**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
-!**********************************************************************************************************************************
 MODULE HydroDyn_Output
 
       ! This MODULE stores variables used for output.
@@ -163,8 +159,8 @@ MODULE HydroDyn_Output
                                   WRPRVxi ,   WRPRVyi ,   WRPRVzi ,  WRPSurge ,   WRPSway ,   WRPTAxi , &
                                   WRPTAyi ,   WRPTAzi ,   WRPTVxi ,   WRPTVyi ,   WRPTVzi ,    WRPYaw /)
    CHARACTER(ChanLen), PARAMETER :: ParamUnitsAry(54) =  (/ &                     ! This lists the units corresponding to the allowed parameters
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     ",  &
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     ",  &
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     ",  &
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     ",  &
                                "(m)       ","(m)       ",  &
                                "(m)       ","(m)       ",  &
                                "(m)       ","(m)       ",  &
@@ -174,7 +170,7 @@ MODULE HydroDyn_Output
                                "(m)       ","(m)       ",  &
                                "(m)       ","(m)       ",  &
                                "(m)       ","(m)       ",  &
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     ",  &
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     ",  &
                                "(m)       ","(rad)     ","(rad/s^2) ","(rad/s^2) ","(rad/s^2) ","(rad)     ",  &
                                "(rad/s)   ","(rad/s)   ","(rad/s)   ","(m)       ","(m)       ","(m/s^2)   ",  &
                                "(m/s^2)   ","(m/s^2)   ","(m/s)     ","(m/s)     ","(m/s)     ","(rad)     "/)

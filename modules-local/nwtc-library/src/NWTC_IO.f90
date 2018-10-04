@@ -15,11 +15,6 @@
 ! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
-!
-!**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
 !**********************************************************************************************************************************
 
 !> This module contains I/O-related variables and routines with non-system-specific logic.
@@ -33,7 +28,7 @@ MODULE NWTC_IO
 !=======================================================================
 
    TYPE(ProgDesc), PARAMETER    :: NWTC_Ver = &                               
-          ProgDesc( 'NWTC Subroutine Library', 'v2.11.00', '12-Nov-2016')    !< The name, version, and date of the NWTC Subroutine Library
+          ProgDesc( 'NWTC Subroutine Library', '', '')    !< The name, version, and date of the NWTC Subroutine Library
 
       !> This type stores a linked list of file names, used in MLB-style input file parsing (currently used in AirfoilInfo)
    TYPE, PUBLIC   :: FNlist_Type                                
@@ -56,6 +51,7 @@ MODULE NWTC_IO
 
    INTEGER(B2Ki), PARAMETER      :: FileFmtID_WithTime    = 1                    !< ID for FAST Output File Format, specifies that the time channel is included in the output file (use if the output can occur at variable times)
    INTEGER(B2Ki), PARAMETER      :: FileFmtID_WithoutTime = 2                    !< ID for FAST Output File Format, specifies that the time channel is not included in the output file (used only with constant time-step output)
+   INTEGER(B2Ki), PARAMETER      :: FileFmtID_NoCompressWithoutTime = 3          !< ID for FAST Output File Format, specifies that the time channel is not included in the output file (used only with constant time-step output), and data is not compressed, but written as double precision floats
 
 
    LOGICAL                       :: Beep     = .TRUE.                            !< Flag that specifies whether or not to beep for error messages and program terminations.
@@ -63,6 +59,7 @@ MODULE NWTC_IO
    CHARACTER(20)                 :: ProgName = ' '                               !< The name of the calling program. DO NOT USE THIS IN NEW PROGRAMS (Modules)
    CHARACTER(99)                 :: ProgVer  = ' '                               !< The version (including date) of the calling program. DO NOT USE THIS IN NEW PROGRAMS
    CHARACTER(1), PARAMETER       :: Tab      = CHAR( 9 )                         !< The tab character.
+   CHARACTER(*), PARAMETER       :: CommChars = '!#%'                            !< Comment characters that mark the end of useful input
 
 
       ! Parameters for writing to echo files (in this module only)
@@ -220,10 +217,10 @@ MODULE NWTC_IO
       MODULE PROCEDURE WrMatrix2R16    ! Two dimension matrix of QuKi
    END INTERFACE
 
-      !> \copydoc nwtc_io::wrpartialmatrix2
+      !> \copydoc nwtc_io::wrpartialmatrix1r8
    INTERFACE WrPartialMatrix
-      MODULE PROCEDURE WrPartialMatrix1     ! Single dimension matrix (Ary) of ReKi
-      MODULE PROCEDURE WrPartialMatrix2     ! Two dimension matrix of ReKi
+      MODULE PROCEDURE WrPartialMatrix1R8     ! Single dimension matrix (array) of R8Ki
+      MODULE PROCEDURE WrPartialMatrix2R8     ! Two dimension matrix of R8Ki
    END INTERFACE   
    
       !> \copydoc nwtc_io::wrr4aryfilenr
@@ -1500,10 +1497,7 @@ CONTAINS
    CHARACTER(LEN(InputFile))            :: Arg                                          ! A command-line argument.
    
 
-
-
       ! Find out how many arguments were entered on the command line.
-
    NumArg   = COMMAND_ARGUMENT_COUNT()
    FirstArg = .TRUE.
 
@@ -1512,7 +1506,7 @@ CONTAINS
 
       ! Parse them.
 
-   IF ( NumArg .GT. 0 )  THEN
+   IF ( NumArg .GT. 0 ) THEN
 
       DO IArg=1,NumArg
 
@@ -1526,17 +1520,16 @@ CONTAINS
             END IF
          END IF
 
-         IF ( Arg(1:1) == SwChar .OR. Arg(1:1) == '-' )  THEN
+         IF ( Arg(1:1) == SwChar .OR. Arg(1:1) == '-' ) THEN
             IF (PRESENT(flag)) THEN
                CALL Conv2UC( Arg )
                Flag = Arg(2:) !this results in only the last flag
-               IF ( TRIM(Flag) == 'RESTART' )  CYCLE         ! Get next argument (which will be input [checkpoint] file name)
-
+               IF ( TRIM(Flag) == 'RESTART' ) CYCLE         ! Get next argument (which will be input [checkpoint] file name)
             END IF
                                                 
             CALL NWTC_DisplaySyntax( InputFile, ProgName )
 
-            IF ( INDEX( 'Hh?', Arg(2:2)  ) > 0 )  THEN
+            IF ( INDEX( 'Hh?', Arg(2:2) ) > 0 ) THEN
                IF ( PRESENT(ErrStat) ) THEN
                   ErrStat = ErrID_Info !bjj? do we want to check if an input file was specified later?
                   RETURN
@@ -1990,9 +1983,10 @@ CONTAINS
    CALL WrScr( TRIM(GetNVD(ProgInfo)) )
    CALL WrScr('')
    CALL WrScr( 'Copyright (C) '//TRIM(year)//' National Renewable Energy Laboratory' )
+   CALL WrScr( 'Copyright (C) '//TRIM(year)//' Envision Energy USA LTD' )
    CALL WrScr('')
-   CALL WrScr( 'This program comes with ABSOLUTELY NO WARRANTY. '//&
-               'See the "license.txt" file distributed with this software for details.')   
+   CALL WrScr( 'This program is licensed under Apache License Version 2.0 and comes with ABSOLUTELY NO WARRANTY. '//&
+               'See the "LICENSE" file distributed with this software for details.')   
 
    IF (PRESENT(AdditionalComment)) THEN
       CALL WrScr(Stars)
@@ -2105,61 +2099,58 @@ CONTAINS
       END IF
       
    END SUBROUTINE DLLTypeUnPack   
+
 !=======================================================================
 !> This routine displays the name of the program, its version, and its release date.
 !! Use DispNVD (nwtc_io::dispnvd) instead of directly calling a specific routine in the generic interface.
    SUBROUTINE DispNVD0()
-
-
+     
       ! Print out program name, version, and date.
-
-   CALL WrScr ( NewLine//' Running '//TRIM( ProgName )//' '//Trim( ProgVer )//'.' )
-
+      CALL WrScr ( NewLine//' Running '//TRIM( ProgName )//' '//Trim( ProgVer )//'.' )
 
    RETURN
    END SUBROUTINE DispNVD0
+
 !=======================================================================
 !> \copydoc nwtc_io::dispnvd0
    SUBROUTINE DispNVD1 ( ProgInfo, DispNWTCVer )
 
-
-   IMPLICIT NONE
-   TYPE( ProgDesc ), INTENT(IN)        :: ProgInfo    !< Contains the name and version info
-   LOGICAL,INTENT(IN),OPTIONAL         :: DispNWTCVer !< Option to display what version of the library is linked with the code
+      IMPLICIT NONE
+      
+      TYPE( ProgDesc ), INTENT(IN) :: ProgInfo    !< Contains the name and version info
+      LOGICAL,INTENT(IN),OPTIONAL  :: DispNWTCVer !< Option to display what version of the library is linked with the code
 
       ! Print out program name, version, and date.
-
+      
       ! As a special case, display the library version with the program version
-   IF ( PRESENT(DispNWTCVer) ) THEN
-      IF ( DispNWTCVer .AND. ProgInfo%Name /= NWTC_Ver%Name ) THEN
-         CALL WrScr ( NewLine//' Running '//TRIM( GetNVD( ProgInfo ) )//' linked with '//TRIM( GetNVD( NWTC_Ver ) )//'.' )
-         RETURN
+      IF ( PRESENT(DispNWTCVer) ) THEN
+         IF ( DispNWTCVer .AND. ProgInfo%Name /= NWTC_Ver%Name ) THEN
+            CALL WrScr ( NewLine//' Running '//TRIM( GetNVD( ProgInfo ) )//' linked with '//TRIM( GetNVD( NWTC_Ver ) )//'.' )
+            RETURN
+         END IF
       END IF
-   END IF
-
-   CALL WrScr ( NewLine//' Running '//TRIM( GetNVD( ProgInfo ) )//'.' )
-
+      
+      CALL WrScr ( 'Running '//TRIM( GetNVD( ProgInfo ) )//'.' )
 
    RETURN
    END SUBROUTINE DispNVD1
+
 !=======================================================================
 !> This routine displays the name of the program, its version, and its release date passed in as strings
 !! This routine is depricated and for legacy purposes only. Please don't use for any new code (Dec-2012).
    SUBROUTINE DispNVD2 ( Name, Ver )
 
-
-   IMPLICIT NONE
-   CHARACTER(*),  INTENT(IN)           :: Name     !< String containing the name of the program using the library
-   CHARACTER(*),  INTENT(IN)           :: Ver      !< String containing the version and date info
-
-
+      IMPLICIT NONE
+     
+      CHARACTER(*),  INTENT(IN) :: Name     !< String containing the name of the program using the library
+      CHARACTER(*),  INTENT(IN) :: Ver      !< String containing the version and date info
+     
       ! Print out program name, version, and date.
-
-   CALL WrScr ( NewLine//' Running '//TRIM( Name )//' ('//Trim( Ver )//').' )
-
+      CALL WrScr ( NewLine//' Running '//TRIM( Name )//' ('//Trim( Ver )//').' )
 
    RETURN
    END SUBROUTINE DispNVD2
+   
 !=======================================================================
 !> This routine finds one line of text with a maximum length of MaxLen from the Str.
 !! It tries to break the line at a blank.
@@ -2297,6 +2288,7 @@ CONTAINS
 
 
    END FUNCTION GetErrStr
+   
 !=======================================================================
 !> This function converts the three strings contained in the ProgDesc
 !! data type into a single string listing the program name,
@@ -2304,18 +2296,13 @@ CONTAINS
    FUNCTION GetNVD ( ProgInfo )
 
       ! Argument declarations.
-
-   TYPE( ProgDesc ), INTENT(IN)        :: ProgInfo    !< Contains the name, date, and version info
-
+      TYPE( ProgDesc ), INTENT(IN) :: ProgInfo    !< Contains the name, date, and version info
 
       ! Function delcaration
+      CHARACTER(200)               :: GetNVD      !< A single string containing the name, date, and version info
 
-   CHARACTER(200)                      :: GetNVD      !< A single string containing the name, date, and version info
-
-
-      ! Print all the version info into a nice string:
-
-      GetNVD = TRIM( ProgInfo%Name )//' ('//Trim( ProgInfo%Ver )//', '//Trim( ProgInfo%Date )//')'
+      ! Store all the version info into a single string
+      GetNVD = TRIM( ProgInfo%Name ) !//' ('//Trim( ProgInfo%Ver )//', '//Trim( ProgInfo%Date )//')'
 
    END FUNCTION GetNVD
 !=======================================================================
@@ -2658,13 +2645,13 @@ CONTAINS
          CALL WrScr ( NewLine//'    '//TRIM( ThisProgName )//' ['//SwChar//'h] <InputFile>' )
          CALL WrScr ( NewLine//' where:' )
          CALL WrScr ( NewLine//'    '//SwChar//'h generates this help message.' )
-         CALL WrScr    ( '    <InputFile> is the name of the required primary input file.' )
+         CALL WrScr ( '    <InputFile> is the name of the required primary input file.' )
       ELSE
          CALL WrScr ( NewLine//'    '//TRIM( ThisProgName )//' ['//SwChar//'h] [<InputFile>]' )
          CALL WrScr ( NewLine//' where:' )
          CALL WrScr ( NewLine//'    '//SwChar//'h generates this help message.' )
-         CALL WrScr    ( '    <InputFile> is the name of the primary input file.  If omitted, the default file is "' &
-                        //TRIM( DefaultInputFile )//'".' )
+         CALL WrScr ( '    <InputFile> is the name of the primary input file.  If omitted, the default file is "' &
+                     //TRIM( DefaultInputFile )//'".' )
       END IF
       CALL WrScr    ( NewLine//' Note: values enclosed in square brackets [] are optional. Do not enter the brackets.')      
       CALL WrScr    ( ' ')
@@ -2936,6 +2923,55 @@ CONTAINS
    RETURN
    END SUBROUTINE OpenFUnkFile
 !=======================================================================
+!> This routine opens a formatted output file in append mode if it exists, otherwise opens a new file
+   SUBROUTINE OpenFUnkFileAppend ( Un, OutFile, ErrStat, ErrMsg )
+
+      ! Argument declarations.
+
+   INTEGER, INTENT(IN)                   :: Un                                          ! Logical unit for the output file.
+   CHARACTER(*), INTENT(IN)              :: OutFile                                     ! Name of the output file.
+
+   INTEGER(IntKi), INTENT(OUT), OPTIONAL :: ErrStat                                     ! Error status; if present, program does not abort on error
+   CHARACTER(*),   INTENT(OUT), OPTIONAL :: ErrMsg                                      ! Error message
+
+
+
+      ! Local declarations.
+   LOGICAL                                :: FileExists                                  ! Does the file exist?
+   INTEGER                                :: IOS                                         ! I/O status of OPEN
+   CHARACTER(1024)                        :: Msg                                         ! Temporary error message
+
+
+      ! Open output file.  Make sure it worked.
+
+   inquire(file=TRIM( OutFile ), exist=FileExists)
+
+   if (FileExists) then
+      OPEN( Un, FILE=TRIM( OutFile ), STATUS='OLD', POSITION='APPEND', FORM='FORMATTED', IOSTAT=IOS, ACTION="WRITE" )
+   else
+      OPEN( Un, FILE=TRIM( OutFile ), STATUS='UNKNOWN', FORM='FORMATTED', IOSTAT=IOS, ACTION="WRITE" )
+   end if
+
+
+   IF ( IOS /= 0 )  THEN
+
+      Msg = 'Cannot open file "'//TRIM( OutFile )//'".  Another program like MS Excel may have locked it for writing.'
+
+      IF ( PRESENT(ErrStat) ) THEN
+         ErrStat = ErrID_Fatal
+         ErrMsg  = Msg
+      ELSE
+         CALL ProgAbort( ' '//Msg )
+      END IF
+
+   ELSE
+      IF ( PRESENT(ErrStat) )  ErrStat = ErrID_None
+      IF ( PRESENT(ErrMsg)  )  ErrMsg  = ""
+   END IF
+
+
+   RETURN
+   END SUBROUTINE OpenFUnkFileAppend ! ( Un, OutFile [, ErrStat] [, ErrMsg] )
 !>  This routine opens an unformatted input file of RecLen-byte data records
 !!  stored in Big Endian format.
    SUBROUTINE OpenUInBEFile( Un, InFile, RecLen, ErrStat, ErrMsg )
@@ -4422,6 +4458,56 @@ CONTAINS
 
    RETURN
    END SUBROUTINE ProgWarn 
+   
+!=======================================================================
+!> This routine outputs the git hash associate with the current codebase.
+   FUNCTION QueryGitVersion()
+   
+      ! Passed variables.
+   
+   !INTEGER(IntKi),     INTENT(OUT)     :: ErrStat                              ! Error status 
+   !CHARACTER(*),       INTENT(OUT)     :: ErrMsg                               ! Error message 
+      
+      ! Function declaration.
+
+   CHARACTER(200)                      :: QueryGitVersion                      ! This function.
+      
+      ! Local variables.
+
+   INTEGER(IntKi)                      :: UnIn                                 ! Unit number for reading file                                        
+   INTEGER(IntKi)                      :: ErrStat2                             ! Temporary Error status 
+   CHARACTER(ErrMsgLen)                :: ErrMsg2                              ! Temporary Error message 
+   
+   !ErrStat = ErrID_None 
+   !ErrMsg  = '' 
+   
+   QueryGitVersion = 'unversioned' 
+   
+   ! VS build method for obtaining the git version info.
+   ! This requires setting:
+   !  1) GIT_INCLUDE_FILE = '$(ProjectDir)\..\gitVersionInfo.h' preprocessor option on this file or the project containing this file.
+   !  2) Creating a prebuild event on the project file producing the resulting binary (i.e., FAST.exe) with the following command: ..\CreateGitVersion.bat
+   !  3) The bat file, CreateGitVersion.bat, located in the vs-build folder of the openfast repository, which contains the git command used to obtain the git info
+   !         @ECHO off
+   !         SET IncludeFile=..\gitVersionInfo.h
+   !         
+   !         <NUL SET /p IncludeTxt=#define GIT_VERSION_INFO '> %IncludeFile%
+   !         FOR /f %%a IN ('git describe --abbrev^=7 --always --tags --dirty') DO <NUL SET /p IncludeTxt=%%a>> %IncludeFile%
+   !         ECHO '>> %IncludeFile%
+   !         EXIT /B 0
+   !     This creates the gitVersionInfo.h file in the vs-build folder
+   
+#ifdef GIT_INCLUDE_FILE
+#include GIT_INCLUDE_FILE
+#endif
+
+#ifdef GIT_VERSION_INFO
+QueryGitVersion = GIT_VERSION_INFO
+#endif
+
+   RETURN
+   END FUNCTION QueryGitVersion
+   
 !=======================================================================
 !> \copydoc nwtc_io::int2lstr
    FUNCTION R2LStr4 ( Num )
@@ -4673,7 +4759,6 @@ CONTAINS
    INTEGER                                   :: RangeEnd                      ! The last line in a range of lines to be included from a file.
    INTEGER                                   :: UnIn                          ! The unit number used for the input file.
                                                                               ! Should the comment characters be passed to this routine instead of being hard coded? -mlb
-   CHARACTER(3), PARAMETER                   :: CommChars = '!#%'             ! Comment characters that mark the end of useful input.
    CHARACTER(1024)                           :: IncFileName                   ! The name of a file that this one includes.
    CHARACTER(512)                            :: Line                          ! The contents of a line returned from ReadLine() with comment removed.
    CHARACTER(ErrMsgLen)                      :: ErrMsg2
@@ -4888,6 +4973,7 @@ CONTAINS
 
    INTEGER(B2Ki)                          :: FileType                ! The type of FAST data file (1: Time channel included in file; 2: Time stored as start time and step).
    INTEGER(B2Ki), ALLOCATABLE             :: TmpInArray(:,:)         ! This array holds the normalized channels that were read from the binary file.
+   INTEGER(R8Ki), ALLOCATABLE             :: TmpR8InArray(:,:)       ! This array holds the uncompressed channels that were read from the binary file.
 
    INTEGER(B1Ki), ALLOCATABLE             :: DescStrASCII(:)         ! The ASCII equivalent of DescStr.
    INTEGER(B1Ki)                          :: TmpStrASCII(MaxChrLen)  ! The temporary ASCII equivalent of a channel name or units.
@@ -4989,28 +5075,7 @@ CONTAINS
 
 
       ! Allocate the necessary arrays.
-
-   ALLOCATE ( ColMax( FASTdata%NumChans ) , STAT=ErrStat2 )
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColMax array.', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
-   ENDIF
-
-   ALLOCATE ( ColMin( FASTdata%NumChans ) , STAT=ErrStat2 )
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColMin array.', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
-   ENDIF
-
-   ALLOCATE ( ColOff( FASTdata%NumChans ) , STAT=ErrStat2 )
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColOff array.', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
-   ENDIF
-
+   
    ALLOCATE ( FASTdata%ChanNames( FASTdata%NumChans+1 ) , STAT=ErrStat2 )
    IF ( ErrStat2 /= 0 )  THEN
       CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for FASTdata%ChanNames array.', ErrStat, ErrMsg, RoutineName )
@@ -5025,55 +5090,94 @@ CONTAINS
       RETURN
    ENDIF
 
-   ALLOCATE ( ColScl( FASTdata%NumChans ) , STAT=ErrStat2 )
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColScl array.', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
-   ENDIF
-
-   ALLOCATE ( TmpInArray( FASTdata%NumRecs, FASTdata%NumChans ) , STAT=ErrStat2 )
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for the TmpInArray array.', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
-   ENDIF
-
-   IF ( FileType == FileFmtID_WithTime ) THEN
-      ALLOCATE ( TmpTimeArray( FASTdata%NumRecs ) , STAT=ErrStat2 )
-      IF ( ErrStat2 /= 0 )  THEN
-         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for the TmpTimeArray array.', ErrStat, ErrMsg, RoutineName )
-         CALL Cleanup()
-         RETURN
-      ENDIF
-   END IF
-
    ALLOCATE ( FASTdata%Data( FASTdata%NumRecs, FASTdata%NumChans+1 ) , STAT=ErrStat2 )
    IF ( ErrStat2 /= 0 )  THEN
       CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for the FASTdata%Data array.', ErrStat, ErrMsg, RoutineName )
       CALL Cleanup()
       RETURN
    ENDIF
+   
+   IF ( FileType == FileFmtID_NoCompressWithoutTime ) THEN 
+      ALLOCATE ( TmpR8InArray( FASTdata%NumRecs, FASTdata%NumChans ) , STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for the TmpR8InArray array.', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+
+   ELSE
+      
+      ALLOCATE ( ColMax( FASTdata%NumChans ) , STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColMax array.', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+
+      ALLOCATE ( ColMin( FASTdata%NumChans ) , STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColMin array.', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+
+      ALLOCATE ( ColOff( FASTdata%NumChans ) , STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColOff array.', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+
+      ALLOCATE ( ColScl( FASTdata%NumChans ) , STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for ColScl array.', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+   
+      ALLOCATE ( TmpInArray( FASTdata%NumRecs, FASTdata%NumChans ) , STAT=ErrStat2 )
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for the TmpInArray array.', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+
+      IF ( FileType == FileFmtID_WithTime ) THEN
+         ALLOCATE ( TmpTimeArray( FASTdata%NumRecs ) , STAT=ErrStat2 )
+         IF ( ErrStat2 /= 0 )  THEN
+            CALL SetErrStat ( ErrID_Fatal, 'Fatal error allocating memory for the TmpTimeArray array.', ErrStat, ErrMsg, RoutineName )
+            CALL Cleanup()
+            RETURN
+         ENDIF
+      END IF
+      
+   END IF
+   
+   
 
 
       ! Read more of the header information.
 
-   READ (UnIn, IOSTAT=ErrStat2)  ColScl
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error reading the ColScl array from file "' &
-                                          //TRIM( FASTdata%File )//'".', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
-   ENDIF
+   IF ( FileType /= FileFmtID_NoCompressWithoutTime ) THEN 
+      
+      READ (UnIn, IOSTAT=ErrStat2)  ColScl
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error reading the ColScl array from file "' &
+                                             //TRIM( FASTdata%File )//'".', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
 
-   READ (UnIn, IOSTAT=ErrStat2)  ColOff
-   IF ( ErrStat2 /= 0 )  THEN
-      CALL SetErrStat ( ErrID_Fatal, 'Fatal error reading the ColOff array from file "' &
-                                          //TRIM( FASTdata%File )//'".', ErrStat, ErrMsg, RoutineName )
-      CALL Cleanup()
-      RETURN
+      READ (UnIn, IOSTAT=ErrStat2)  ColOff
+      IF ( ErrStat2 /= 0 )  THEN
+         CALL SetErrStat ( ErrID_Fatal, 'Fatal error reading the ColOff array from file "' &
+                                             //TRIM( FASTdata%File )//'".', ErrStat, ErrMsg, RoutineName )
+         CALL Cleanup()
+         RETURN
+      ENDIF
+      
    ENDIF
-
+   
    READ (UnIn, IOSTAT=ErrStat2)  LenDesc
    IF ( ErrStat2 /= 0 )  THEN
       CALL SetErrStat ( ErrID_Fatal, 'Fatal error reading LenDesc from file "'//TRIM( FASTdata%File )//'".', ErrStat, ErrMsg, RoutineName )
@@ -5171,7 +5275,12 @@ CONTAINS
       ! Read the FAST channel data.
 
    DO IRow=1,FASTdata%NumRecs
-      READ (UnIn, IOSTAT=ErrStat2)  TmpInArray(IRow,:)
+      IF ( FileType == FileFmtID_NoCompressWithoutTime ) THEN
+         READ (UnIn, IOSTAT=ErrStat2)  TmpR8InArray(IRow,:)
+      ELSE
+         READ (UnIn, IOSTAT=ErrStat2)  TmpInArray(IRow,:)
+      ENDIF
+      
       IF ( ErrStat2 /= 0 )  THEN
          CALL SetErrStat ( ErrID_Fatal, 'Fatal error reading channel data from file "'//TRIM( FASTdata%File )//'".', ErrStat, ErrMsg, RoutineName )
          CALL Cleanup()
@@ -5180,10 +5289,14 @@ CONTAINS
    END DO ! IRow=1,FASTdata%NumRecs
 
 
-      ! Denormalize the data one row at a time and store it in the FASTdata%Data array.
-
    DO IRow=1,FASTdata%NumRecs
-      FASTdata%Data(IRow,2:) = ( TmpInArray(IRow,:) - ColOff(:) )/ColScl(:)
+      IF ( FileType == FileFmtID_NoCompressWithoutTime ) THEN
+         FASTdata%Data(IRow,2:) = REAL(TmpInArray(IRow,:), ReKi)
+      ELSE
+            ! Denormalize the data one row at a time and store it in the FASTdata%Data array.
+         FASTdata%Data(IRow,2:) = ( TmpInArray(IRow,:) - ColOff(:) )/ColScl(:)
+      END IF
+      
    END DO ! IRow=1,FASTdata%NumRecs
 
 
@@ -5206,6 +5319,7 @@ CONTAINS
          IF ( ALLOCATED( ColScl             ) ) DEALLOCATE( ColScl             )
          IF ( ALLOCATED( DescStrASCII       ) ) DEALLOCATE( DescStrASCII       )
          IF ( ALLOCATED( TmpInArray         ) ) DEALLOCATE( TmpInArray         )
+         IF ( ALLOCATED( TmpR8InArray       ) ) DEALLOCATE( TmpR8InArray         )
          IF ( ALLOCATED( TmpTimeArray       ) ) DEALLOCATE( TmpTimeArray       )
 
 
@@ -6591,7 +6705,7 @@ CONTAINS
    INTEGER(IntKi)                :: NT                               ! Number of time steps
    INTEGER(IntKi)                :: NumOutChans                      ! Number of output channels
    INTEGER(IntKi)                :: UnIn                             ! Unit number for the binary file
-
+   REAL(R8Ki),    ALLOCATABLE    :: TmpR8OutArray(:)                 ! This array holds the uncompressed output channels before being written to the binary file
    INTEGER(B2Ki), ALLOCATABLE    :: TmpOutArray(:)                   ! This array holds the normalized output channels before being written to the binary file
    INTEGER(B4Ki), ALLOCATABLE    :: TmpTimeArray(:)                  ! This array holds the normalized output time channel before being written to the binary file
    INTEGER(B1Ki), ALLOCATABLE    :: DescStrASCII(:)                  ! The ASCII equivalent of DescStr
@@ -6632,21 +6746,6 @@ CONTAINS
    ! Allocate arrays
    !...............................................................................................................................
 
-   CALL AllocAry( ColMax, NumOutChans, 'column maxima (ColMax)', ErrStat2, ErrMsg2 )
-      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-
-   CALL AllocAry( ColMin, NumOutChans, 'column minima (ColMin)', ErrStat2, ErrMsg2 )
-      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-
-   CALL AllocAry( ColOff, NumOutChans, 'column offsets (ColOff)', ErrStat2, ErrMsg2 )
-      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-
-   CALL AllocAry( ColScl, NumOutChans, 'column scales (ColScl)', ErrStat2, ErrMsg2 )
-      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-
-   CALL AllocAry( TmpOutArray, NumOutChans*NT, 'temporary output array (TmpOutArray)', ErrStat2, ErrMsg2 )
-      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-
    CALL AllocAry( ChanNameASCII, (1+NumOutChans)*LenName , 'temporary channel name array (ChanNameASCII)', ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
@@ -6656,11 +6755,33 @@ CONTAINS
    CALL AllocAry( DescStrASCII, LenDesc, 'temporary file description (DescStrASCII)', ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
-   IF ( FileID == FileFmtID_WithTime ) THEN
-      CALL AllocAry( TmpTimeArray, NT, 'temporary output time array (TmpTimeArray)', ErrStat2, ErrMsg2 )
+   IF ( FileID == FileFmtID_NoCompressWithoutTime ) THEN
+      CALL AllocAry( TmpR8OutArray, NumOutChans*NT, 'temporary output array (TmpR8OutArray)', ErrStat2, ErrMsg2 )
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-   END IF
+   ELSE    
+      
+      CALL AllocAry( ColMax, NumOutChans, 'column maxima (ColMax)', ErrStat2, ErrMsg2 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
 
+      CALL AllocAry( ColMin, NumOutChans, 'column minima (ColMin)', ErrStat2, ErrMsg2 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL AllocAry( ColOff, NumOutChans, 'column offsets (ColOff)', ErrStat2, ErrMsg2 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+      CALL AllocAry( ColScl, NumOutChans, 'column scales (ColScl)', ErrStat2, ErrMsg2 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      CALL AllocAry( TmpOutArray, NumOutChans*NT, 'temporary output array (TmpOutArray)', ErrStat2, ErrMsg2 )  
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   
+      IF ( FileID == FileFmtID_WithTime ) THEN
+         CALL AllocAry( TmpTimeArray, NT, 'temporary output time array (TmpTimeArray)', ErrStat2, ErrMsg2 )
+            CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      END IF
+      
+   ENDIF
+   
    IF ( ErrStat >= AbortErrLev ) THEN
       CALL Cleanup( )
       RETURN
@@ -6701,23 +6822,6 @@ CONTAINS
 !BJJ: This scaling has issues if the channel contains NaN.
 
 
-   ColMin(:) = AllOutData(:,1_IntKi)         ! Initialize the Min values for each channel
-   ColMax(:) = AllOutData(:,1_IntKi)         ! Initialize the Max values for each channel
-
-   DO IT=2,NT                                ! Loop through the remaining time steps
-
-      DO IC=1,NumOutChans                    ! Loop through the output channels
-
-         IF ( AllOutData(IC,IT) > ColMax(IC) ) THEN
-            ColMax(IC) = AllOutData(IC,IT)
-         ELSEIF ( AllOutData(IC,IT) < ColMin(IC) ) THEN
-            ColMin(IC) = AllOutData(IC,IT)
-         ENDIF
-
-      ENDDO !IC
-
-   ENDDO !IT
-
 
    IF ( FileID == FileFmtID_WithTime ) THEN
       TimeMin   = TimeData(1)                   ! Initialize the Min time value
@@ -6731,29 +6835,6 @@ CONTAINS
          ENDIF
       ENDDO !IT
 
-   ELSE ! FileFmtID_WithoutTime
-         ! Convert DbKi to R8Ki, if necessary
-      TimeOut1      = TimeData(1)                ! The first output time
-      TimeIncrement = TimeData(2)                ! The time increment
-   END IF ! FileID
-
-   !...............................................................................................................................
-   ! Calculate the scaling parameters for each channel
-   !...............................................................................................................................
-   DO IC=1,NumOutChans                    ! Loop through the output channels
-
-      IF ( ColMax(IC) == ColMin(IC) ) THEN
-         ColScl(IC) = 1
-      ELSE
-         ColScl(IC) = IntRng/REAL( ColMax(IC) - ColMin(IC), SiKi )
-      ENDIF
-
-      ColOff(IC) = IntMin - ColScl(IC)*REAL( ColMin(IC), SiKi )
-
-   ENDDO !IC
-
-
-   IF ( FileID == FileFmtID_WithTime ) THEN
       IF ( TimeMax == TimeMin ) THEN
          TimeScl = 1
       ELSE
@@ -6761,34 +6842,66 @@ CONTAINS
       ENDIF
 
       TimeOff = Int32Min - TimeScl*REAL( TimeMin, R8Ki )
-
-   END IF ! FileID
-
-   !...............................................................................................................................
-   ! Convert channels to 16-bit integers (packed binary)
-   !...............................................................................................................................
-   J = 1
-   DO IT=1,NT                                ! Loop through the time steps
-      DO IC=1,NumOutChans                    ! Loop through the output channels
-
-         TmpOutArray(J) =  NINT( Max( Min( REAL( ColScl(IC)*AllOutData(IC,IT) + ColOff(IC), SiKi), IntMax ), IntMin) , B2Ki )
-         J = J + 1
-
-      ENDDO !IC
-
-   ENDDO !IT
-
-
-   IF ( FileID == FileFmtID_WithTime ) THEN  ! Pack the time into 32-bit integers
+      
+      ! Pack the time into 32-bit integers
       DO IT=1,NT                             ! Loop through the time steps
          TmpTimeArray(IT) = NINT( Max( Min( REAL( TimeScl*TimeData(IT) + TimeOff, R8Ki), Int32Max ), Int32Min) , B4Ki )
       ENDDO !IT
+   
+      
+   ELSE ! FileFmtID_WithoutTime and FileFmtID_NoCompressWithoutTime
+         ! Convert DbKi to R8Ki, if necessary
+      TimeOut1      = TimeData(1)                ! The first output time
+      TimeIncrement = TimeData(2)                ! The time increment
    END IF ! FileID
+   
+   IF ( FileID /= FileFmtID_NoCompressWithoutTime ) THEN
+      
+      ColMin(:) = AllOutData(:,1_IntKi)         ! Initialize the Min values for each channel
+      ColMax(:) = AllOutData(:,1_IntKi)         ! Initialize the Max values for each channel
+
+      DO IT=2,NT                                ! Loop through the remaining time steps
+         DO IC=1,NumOutChans                    ! Loop through the output channels
+            IF ( AllOutData(IC,IT) > ColMax(IC) ) THEN
+               ColMax(IC) = AllOutData(IC,IT)
+            ELSEIF ( AllOutData(IC,IT) < ColMin(IC) ) THEN
+               ColMin(IC) = AllOutData(IC,IT)
+            ENDIF
+         ENDDO !IC
+      ENDDO !IT
+
+      !...............................................................................................................................
+      ! Calculate the scaling parameters for each channel
+      !...............................................................................................................................
+      DO IC=1,NumOutChans                    ! Loop through the output channels
+         IF ( ColMax(IC) == ColMin(IC) ) THEN
+            ColScl(IC) = IntRng/SQRT(EPSILON(1.0_SiKi))
+         ELSE
+            ColScl(IC) = IntRng/REAL( ColMax(IC) - ColMin(IC), SiKi )
+         ENDIF
+         ColOff(IC) = IntMin - ColScl(IC)*REAL( ColMin(IC), SiKi )
+      ENDDO !IC
+      
+   ENDIF
+
+   !...............................................................................................................................
+   ! Convert channels to 16-bit integers (packed binary) or (R8Ki if unpacked binary)
+   !...............................................................................................................................
+   J = 1
+   DO IT=1,NT                                ! Loop through the time steps
+     DO IC=1,NumOutChans                    ! Loop through the output channels
+        IF ( FileID == FileFmtID_NoCompressWithoutTime ) THEN
+           TmpR8OutArray(J) =   REAL( AllOutData(IC,IT), R8Ki )
+        ELSE           
+           TmpOutArray(J) =  NINT( Max( Min( REAL( ColScl(IC)*AllOutData(IC,IT) + ColOff(IC), SiKi), IntMax ), IntMin) , B2Ki )
+        END IF
+        J = J + 1
+     ENDDO !IC
+   ENDDO !IT
 
    !...............................................................................................................................
    ! Write the output file header
    !...............................................................................................................................
-
    WRITE (UnIn, IOSTAT=ErrStat2)   INT( FileID             , B2Ki )            ! FAST output file format
       IF ( ErrStat2 /= 0 ) THEN
          CALL SetErrStat( ErrID_Fatal, 'Error writing FileID to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
@@ -6803,14 +6916,12 @@ CONTAINS
          RETURN
       END IF
 
-
    WRITE (UnIn, IOSTAT=ErrStat2)   INT( NT                 , B4Ki )            ! The number of time steps
       IF ( ErrStat2 /= 0 ) THEN
          CALL SetErrStat( ErrID_Fatal, 'Error writing NT to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
          CALL Cleanup( )
          RETURN
       END IF
-
 
    IF ( FileID == FileFmtID_WithTime ) THEN
          ! Write the slope and offset for the time channel
@@ -6829,7 +6940,7 @@ CONTAINS
             RETURN
          END IF
 
-   ELSE ! FileFmtID_WithoutTime
+   ELSE ! FileFmtID_WithoutTime and FileFmtID_NoCompressWithoutTime
          ! Write the first output time and the time step
 
       WRITE (UnIn, IOSTAT=ErrStat2)  TimeOut1                                  ! The first output time
@@ -6848,20 +6959,24 @@ CONTAINS
 
    END IF
 
-   WRITE (UnIn, IOSTAT=ErrStat2)  ColScl(:)                                    ! The channel slopes for scaling
-      IF ( ErrStat2 /= 0 ) THEN
-         CALL SetErrStat( ErrID_Fatal, 'Error writing ColScl to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
-         CALL Cleanup( )
-         RETURN
-      END IF
+   IF ( FileID /= FileFmtID_NoCompressWithoutTime ) THEN
+      
+      WRITE (UnIn, IOSTAT=ErrStat2)  ColScl(:)                                    ! The channel slopes for scaling
+         IF ( ErrStat2 /= 0 ) THEN
+            CALL SetErrStat( ErrID_Fatal, 'Error writing ColScl to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
+            CALL Cleanup( )
+            RETURN
+         END IF
 
-   WRITE (UnIn, IOSTAT=ErrStat2)  ColOff(:)                                    ! The channel offsets for scaling
-      IF ( ErrStat2 /= 0 ) THEN
-         CALL SetErrStat( ErrID_Fatal, 'Error writing ColOff to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
-         CALL Cleanup( )
-         RETURN
-      END IF
-
+      WRITE (UnIn, IOSTAT=ErrStat2)  ColOff(:)                                    ! The channel offsets for scaling
+         IF ( ErrStat2 /= 0 ) THEN
+            CALL SetErrStat( ErrID_Fatal, 'Error writing ColOff to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
+            CALL Cleanup( )
+            RETURN
+         END IF
+         
+   END IF
+   
    WRITE (UnIn, IOSTAT=ErrStat2)   INT( LenDesc            , B4Ki )            ! The number of characters in the string
       IF ( ErrStat2 /= 0 ) THEN
          CALL SetErrStat( ErrID_Fatal, 'Error writing LenDesc to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
@@ -6903,8 +7018,11 @@ CONTAINS
          END IF
    END IF ! FileID
 
-
-   WRITE (UnIn, IOSTAT=ErrStat2)  TmpOutArray                                  ! AllOutData converted to packed binary (16-bit)
+   IF ( FileID == FileFmtID_NoCompressWithoutTime ) THEN
+      WRITE (UnIn, IOSTAT=ErrStat2)  TmpR8OutArray                                  ! AllOutData
+   ELSE           
+      WRITE (UnIn, IOSTAT=ErrStat2)  TmpOutArray                                  ! AllOutData converted to packed binary (16-bit)
+   END IF
       IF ( ErrStat2 /= 0 ) THEN
          CALL SetErrStat( ErrID_Fatal, 'Error writing channel data to the FAST binary file.', ErrStat, ErrMsg, RoutineName )
          CALL Cleanup( )
@@ -6932,6 +7050,7 @@ CONTAINS
          IF ( ALLOCATED( ColScl        ) ) DEALLOCATE( ColScl )
          IF ( ALLOCATED( TmpTimeArray  ) ) DEALLOCATE( TmpTimeArray )
          IF ( ALLOCATED( TmpOutArray   ) ) DEALLOCATE( TmpOutArray )
+         IF ( ALLOCATED( TmpR8OutArray   ) ) DEALLOCATE( TmpR8OutArray )
          IF ( ALLOCATED( DescStrASCII  ) ) DEALLOCATE( DescStrASCII )
          IF ( ALLOCATED( ChanNameASCII ) ) DEALLOCATE( ChanNameASCII )
          IF ( ALLOCATED( ChanUnitASCII ) ) DEALLOCATE( ChanUnitASCII )
@@ -7167,17 +7286,94 @@ CONTAINS
 !> Based on nwtc_io::wrmatrix, this routine writes a matrix to an already-open text file. It allows
 !! the user to omit rows and columns of A in the the file.
 !! Use WrPartialMatrix (nwtc_io::wrpartialmatrix) instead of directly calling a specific routine in the generic interface.
-   SUBROUTINE WrPartialMatrix2( A, Un, ReFmt, MatName, UseRow, UseCol, UseAllRows, UseAllCols, ExtCol )
+   SUBROUTINE WrPartialMatrix1R8( A, Un, ReFmt, MatName, UseCol, UseAllCols, ExtCol )
    
-      REAL(ReKi),             INTENT(IN) :: A(:,:)          !< matrix to write
-      INTEGER,                INTENT(IN) :: Un              !< unit where matrix will be written
-      CHARACTER(*),           INTENT(IN) :: ReFmt           !< Format for printing ReKi numbers  
-      CHARACTER(*),           INTENT(IN) :: MatName         !< name of the matrix to write
+      REAL(R8Ki),             INTENT(IN) :: A(:)          !< matrix to write        
+      INTEGER,                INTENT(IN) :: Un            !< unit where matrix will be written
+      CHARACTER(*),           INTENT(IN) :: ReFmt         !< Format for printing ReKi numbers  
+      CHARACTER(*),           INTENT(IN) :: MatName       !< name of the matrix to write
+      LOGICAL,      OPTIONAL, INTENT(IN) :: UseCol(:)     !< must be size(A,2); this routine will print only the columns where UseCol is true
+      LOGICAL,      OPTIONAL, INTENT(IN) :: UseAllCols    !< a scalar that, if set to true, overrides UseCol and will print all columns
+      REAL(R8Ki),   OPTIONAL, INTENT(IN) :: ExtCol(:)     !< columns to add to the end of matrix A               
+                                                          
+      INTEGER                            :: ErrStat
+      INTEGER                            :: nc       ! size (rows and columns) of A
+      INTEGER                            :: j        ! indices into A
+      INTEGER                            :: jc       ! index into ThisRow
+      CHARACTER(256)                     :: Fmt
+      LOGICAL                            :: UseAllCols2
+      REAL(R8Ki), ALLOCATABLE            :: ThisRow(:)
+
+           
+      UseAllCols2 = .false.
+      if (.not. present(UseCol)) then
+         UseAllCols2 = .true.
+      else
+         if (present(UseAllCols)) then
+            if (UseAllCols) UseAllCols2 = .true. 
+         end if
+      end if
+      
+         ! how many columns will we print?
+      if (UseAllCols2) then
+         nc = SIZE(A)       ! default number of columns
+      else
+         nc = 0
+         do j = 1,size(A)
+            if (UseCol(j)) nc = nc + 1
+         end do
+      end if
+      if (present(ExtCol)) nc = nc + size(ExtCol)
+      
+      
+            
+      WRITE( Un, '(A,": ",A," x ",A)', IOSTAT=ErrStat ) TRIM(MatName), '1', TRIM(Num2LStr(nc))
+      
+      Fmt = "(2x, "//TRIM(Num2LStr(nc))//"(1x,"//ReFmt//"))"   
+
+      ALLOCATE(ThisRow(nc), STAT=ErrStat)
+      IF (ErrStat /= 0) THEN
+         CALL WrScr('Error '//TRIM(Num2LStr(ErrStat))//' allocating temporary row WrPartialMatrix1().')
+         RETURN
+      END IF
+      
+                        
+      if (UseAllCols2) then
+         ThisRow = A
+      else
+         jc = 1
+         do j = 1,size(A)
+            if (UseCol(j)) then
+               ThisRow(jc) = A(j)
+               jc = jc + 1
+            end if            
+         end do
+         if (present(ExtCol)) ThisRow(jc:) = ExtCol(:)         
+      end if         
+                              
+      WRITE( Un, Fmt, IOSTAT=ErrStat ) ThisRow
+      IF (ErrStat /= 0) THEN
+         deallocate(ThisRow)
+         CALL WrScr('Error '//TRIM(Num2LStr(ErrStat))//' writing matrix in WrPartialMatrix1().')
+         RETURN
+      END IF
+         
+   deallocate(ThisRow)
+   RETURN
+   END SUBROUTINE WrPartialMatrix1R8
+!=======================================================================  
+!> \copydoc nwtc_io::wrpartialmatrix1r8
+   SUBROUTINE WrPartialMatrix2R8( A, Un, ReFmt, MatName, UseRow, UseCol, UseAllRows, UseAllCols, ExtCol )
+   
+      REAL(R8Ki),             INTENT(IN) :: A(:,:)          ! matrix to write
+      INTEGER,                INTENT(IN) :: Un              ! unit where matrix will be written
+      CHARACTER(*),           INTENT(IN) :: ReFmt           ! Format for printing ReKi numbers  
+      CHARACTER(*),           INTENT(IN) :: MatName         ! name of the matrix to write
       LOGICAL,      OPTIONAL, INTENT(IN) :: UseRow(:)       !< must be size(A,1); this routine will print only the rows where UseRow is true
-      LOGICAL,      OPTIONAL, INTENT(IN) :: UseCol(:)       !< must be size(A,2); this routine will print only the columns where UseCol is true
+      LOGICAL,      OPTIONAL, INTENT(IN) :: UseCol(:)       ! must be size(A,2); this routine will print only the columns where UseCol is true
       LOGICAL,      OPTIONAL, INTENT(IN) :: UseAllRows      !< a scalar that, if set to true, overrides UseRow and will print all rows
-      LOGICAL,      OPTIONAL, INTENT(IN) :: UseAllCols      !< a scalar that, if set to true, overrides UseCol and will print all columns
-      REAL(ReKi),   OPTIONAL, INTENT(IN) :: ExtCol(:,:)     !< columns to add to the end of matrix A          
+      LOGICAL,      OPTIONAL, INTENT(IN) :: UseAllCols      ! a scalar that, if set to true, overrides UseCol and will print all columns
+      REAL(R8Ki),   OPTIONAL, INTENT(IN) :: ExtCol(:,:)     ! columns to add to the end of matrix A          
 
       INTEGER                            :: ErrStat
       INTEGER                            :: nr, nc   ! size (rows and columns) of A
@@ -7186,7 +7382,7 @@ CONTAINS
       CHARACTER(256)                     :: Fmt
       LOGICAL                            :: UseAllRows2
       LOGICAL                            :: UseAllCols2
-      REAL(ReKi), ALLOCATABLE            :: ThisRow(:)
+      REAL(R8Ki), ALLOCATABLE            :: ThisRow(:)
 
       
       UseAllRows2 = .false.
@@ -7278,85 +7474,7 @@ CONTAINS
       
    deallocate(ThisRow)
    RETURN
-   END SUBROUTINE WrPartialMatrix2
-!=======================================================================  
-!> \copydoc nwtc_io::wrpartialmatrix2
-   SUBROUTINE WrPartialMatrix1( A, Un, ReFmt, MatName, UseCol, UseAllCols, ExtCol )
-   
-      REAL(ReKi),             INTENT(IN) :: A(:)          
-      INTEGER,                INTENT(IN) :: Un            
-      CHARACTER(*),           INTENT(IN) :: ReFmt         
-      CHARACTER(*),           INTENT(IN) :: MatName       
-      LOGICAL,      OPTIONAL, INTENT(IN) :: UseCol(:)     
-      LOGICAL,      OPTIONAL, INTENT(IN) :: UseAllCols    
-      REAL(ReKi),   OPTIONAL, INTENT(IN) :: ExtCol(:)          
-
-      INTEGER                            :: ErrStat
-      INTEGER                            :: nc       ! size (rows and columns) of A
-      INTEGER                            :: j        ! indices into A
-      INTEGER                            :: jc       ! index into ThisRow
-      CHARACTER(256)                     :: Fmt
-      LOGICAL                            :: UseAllRows2
-      LOGICAL                            :: UseAllCols2
-      REAL(ReKi), ALLOCATABLE            :: ThisRow(:)
-
-           
-      UseAllCols2 = .false.
-      if (.not. present(UseCol)) then
-         UseAllCols2 = .true.
-      else
-         if (present(UseAllCols)) then
-            if (UseAllCols) UseAllCols2 = .true. 
-         end if
-      end if
-      
-         ! how many columns will we print?
-      if (UseAllCols2) then
-         nc = SIZE(A)       ! default number of columns
-      else
-         nc = 0
-         do j = 1,size(A)
-            if (UseCol(j)) nc = nc + 1
-         end do
-      end if
-      if (present(ExtCol)) nc = nc + size(ExtCol)
-      
-      
-            
-      WRITE( Un, '(A,": ",A," x ",A)', IOSTAT=ErrStat ) TRIM(MatName), '1', TRIM(Num2LStr(nc))
-      
-      Fmt = "(2x, "//TRIM(Num2LStr(nc))//"(1x,"//ReFmt//"))"   
-
-      ALLOCATE(ThisRow(nc), STAT=ErrStat)
-      IF (ErrStat /= 0) THEN
-         CALL WrScr('Error '//TRIM(Num2LStr(ErrStat))//' allocating temporary row WrPartialMatrix1().')
-         RETURN
-      END IF
-      
-                        
-      if (UseAllCols2) then
-         ThisRow = A
-      else
-         jc = 1
-         do j = 1,size(A)
-            if (UseCol(j)) then
-               ThisRow(jc) = A(j)
-               jc = jc + 1
-            end if            
-         end do
-         if (present(ExtCol)) ThisRow(jc:) = ExtCol(:)         
-      end if         
-                              
-      WRITE( Un, Fmt, IOSTAT=ErrStat ) ThisRow
-      IF (ErrStat /= 0) THEN
-         deallocate(ThisRow)
-         CALL WrScr('Error '//TRIM(Num2LStr(ErrStat))//' writing matrix in WrPartialMatrix1().')
-         RETURN
-      END IF
-         
-   deallocate(ThisRow)
-   RETURN
-   END SUBROUTINE WrPartialMatrix1
+   END SUBROUTINE WrPartialMatrix2R8
 !=======================================================================  
 !> This routine writes out a prompt to the screen without
 !! following it with a new line, though a new line precedes it.
@@ -7679,6 +7797,245 @@ CONTAINS
    
       RETURN
    END SUBROUTINE WrVTK_footer
+   
 !=======================================================================
-
+!> This routine reads the header for a vtk, ascii, structured_points dataset file,
+!! including all the information about the structured points.  It tries to open a 
+!! text file for reading and returns the Unit number of the opened file.
+!! The caller is responsible for closing the file unit unless caller set Un = -1!
+   SUBROUTINE ReadVTK_SP_info( FileName, descr, dims, origin, gridSpacing, vecLabel, Un, ErrStat, ErrMsg ) 
+   
+      CHARACTER(*)    , INTENT(IN   )        :: FileName             !< Name of output file     
+      CHARACTER(1024) , INTENT(  OUT)        :: descr                !< Line describing the contents of the file
+      INTEGER(IntKi)  , INTENT(  OUT)        :: dims(3)              !< dimension of the 3D grid (nX,nY,nZ)
+      REAL(ReKi)      , INTENT(  OUT)        :: origin(3)            !< the lower-left corner of the 3D grid (X0,Y0,Z0)
+      REAL(ReKi)      , INTENT(  OUT)        :: gridSpacing(3)       !< spacing between grid points in each of the 3 directions (dX,dY,dZ)
+      CHARACTER(1024) , INTENT(  OUT)        :: vecLabel
+      INTEGER(IntKi)  , INTENT(INOUT)        :: Un                   !< unit number of opened file
+      INTEGER(IntKi)  , INTENT(  OUT)        :: ErrStat              !< error level/status of OpenFOutFile operation
+      CHARACTER(*)    , INTENT(  OUT)        :: ErrMsg               !< message when error occurs
+   
+      INTEGER(IntKi)              :: ErrStat2              ! local error level/status of OpenFOutFile operation
+      CHARACTER(ErrMsgLen)        :: ErrMsg2              ! local message when error occurs   
+      CHARACTER(1024)             :: Line, Line2              ! one line of the file
+      CHARACTER(1024)             :: formatLbl
+      CHARACTER(*), PARAMETER     :: RoutineName = 'ReadVTK_SP_info'
+      INTEGER(IntKi)              :: sz, nPts
+      LOGICAL                     :: closeOnReturn
+      
+      ErrStat = ErrID_None
+      ErrMsg  = ''
+      
+      IF (Un == -1 ) THEN
+         closeOnReturn = .TRUE.
+      ELSE
+         closeOnReturn = .FALSE.
+      END IF
+      
+      CALL GetNewUnit( Un, ErrStat, ErrMsg )      
+      CALL OpenFInpFile ( Un, TRIM(FileName), ErrStat, ErrMsg )
+         if (ErrStat >= AbortErrLev) return
+      
+       CALL ReadCom( Un, FileName, 'File header: Module Version (line 1)', ErrStat2, ErrMsg2, 0 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   
+      CALL ReadStr( Un, FileName, descr, 'descr', 'File Description line', ErrStat2, ErrMsg2, 0 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+      formatLbl = ""   
+      CALL ReadStr( Un, FileName, formatLbl, 'formatLbl', 'ASCII label', ErrStat2, ErrMsg2 )
+         CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      call Conv2UC(formatLbl)
+      if (INDEX(formatLbl, "ASCII" ) /= 1 ) THEN ! If this line doesn't contain the word ASCII, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find ASCII label', ErrStat, ErrMsg, RoutineName )
+      end if  
+      Line = ""
+      CALL ReadStr( Un, FileName, Line, "dataset", "DATASET STRUCTURED_POINTS", ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+         
+      CALL Conv2UC( Line )
+      IF ( INDEX(Line, "DATASET" ) /= 1 ) THEN ! If this line doesn't contain the word dataset, we have a bad file header
+        CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find DATASET label', ErrStat, ErrMsg, RoutineName )
+      END IF 
+      IF ( INDEX(Line, "STRUCTURED_POINTS" ) == 0 ) THEN ! If this line doesn't also contain the word structured_points, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find STRUCTURED_POINTS label', ErrStat, ErrMsg, RoutineName )
+      end if
+        
+         ! Dimensions
+      Line = ""
+      CALL ReadStr( Un, FileName, Line, "Dimensions", "DIMENSIONS data", ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      Line = trim(Line)
+      CALL Conv2UC( Line )
+      IF ( INDEX(Line, "DIMENSIONS" ) /= 1 ) THEN ! If this line doesn't contain the word dataset, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find DIMENSIONS label', ErrStat, ErrMsg, RoutineName )
+      ELSE
+         sz = len(Line)
+         Line = Line(12:sz)
+         READ(Line,*)  dims
+      END IF 
+      
+         ! Origin
+      Line = ""
+      CALL ReadStr( Un, FileName, Line, "Origin", "ORIGIN data", ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      Line = trim(Line)
+      CALL Conv2UC( Line )
+      IF ( INDEX(Line, "ORIGIN" ) /= 1 ) THEN ! If this line doesn't contain the word dataset, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find ORIGIN label', ErrStat, ErrMsg, RoutineName )
+      ELSE
+         sz = len(Line)
+         Line = Line(8:sz)
+         READ(Line,*)  origin
+      END IF 
+      
+         ! Spacing      
+      Line = ""
+      CALL ReadStr( Un, FileName, Line, "gridSpacing", "SPACING data", ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      Line = trim(Line)
+      CALL Conv2UC( Line )
+      IF ( INDEX(Line, "SPACING" ) /= 1 ) THEN ! If this line doesn't contain the word dataset, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find SPACING label', ErrStat, ErrMsg, RoutineName )
+      ELSE
+         sz = len(Line)
+         Line = Line(9:sz)
+         READ(Line,*)  gridSpacing
+      END IF 
+      
+         ! Point Data
+      Line = ""
+      CALL ReadStr( Un, FileName, Line, "Point_Data", "POINT_DATA", ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      Line = trim(Line)
+      CALL Conv2UC( Line )
+      IF ( INDEX(Line, "POINT_DATA" ) /= 1 ) THEN ! If this line doesn't contain the word dataset, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find POINT_DATA label', ErrStat, ErrMsg, RoutineName )
+      ELSE
+         sz = len(Line)
+         Line = Line(12:sz)
+         READ(Line,*)  nPts
+      END IF 
+      
+         ! Vector Label
+      Line = ""
+      CALL ReadStr( Un, FileName, Line, "Vectors", "VECTORS label", ErrStat2, ErrMsg2 )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      
+      Line = trim(Line)
+      Line2 = Line
+      CALL Conv2UC( Line2 )
+      IF ( INDEX(Line2, "VECTORS" ) /= 1 ) THEN ! If this line doesn't contain the word dataset, we have a bad file header
+         CALL SetErrStat( ErrID_Fatal, 'Invalid vtk structured_points file: did not find VECTORS label', ErrStat, ErrMsg, RoutineName )
+      ELSE
+         sz = INDEX(Line2, "FLOAT" )
+         IF ( sz == 0 ) THEN
+            CALL SetErrStat( ErrID_Fatal, 'Invalid VECTORS datatype.  Must be set to float.', ErrStat, ErrMsg, RoutineName )
+         ELSE        
+            vecLabel = Line(9:sz-2)
+         END IF
+      END IF 
+      
+      IF ( (ErrStat >= AbortErrLev) .or. closeOnReturn ) THEN        
+         close(Un)
+         Un = -1
+         RETURN
+      END IF
+      
+      RETURN
+   END SUBROUTINE ReadVTK_SP_info
+   
+!=======================================================================
+!> This routine reads the vector data for a vtk, ascii, structured_points dataset file,
+!! The Unit number of the  file is already assumed to be valid via a previous call to
+!! ReadVTK_SP_info.  
+   SUBROUTINE ReadVTK_SP_vectors( FileName, Un, dims, gridVals, ErrStat, ErrMsg ) 
+   
+      CHARACTER(*)    , INTENT(IN   )        :: FileName             !< Name of output file     
+      INTEGER(IntKi)  , INTENT(IN   )        :: Un                   !< unit number of opened file
+      INTEGER(IntKi)  , INTENT(IN   )        :: dims(3)              !< dimension of the 3D grid (nX,nY,nZ)
+      REAL(ReKi)      , INTENT(  OUT)        :: gridVals(:,:,:,:)    !< 3D array of data, size (nX,nY,nZ), must be pre-allocated
+      INTEGER(IntKi)  , INTENT(  OUT)        :: ErrStat              !< error level/status of OpenFOutFile operation
+      CHARACTER(*)    , INTENT(  OUT)        :: ErrMsg               !< message when error occurs
+   
+      INTEGER(IntKi)                         :: ErrStat2             ! local error level/status of OpenFOutFile operation
+      CHARACTER(ErrMsgLen)                   :: ErrMsg2                   ! local message when error occurs   
+      CHARACTER(1024)                        :: Line, Line2              ! one line of the file
+      CHARACTER(1024)                        :: formatLbl
+      CHARACTER(*), PARAMETER                :: RoutineName = 'ReadVTK_SP_vectors'
+      INTEGER(IntKi)                         :: sz, nPts,i,j,k
+      
+      ErrStat = ErrID_None
+      ErrMsg  = ''
+      
+      READ(Un,*)  gridVals(1:3,1:dims(1),1:dims(2),1:dims(3))
+     
+      close(Un)
+      
+   END SUBROUTINE ReadVTK_SP_vectors
+   
+!=======================================================================
+!> This routine writes out the heading for an vtk, ascii, structured_points dataset file .
+!! It tries to open a text file for writing and returns the Unit number of the opened file.
+   SUBROUTINE WrVTK_SP_header( FileName, descr, Un, ErrStat, ErrMsg ) 
+   
+      CHARACTER(*)    , INTENT(IN   )        :: FileName             !< Name of output file     
+      CHARACTER(*)    , INTENT(IN   )        :: descr                !< Line describing the contents of the file
+      INTEGER(IntKi)  , INTENT(  OUT)        :: Un                   !< unit number of opened file
+      INTEGER(IntKi)  , INTENT(  OUT)        :: ErrStat              !< error level/status of OpenFOutFile operation
+      CHARACTER(*)    , INTENT(  OUT)        :: ErrMsg               !< message when error occurs
+   
+      CALL GetNewUnit( Un, ErrStat, ErrMsg )      
+      CALL OpenFOutFile ( Un, TRIM(FileName), ErrStat, ErrMsg )
+         if (ErrStat >= AbortErrLev) return
+      
+      WRITE(Un,'(A)')  '# vtk DataFile Version 3.0'
+      WRITE(Un,'(A)')  trim(descr)
+      WRITE(Un,'(A)')  'ASCII'
+      WRITE(Un,'(A)')  'DATASET STRUCTURED_POINTS'
+      
+      RETURN
+   END SUBROUTINE WrVTK_SP_header
+   
+   
+   
+   SUBROUTINE WrVTK_SP_vectors3D( Un, dataDescr, dims, origin, gridSpacing, gridVals, ErrStat, ErrMsg ) 
+   
+      INTEGER(IntKi)  , INTENT(IN   )        :: Un                   !< unit number of previously opened file (via call to WrVTK_SP_header)
+      CHARACTER(*)    , INTENT(IN   )        :: dataDescr            !< Short label describing the vector data
+      INTEGER(IntKi)  , INTENT(IN   )        :: dims(3)              !< dimension of the 3D grid (nX,nY,nZ)
+      REAL(ReKi)      , INTENT(IN   )        :: origin(3)            !< the lower-left corner of the 3D grid (X0,Y0,Z0)
+      REAL(ReKi)      , INTENT(IN   )        :: gridSpacing(3)       !< spacing between grid points in each of the 3 directions (dX,dY,dZ)
+      REAL(ReKi)      , INTENT(IN   )        :: gridVals(:,:,:,:)      !< 3D array of data, size (nX,nY,nZ)
+      INTEGER(IntKi)  , INTENT(  OUT)        :: ErrStat              !< error level/status of OpenFOutFile operation
+      CHARACTER(*)    , INTENT(  OUT)        :: ErrMsg               !< message when error occurs
+ 
+      INTEGER(IntKi)                         :: nPts                 ! Total number of grid points 
+      
+      if ( .not. (Un > 0) ) then
+         ErrStat = ErrID_Fatal
+         ErrMsg  = 'WrVTK_SP_points: Invalid file unit, be sure to call WrVTK_SP_header prior to calling WrVTK_SP_points.'
+         return
+      end if
+   
+      ErrStat = ErrID_None
+      ErrMsg  = ''
+      nPts    = dims(1)*dims(2)*dims(3)
+      
+      ! Note: gridVals must be stored such that the left-most dimension is X and the right-most dimension is Z
+      WRITE(Un,'(A,3(i5,1X))')    'DIMENSIONS ',  dims
+      WRITE(Un,'(A,3(f10.2,1X))') 'ORIGIN '    ,  origin
+      WRITE(Un,'(A,3(f10.2,1X))') 'SPACING '   ,  gridSpacing
+      WRITE(Un,'(A,i15)')         'POINT_DATA ',  nPts
+      WRITE(Un,'(A)')            'VECTORS '//trim(dataDescr)//' float'
+      WRITE(Un,'(3(f10.2,1X))')   gridVals
+      close(Un)
+      RETURN
+      
+   END SUBROUTINE WrVTK_SP_vectors3D
+   
 END MODULE NWTC_IO

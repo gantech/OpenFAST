@@ -25,10 +25,6 @@
 ! See the License for the specific language governing permissions and
 !
 !**********************************************************************************************************************************
-! File last committed: $Date: 2014-07-09 13:08:44 -0600 (Wed, 09 Jul 2014) $
-! (File) Revision #: $Rev: 483 $
-! URL: $HeadURL: https://windsvn.nrel.gov/HydroDyn/branches/HydroDyn_2nd_order/Source/Waves2.f90 $
-!**********************************************************************************************************************************
 MODULE Waves2
 
 
@@ -48,7 +44,7 @@ MODULE Waves2
    PRIVATE
 
 !   INTEGER(IntKi), PARAMETER                             :: DataFormatID = 1  !< Update this value if the data types change (used in Waves2_Pack)
-   TYPE(ProgDesc), PARAMETER                             :: Waves2_ProgDesc = ProgDesc( 'Waves2', 'v1.01.00', '23-Dec-2015' )
+   TYPE(ProgDesc), PARAMETER                             :: Waves2_ProgDesc = ProgDesc( 'Waves2', '', '' )
                                                                               !< This holds the name of the program, version info, and date.
                                                                               !! It is used by the DispNVD routine in the library and as header
                                                                               !! information in output files.

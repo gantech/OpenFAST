@@ -19,10 +19,6 @@
 ! See the License for the specific language governing permissions and
 !    
 !**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
-!**********************************************************************************************************************************
 MODULE SS_Radiation
 
    USE SS_Radiation_Types   
@@ -32,7 +28,7 @@ MODULE SS_Radiation
    
    PRIVATE
 
-   TYPE(ProgDesc), PARAMETER  :: SS_Rad_ProgDesc = ProgDesc( 'SS_Radiation', 'v1.01.00', '23-Dec-2015' )
+   TYPE(ProgDesc), PARAMETER  :: SS_Rad_ProgDesc = ProgDesc( 'SS_Radiation', '', '' )
 
    
       ! ..... Public Subroutines ...................................................................................................
@@ -557,7 +553,7 @@ END SUBROUTINE SS_Rad_CalcConstrStateResidual
 !!
 !! For details, see:
 !! Press, W. H.; Flannery, B. P.; Teukolsky, S. A.; and Vetterling, W. T. "Runge-Kutta Method" and "Adaptive Step Size Control for 
-!!   Runge-Kutta." §16.1 and 16.2 in Numerical Recipes in FORTRAN: The Art of Scientific Computing, 2nd ed. Cambridge, England: 
+!!   Runge-Kutta." ï¿½16.1 and 16.2 in Numerical Recipes in FORTRAN: The Art of Scientific Computing, 2nd ed. Cambridge, England: 
 !!   Cambridge University Press, pp. 704-716, 1992.
 !!
 SUBROUTINE SS_Rad_RK4( t, n, u, utimes, p, x, xd, z, OtherState, m, ErrStat, ErrMsg )

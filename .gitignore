@@ -27,6 +27,16 @@
 *.exe
 *.out
 *.app
+__pycache__/*
+*.pyc
 
-# CMake specific files
-build/**/*
+# Build specific files
+build*/
+install/
+vs-build/
+
+# OS and IDE specific files
+.DS_Store
+.vscode
+.atom
+.fortls

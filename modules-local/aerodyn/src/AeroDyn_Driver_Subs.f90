@@ -1,6 +1,7 @@
 !**********************************************************************************************************************************
 ! LICENSING
 ! Copyright (C) 2015-2016  National Renewable Energy Laboratory
+! Copyright (C) 2016-2018  Envision Energy USA, LTD
 !
 !    This file is part of AeroDyn.
 !
@@ -17,10 +18,6 @@
 ! limitations under the License.
 !
 !**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
-!**********************************************************************************************************************************
 module AeroDyn_Driver_Subs
    
    use AeroDyn_Driver_Types   
@@ -28,7 +25,7 @@ module AeroDyn_Driver_Subs
     
    implicit none   
    
-   TYPE(ProgDesc), PARAMETER   :: version   = ProgDesc( 'AeroDyn_driver', 'v1.02.00a', '12-Apr-2016' )  ! The version number of this program.
+   TYPE(ProgDesc), PARAMETER   :: version   = ProgDesc( 'AeroDyn_driver', '', '' )  ! The version number of this program.
                                                     
    contains
 
@@ -45,20 +42,23 @@ subroutine Dvr_Init(DvrData,errStat,errMsg )
    character(*), parameter                     :: RoutineName = 'Dvr_Init'
 
    CHARACTER(1000)                             :: inputFile     ! String to hold the file name.
+   CHARACTER(200)                              :: git_commit    ! String containing the current git commit hash
+
+   TYPE(ProgDesc), PARAMETER                   :: version   = ProgDesc( 'AeroDyn Driver', '', '' )  ! The version number of this program.
 
    ErrStat = ErrID_None
    ErrMsg  = ""
 
+
    DvrData%OutFileData%unOutFile   = -1
    
-      ! Initialize the library which handle file echos and WrScr, for example
-   call NWTC_Init()
-      
+   CALL NWTC_Init()
       ! Display the copyright notice
-   CALL DispCopyrightLicense( version )
-   
+   CALL DispCopyrightLicense( version )   
+      ! Obtain OpenFAST git commit hash
+   git_commit = QueryGitVersion()
       ! Tell our users what they're running
-   CALL WrScr( ' Running '//GetNVD( version )//NewLine//' linked with '//TRIM( GetNVD( NWTC_Ver ))//NewLine )
+   CALL WrScr( ' Running '//GetNVD( version )//' a part of OpenFAST - '//TRIM(git_Commit)//NewLine//' linked with '//TRIM( GetNVD( NWTC_Ver ))//NewLine )
 
    InputFile = ""  ! initialize to empty string to make sure it's input from the command line
    CALL CheckArgs( InputFile, ErrStat2 )
@@ -91,7 +91,7 @@ end subroutine Dvr_Init
 subroutine Init_AeroDyn(iCase, DvrData, AD, dt, errStat, errMsg)
 
    integer(IntKi),               intent(in   ) :: iCase         ! driver case
-   type(Dvr_SimData),            intent(inout) :: DvrData       ! Input data for initialization
+   type(Dvr_SimData),            intent(inout) :: DvrData       ! Input data for initialization (intent out for getting AD WriteOutput names/units)
    type(AeroDyn_Data),           intent(inout) :: AD            ! AeroDyn data 
    real(DbKi),                   intent(inout) :: dt            ! interval
       
@@ -117,7 +117,7 @@ subroutine Init_AeroDyn(iCase, DvrData, AD, dt, errStat, errMsg)
    InitInData%InputFile      = DvrData%AD_InputFile
    InitInData%NumBlades      = DvrData%numBlades
    InitInData%RootName       = DvrData%outFileData%Root
-                        
+   InitInData%Gravity        = 9.80665_ReKi                
    
       ! set initialization data:
    call AllocAry( InitInData%BladeRootPosition, 3, InitInData%NumBlades, 'BladeRootPosition', errStat2, ErrMsg2 )
@@ -151,8 +151,12 @@ subroutine Init_AeroDyn(iCase, DvrData, AD, dt, errStat, errMsg)
       
    call AD_Init(InitInData, AD%u(1), AD%p, AD%x, AD%xd, AD%z, AD%OtherState, AD%y, AD%m, dt, InitOutData, ErrStat2, ErrMsg2 )
       call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-      
-      
+
+   if (ErrStat >= AbortErrLev) then
+      call Cleanup()
+      return
+   end if   
+         
    do j = 2, numInp
       call AD_CopyInput (AD%u(1),  AD%u(j),  MESH_NEWCOPY, errStat2, errMsg2)
          call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
@@ -206,10 +210,10 @@ subroutine Set_AD_Inputs(iCase,nt,DvrData,AD,errStat,errMsg)
 
    real(ReKi)                                  :: z             ! height (m)
    !real(ReKi)                                  :: angle
-   real(ReKi)                                  :: theta(3)
-   real(ReKi)                                  :: position(3)
-   real(ReKi)                                  :: orientation(3,3)
-   real(ReKi)                                  :: rotateMat(3,3)
+   real(R8Ki)                                  :: theta(3)
+   real(R8Ki)                                  :: position(3)
+   real(R8Ki)                                  :: orientation(3,3)
+   real(R8Ki)                                  :: rotateMat(3,3)
    
    
    errStat = ErrID_None
@@ -345,7 +349,7 @@ subroutine Dvr_ReadInputFile(fileName, DvrData, errStat, errMsg )
    character(  8)               :: TimeNow                                  ! Time of day shortly after the start of execution.
    
    integer, parameter           :: NumCols = 7                              ! number of columns to be read from the input file
-   real(ReKi)                   :: InpCase(NumCols)                         ! Temporary array to hold combined-case input parameters.
+   real(DbKi)                   :: InpCase(NumCols)                         ! Temporary array to hold combined-case input parameters. (note that we store in double precision so the time is read correctly)
    logical                      :: TabDel      
    logical                      :: echo   
 
@@ -618,8 +622,8 @@ subroutine Dvr_InitializeOutputFile( iCase, CaseData, OutFileData, errStat, errM
       integer(IntKi)         ,  intent(in   )   :: iCase                ! case number (to write in file description line and use for file name)
       type(Dvr_Case),           intent(in   )   :: CaseData
       
-      integer(IntKi)         ,  intent(inout)   :: errStat              ! Status of error message
-      character(*)           ,  intent(inout)   :: errMsg               ! Error message if ErrStat /= ErrID_None
+      integer(IntKi)         ,  intent(  out)   :: errStat              ! Status of error message
+      character(*)           ,  intent(  out)   :: errMsg               ! Error message if ErrStat /= ErrID_None
 
          ! locals
       integer(IntKi)                            ::  i      

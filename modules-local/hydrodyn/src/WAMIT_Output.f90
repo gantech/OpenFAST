@@ -17,10 +17,6 @@
 ! limitations under the License.
 !    
 !**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
-!**********************************************************************************************************************************
 MODULE WAMIT_Output
 
       ! This MODULE stores variables used for output.
@@ -85,9 +81,9 @@ MODULE WAMIT_Output
                                   RdtnFxi ,   RdtnFyi ,   RdtnFzi ,   RdtnMxi ,   RdtnMyi ,   RdtnMzi ,   &
                                  WavesF1xi,  WavesF1yi,  WavesF1zi,  WavesM1xi,  WavesM1yi,  WavesM1zi/)
    CHARACTER(ChanLen), PARAMETER :: ParamUnitsAry(18) =  (/ &                     ! This lists the units corresponding to the allowed parameters
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     ",  &
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     ",  &
-                               "(N)       ","(N)       ","(N)       ","(N·m)     ","(N·m)     ","(N·m)     "/)
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     ",  &
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     ",  &
+                               "(N)       ","(N)       ","(N)       ","(N-m)     ","(N-m)     ","(N-m)     "/)
    
 
    REAL(ReKi)               :: AllOuts(MaxWAMITOutputs)          ! Array of all possible outputs

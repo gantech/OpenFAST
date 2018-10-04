@@ -19,10 +19,6 @@
 ! See the License for the specific language governing permissions and
 !    
 !**********************************************************************************************************************************
-! File last committed: $Date$
-! (File) Revision #: $Rev$
-! URL: $HeadURL$
-!**********************************************************************************************************************************
 MODULE Morison
    USE Waves
    USE Morison_Types  
@@ -35,7 +31,7 @@ MODULE Morison
    
    PRIVATE
 
-   TYPE(ProgDesc), PARAMETER            :: Morison_ProgDesc = ProgDesc( 'Morison', 'v1.01.00', '23-Dec-2015' )
+   TYPE(ProgDesc), PARAMETER            :: Morison_ProgDesc = ProgDesc( 'Morison', '', '' )
 
    
       ! ..... Public Subroutines ...................................................................................................
