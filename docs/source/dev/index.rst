@@ -43,3 +43,4 @@ For other questions regarding OpenFAST, please contact
    build_doc.rst
    debugging.rst
    doxy_doc.rst
+   cppapi/index.rst

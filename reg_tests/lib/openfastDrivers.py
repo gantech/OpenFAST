@@ -31,24 +31,48 @@ def _runCase(executable, inputFile, logFile, stdout):
     command = "{} {} > {}".format(executable, inputFile, logFile)
     print(command)
     return subprocess.call(command, stdout=stdout, shell=True)
-    
+
+def _runPCase(executable, inputFile, logFile, stdout):
+    command = "srun -n 1 {} {} > {}".format(executable, inputFile, logFile)
+    print(command)
+    return subprocess.call(command, stdout=stdout, shell=True)
+
 def _runGenericCase(inputFile, executable, verbose=False):
     stdout = sys.stdout if verbose else open(os.devnull, 'w')
-    
+
     rtl.validateFileOrExit(inputFile)
     rtl.validateExeOrExit(executable)
-    
+
     casebase = os.path.sep.join(inputFile.split(os.path.sep)[-1].split('.')[:-1])
     caseparent = os.path.sep.join(inputFile.split(os.path.sep)[:-1])
     logFile = caseparent + os.path.sep + casebase + '.log'
-    
+
     returnCode = _runCase(executable, inputFile, logFile, stdout)
-    print("COMPLETE with code {}".format(returnCode), flush=True)    
-    
+    print("COMPLETE with code {}".format(returnCode), flush=True)
+
+    return returnCode
+
+def _runParallelCase(inputFile, executable, verbose=False):
+    stdout = sys.stdout if verbose else open(os.devnull, 'w')
+
+    rtl.validateFileOrExit(inputFile)
+    rtl.validateExeOrExit(executable)
+
+    casebase = os.path.sep.join(inputFile.split(os.path.sep)[-1].split('.')[:-1])
+    caseparent = os.path.sep.join(inputFile.split(os.path.sep)[:-1])
+    logFile = caseparent + os.path.sep + casebase + '.log'
+
+    returnCode = _runPCase(executable, inputFile, logFile, stdout)
+    print("COMPLETE with code {}".format(returnCode), flush=True)
+
     return returnCode
 
 def runOpenfastCase(inputFile, executable, verbose=False):
     return _runGenericCase(inputFile, executable, verbose)
+
+def runOpenfastcppCase(inputFile, executable, testDir, verbose=False):
+    os.chdir(testDir)
+    return _runParallelCase(inputFile, executable, verbose)
 
 def runBeamdynDriverCase(inputFile, executable, verbose=False):
     caseDirectory = os.path.sep.join(inputFile.split(os.path.sep)[:-1])
