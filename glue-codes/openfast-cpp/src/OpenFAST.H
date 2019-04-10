@@ -333,14 +333,14 @@ class OpenFAST {
   //! Get the approximate hub position for turbine number 'iTurbGlob'. This is the value specified in the input to OpenFAST. Must be called only from the processor containing the turbine.
   void getApproxHubPos(std::vector<double> & currentCoords, int iTurbGlob);
   //! Get the exact hub position for turbine number 'iTurbGlob'. This is avaiable only after OpenFAST has been initialized for a given turbine. Must be called only from the processor containing the turbine.
-  void getHubPos(std::vector<double> & currentCoords, int iTurbGlob, fast::timeStep t);
+  void getHubPos(std::vector<double> & currentCoords, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
   //! Get a vector pointing downstream along the hub for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t);
+  void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
 
   //! Get the node type (HUB, BLADE, TOWER) of velocity node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   ActuatorNodeType getVelNodeType(int iTurbGlob, int iNode);
   //! Get the coordinates of velocity node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t);
+  void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
   //! Set the velocity at velocity node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   void setVelocity(std::vector<double> & velocity, int iNode, int iTurbGlob);
   //! Set the velocity at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
@@ -350,11 +350,11 @@ class OpenFAST {
   //! Get the node type (HUB, BLADE, TOWER) of force node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   ActuatorNodeType getForceNodeType(int iTurbGlob, int iNode);
   //! Get the coordinates of force node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t);
+  void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
   //! Get the tensor orientation of force node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t);
+  void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) ;
   //! Get the actuator force at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getForce(std::vector<double> & force, int iNode, int iTurbGlob, fast::timeStep t);
+  void getForce(std::vector<double> & force, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
   //! Get the chord at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   double getChord(int iNode, int iTurbGlob);
 
