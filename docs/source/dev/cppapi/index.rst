@@ -3,7 +3,7 @@
 OpenFAST C++ Application Programming Interface
 ==============================================
 
-OpenFAST provides a C++ application programming interface (API) to drive wind turbine simulations from an external program in C++. The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. It currently supports FSI simulations using the actuator line method with plans to support blade-resolved FSI simulations in the near future. The C++ API can also be used to create an external driver program or glue code that runs OpenFAST simulations of several wind turbines in parallel. 
+OpenFAST provides a C++ application programming interface (API) to drive wind turbine simulations from an external program in C++. The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. It currently supports FSI simulations using the actuator line method with plans to support blade-resolved FSI simulations in the near future. The C++ API can also be used to create an external driver program or glue code that runs OpenFAST simulations of several wind turbines in parallel.
 
 The C++ API is defined and implemented in the :class:`~fast::OpenFAST` class. Any user who wants to write a glue-code for OpenFAST in C++ should instantiate an object of the OpenFAST class and use it to drive the simulation of turbines. A sample glue-code `FAST_Prog.cpp <https://github.com/OpenFAST/openfast/blob/dev/glue-codes/openfast-cpp/src/FAST_Prog.cpp>`_ is provided as a demonstration of the usage of the C++ API. The glue-code allows for the simulation of multiple turbines using OpenFAST in serial or in parallel over multiple processors. The message passing interface (MPI) is used to run the different instances of turbines in parallel. An abbrievated version of FAST_Prog.cpp is shown below. The highlighted lines indicate the use of the OpenFAST class.
 
@@ -25,12 +25,12 @@ The object of :class:`~fast::fastInputs` class is expected hold a struct vector 
 .. doxygenstruct:: fast::turbineDataType
    :members:
    :private-members:
-                  
-              
+
+
 Use of C++ API for Actuator Line Simulations
 --------------------------------------------
 
-The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. The workhorse FSI algorithm for wind energy applications today is the Actuator Line algorithm :cite:`churchfield2012`. The Actuator Line algorithm represents the effect of a turbine on a flow field as a series of point forces at **actuator points** along aerodynamic surfaces. The use of Blade Element Momentum theory in AeroDyn is modified to interface OpenFAST with CFD solvers for actuator line simulations. The CFD solver becomes the inflow module for OpenFAST that provides velocity information near the turbine. The calculation of the induction factors is turned off in OpenFAST and AeroDyn simply uses look up tables and an optional dynamic stall model to calculate the loads on the turbine based on the inflow field information received from the CFD solver. The induction model should be turned off in OpenFAST by selecting :samp:`WakeMod=0` in the AeroDyn input file. OpenFAST lumps the line forces along the blades and tower into a series of point forces for the actuator line algorithm. :numref:`actuatorline-viz` illustrates the transfer of information between OpenFAST and a CFD solver for actuator line applications. 
+The C++ API was developed mainly to integrate OpenFAST with Computational Fluid Dynamics (CFD) solvers for Fluid-Structure Interaction (FSI) applications. The workhorse FSI algorithm for wind energy applications today is the Actuator Line algorithm :cite:`churchfield2012`. The Actuator Line algorithm represents the effect of a turbine on a flow field as a series of point forces at **actuator points** along aerodynamic surfaces. The use of Blade Element Momentum theory in AeroDyn is modified to interface OpenFAST with CFD solvers for actuator line simulations. The CFD solver becomes the inflow module for OpenFAST that provides velocity information near the turbine. The calculation of the induction factors is turned off in OpenFAST and AeroDyn simply uses look up tables and an optional dynamic stall model to calculate the loads on the turbine based on the inflow field information received from the CFD solver. The induction model should be turned off in OpenFAST by selecting :samp:`WakeMod=0` in the AeroDyn input file. OpenFAST lumps the line forces along the blades and tower into a series of point forces for the actuator line algorithm. :numref:`actuatorline-viz` illustrates the transfer of information between OpenFAST and a CFD solver for actuator line applications.
 
 .. _actuatorline-viz:
 
@@ -48,19 +48,19 @@ The CFD solver is expected to be the *driver program* for actuator line FSI simu
    :align: center
    :width: 100%
 
-   A conventional serial staggered FSI scheme that can be constructed through the C++ API for actuator line applications. 
+   A conventional serial staggered FSI scheme that can be constructed through the C++ API for actuator line applications.
 
 
 OpenFAST uses different spatial meshes for the various modules :cite:`fastv8ModFramework`. We define the actuator points to be along the mesh defined in the structural model (ElastoDyn/BeamDyn) of the turbine. The user defines the required number of actuator points along each blade and the tower through the input parameters :samp:`numForcePtsBlade` and :samp:`numForcePtsTower` for each turbine. The number of actuator points have to be the same on all blades. The C++ API uses OpenFAST to create the requested number of actuator points through linear interpolation of the nodes in the structural model. The mesh mapping algorithm in OpenFAST :cite:`fastv8AlgorithmsExamples` is used to transfer deflections from the structural model and loads from AeroDyn to the actuator points. To distinguish the *actuator points* from the Aerodyn points, the OpenFAST C++ uses the term :samp:`forceNodes` for the actuator points and :samp:`velNodes` (velocity nodes) for the Aerodyn points. The following piece of code illustrates how one can use the C++ API to implement a strongly coupled FSI scheme with "outer" iterations for actuator line applications. This sample piece of code sets the velocity at the :samp:`velNodes` and access the coordinates and the lumped forces at the :samp:`forceNodes`.
 
 .. code-block:: c++
-   
+
    std::vector<double> currentCoords(3);
    std::vector<double> sampleVel(3);
 
    for (int iOuter=0; iOuter < nOuterIterations; iOuter++) {
 
-      FAST.predict_states(); //Predict the location and force at the actuator points at time step 'n+1'. 
+      FAST.predict_states(); //Predict the location and force at the actuator points at time step 'n+1'.
 
       for(iTurb=0; iTurb < nTurbines; iTurb++) {
          for(int i=0; i < FAST.get_numVelPts(iTurb); i++) {
@@ -74,7 +74,7 @@ OpenFAST uses different spatial meshes for the various modules :cite:`fastv8ModF
       }
 
       // Predict CFD solver to next time step here
-      
+
       for(iTurb=0; iTurb < nTurbines; iTurb++) {
          for(int i=0; i < FAST.get_numVelPts(iTurb); i++) {
             // Get velocity node co-ordinates at time step 'n+1'
@@ -84,9 +84,9 @@ OpenFAST uses different spatial meshes for the various modules :cite:`fastv8ModF
             FAST.setVelocity(sampleVel, i, iTurb, fast::np1);
          }
       }
-   
+
       FAST.update_states_driver_time_step(); // Predict the state of OpenFAST at the next time step
-      
+
    }
 
    // Move OpenFAST to next CFD time step
@@ -97,14 +97,14 @@ OpenFAST uses different spatial meshes for the various modules :cite:`fastv8ModF
 
    api.rst
 
-   
+
 Implementation
 --------------
 
 The C++ API uses the C-Fortran interface to call the same functions as the Fortran driver internally to advance the OpenFAST in time. FAST_Library.f90 contains all the functions that can be called from the C++ API. Some of the corresponding functions between the C++ API and the Fortran module are shown in the following table.
 
 .. table::
-      
+
    +------------------------------------+---------------------------------+-------------------------------+
    | C++ API - OpenFAST.cpp             | Fortran - FAST_Library.f90      | FAST_Subs.f90                 |
    +====================================+=================================+===============================+
@@ -132,13 +132,13 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
    call FAST_CFD_Solution0
 
    do i=1, nTimesteps
-      
+
       if (nSubsteps .gt. 1)
             call FAST_CFD_Store_SS
       else
             call FAST_CFD_Prework
       end if
-      
+
       do iOuter=1, nOuterIterations
 
          if (nSubsteps .gt. 1)
@@ -146,9 +146,9 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
             if (iOuter .ne. 1) then
                ! Reset OpenFAST back when not the first pass
                call FAST_CFD_Reset_SS
-               
-            end if 
-            
+
+            end if
+
             do j=1, nSubsteps
 
                ! Set external inputs into modules here for the substep
@@ -161,7 +161,7 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
          else
 
             call FAST_CFD_UpdateStates
-            
+
          end if
 
       end do !Outer iterations
@@ -169,11 +169,11 @@ The `FAST_Solution_T` subroutine in `FAST_Subs.f90` is split into three differen
       if (nSubsteps .gt. 1) then
 
          ! Nothing to do here
-         
+
       else
 
          call FAST_CFD_AdvanceToNextTimeStep
-         
+
       end if
 
    end do
@@ -203,5 +203,3 @@ The test for the implementation of the mapping procedure is as follows. OpenFAST
    :width: 100%
 
    Variation of torque using different number of actuator force nodes in `OpenFAST` for the same number of velocity nodes.
-
-   

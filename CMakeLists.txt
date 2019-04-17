@@ -79,6 +79,7 @@ add_subdirectory(modules-local/openfast-registry)
 set(OPENFAST_MODULES_LOCAL
   nwtc-library
   inflowwind
+  extloads
   aerodyn
   aerodyn14
   servodyn

@@ -84,7 +84,7 @@ typedef   ^        BD_InputFile    DbKi            rhoinf         -  - - "Numeri
 typedef   ^        BD_InputFile    DbKi            DTBeam         -  - - "Time interval for BeamDyn  calculations {or default} (s)" -
 typedef   ^        BD_InputFile    BladeInputData  InpBl          -  - - "Input data for individual blades"   "see BladeInputData Type"
 typedef   ^        BD_InputFile    CHARACTER(1024) BldFile        -  - - "Name of blade input file"
-typedef   ^        BD_InputFile    Logical         UsePitchAct    -  - - "Whether to use a pitch actuator inside BeamDyn" (flag) 
+typedef   ^        BD_InputFile    Logical         UsePitchAct    -  - - "Whether to use a pitch actuator inside BeamDyn" (flag)
 typedef   ^        BD_InputFile    Logical         QuasiStaticInit - - - "Use quasistatic pre-conditioning with centripetal accelerations in initialization (flag) [dynamic solve and enFAST only]" -
 #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 #the following are BDKi = R8Ki
@@ -93,14 +93,14 @@ typedef   ^        BD_InputFile     ^       tngt_stf_pert    - - - "Perturbation
 typedef   ^        BD_InputFile     ^       tngt_stf_difftol - - - "When comparing tangent stiffness matrix, stop simulation if error greater than this" -
 typedef   ^        BD_InputFile     ^       kp_coordinate   {:}{:} - - "Key point coordinates array" -
 typedef   ^        BD_InputFile     ^       pitchJ - - -     "Pitch actuator inertia" (kg-m^2)
-typedef   ^        BD_InputFile     ^       pitchK - - -     "Pitch actuator stiffness" (kg-m^2/s^2) 
+typedef   ^        BD_InputFile     ^       pitchK - - -     "Pitch actuator stiffness" (kg-m^2/s^2)
 typedef   ^        BD_InputFile     ^       pitchC - - -     "Pitch actuator damping" - (kg-m^2/s)
 #end of BDKi-type variables
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 typedef   ^        BD_InputFile    Logical             Echo        -  - - "Echo" -
 typedef   ^        BD_InputFile    Logical             RotStates -  .TRUE. - "Orient states in rotating frame during linearization? (flag)" -
 typedef   ^        BD_InputFile    Logical             RelStates -  .FALSE. - "Define states relative to root motion during linearization? (flag)" -
-typedef   ^        BD_InputFile    Logical             tngt_stf_fd -  - - "Flag to compute tangent stifness matrix via finite difference" - 
+typedef   ^        BD_InputFile    Logical             tngt_stf_fd -  - - "Flag to compute tangent stifness matrix via finite difference" -
 typedef   ^        BD_InputFile    Logical             tngt_stf_comp -  - - "Flag to compare finite differenced and analytical tangent stifness" -
 typedef   ^        BD_InputFile    IntKi               NNodeOuts   -  - - "Number of node outputs [0 - 9]"	-
 typedef   ^        BD_InputFile    IntKi               OutNd      {9} - - "Nodes whose values will be output"	-
@@ -122,9 +122,9 @@ typedef   ^        ContinuousStateType  ^   dqdt     {:}{:} - -  "dqdt - velocit
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 # Define discrete (nondifferentiable) states here:
-#typedef   ^        BD_DiscreteStateType ReKi rot  {3} - - "For filter" -             
-typedef   ^        BD_DiscreteStateType ReKi thetaP  - - - "Pitch angle state" -      
-typedef   ^        BD_DiscreteStateType ReKi thetaPD  - - - "Pitch rate state" -      
+#typedef   ^        BD_DiscreteStateType ReKi rot  {3} - - "For filter" -
+typedef   ^        BD_DiscreteStateType ReKi thetaP  - - - "Pitch angle state" -
+typedef   ^        BD_DiscreteStateType ReKi thetaPD  - - - "Pitch rate state" -
 
 # Define constraint states here:
 typedef   ^        ConstraintStateType ReKi DummyConstrState - - - "A variable, Replace if you have constraint states" -
@@ -212,17 +212,17 @@ typedef   ^        ParameterType IntKi          OutNd           {9}        - -  
 typedef   ^        ParameterType IntKi          NdIndx          {:}        - -  "Index into BldMotion mesh (to number the nodes for output without using collocated nodes)"	-
 typedef   ^        ParameterType IntKi          OutNd2NdElem    {:}{:}     - -  "To go from an output node number to a node/elem pair" -
 typedef   ^        ParameterType CHARACTER(20)  OutFmt           -         - -  "Format specifier" -
-typedef   ^        ParameterType Logical        UsePitchAct      -         - -  "Whether to use a pitch actuator inside BeamDyn" (flag) 
+typedef   ^        ParameterType Logical        UsePitchAct      -         - -  "Whether to use a pitch actuator inside BeamDyn" (flag)
 typedef   ^        ParameterType ReKi           pitchJ           -         - -  "Pitch actuator inertia" (kg-m^2)
-typedef   ^        ParameterType ReKi           pitchK           -         - -  "Pitch actuator stiffness" (kg-m^2/s^2) 
+typedef   ^        ParameterType ReKi           pitchK           -         - -  "Pitch actuator stiffness" (kg-m^2/s^2)
 typedef   ^        ParameterType ReKi           pitchC           -         - -  "Pitch actuator damping" - (kg-m^2/s)
-typedef   ^        ParameterType ReKi           torqM           {2}{2}     - -  "Pitch actuator matrix: (I-hA)^-1" - 
+typedef   ^        ParameterType ReKi           torqM           {2}{2}     - -  "Pitch actuator matrix: (I-hA)^-1" -
 typedef   ^        ParameterType qpParam        qp               -         - -  "Quadrature point info that does not change during simulation" -
 typedef   ^        ParameterType IntKi          qp_indx_offset   -         - -  "Offset for computing index of the quadrature arrays (gauss skips the first [end-point] node)" -
 typedef   ^        ParameterType IntKi          BldMotionNodeLoc -         - -  "switch to determine where the nodes on the blade motion mesh should be located 1=FE (GLL) nodes; 2=quadrature nodes; 3=blade input stations"
-typedef   ^        ParameterType Logical        tngt_stf_fd      -         - -  "Flag to compute tangent stifness matrix via finite difference" - 
-typedef   ^        ParameterType Logical        tngt_stf_comp    -         - -  "Flag to compare finite differenced and analytical tangent stifness" - 
-typedef   ^        ParameterType R8Ki           tngt_stf_pert    -         - -  "Perturbation size for computing finite differenced tangent stiffness" - 
+typedef   ^        ParameterType Logical        tngt_stf_fd      -         - -  "Flag to compute tangent stifness matrix via finite difference" -
+typedef   ^        ParameterType Logical        tngt_stf_comp    -         - -  "Flag to compare finite differenced and analytical tangent stifness" -
+typedef   ^        ParameterType R8Ki           tngt_stf_pert    -         - -  "Perturbation size for computing finite differenced tangent stiffness" -
 typedef   ^        ParameterType R8Ki           tngt_stf_difftol -         - -  "When comparing tangent stiffness matrix, stop simulation if error greater than this" -
 # .... arrays for optimization ........................................................................................................
 typedef   ^        ParameterType    R8Ki        QPtw_Shp_Shp_Jac       {:}{:}{:}{:}  - - "optimization variable: QPtw_Shp_Shp_Jac(idx_qp,i,j,nelem) = p%Shp(i,idx_qp)*p%Shp(j,idx_qp)*p%QPtWeight(idx_qp)*p%Jacobian(idx_qp,nelem)" -
@@ -351,7 +351,7 @@ typedef   ^        MiscVarType    ^            BldInternalForceFE   {:}{:}  - - 
 typedef   ^        MiscVarType    ^            BldInternalForceQP   {:}{:}  - - "Force/Moment array for internal force calculations at QP" -
 typedef   ^        MiscVarType    ^            FirstNodeReactionLclForceMoment   {:}  - - "Force/Moment array for first node reaction.  Needed in InternalForce calculations." -
 typedef   ^        MiscVarType    ^            Solution     {:}{:}        - - "Result from LAPACK solve (X from A*X = B solve)" -
-# arrays for lapack routines                 
+# arrays for lapack routines
 typedef   ^        MiscVarType    ^            LP_StifK     {:}{:}        - - "Stiffness Matrix" -
 typedef   ^        MiscVarType    ^            LP_MassM     {:}{:}        - - "Mass Matrix" -
 typedef   ^        MiscVarType    ^            LP_MassM_LU  {:}{:}        - - "Mass Matrix for LU" -
@@ -363,4 +363,3 @@ typedef   ^        MiscVarType    ^            LP_RHS_LU    {:}           - - "R
 typedef   ^        MiscVarType    IntKi        LP_indx      {:}           - - "Index vector for LU" -
 typedef   ^        MiscVarType    BD_InputType u             -            - - "Inputs converted to the internal BD coordinate system" -
 typedef   ^        MiscVarType    BD_InputType u2            -            - - "Inputs in the FAST coordinate system, possibly modified by pitch actuator" -
-

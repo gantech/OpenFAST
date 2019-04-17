@@ -1,0 +1,89 @@
+###################################################################################################################################
+# Registry for ExternalLoads in the FAST Modularization Framework
+# This Registry file is used to create ExtLoads_Types which contains data used in the ExtLoads module.
+# It also contains copy, destroy, pack, and unpack routines associated with each defined data types.
+# See the NWTC Programmer's Handbook for further information on the format/contents of this file.
+#
+# Entries are of the form
+# <keyword>	<ModuleName/ModName>	<TypeName>	<FieldType>	<FieldName>	<Dims>	<IO>	<DNAME>	<DESCRIP>	<UNITS>
+#
+# Use ^ as a shortcut for the value in the same column from the previous line.
+###################################################################################################################################
+# File last committed $Date$
+# (File) Revision #: $Rev$
+# URL: $HeadURL$
+###################################################################################################################################
+# ...... Include files (definitions from NWTC Library) ............................................................................
+include	Registry_NWTC_Library.txt
+usefrom ExtLoadsDX_Registry.txt
+
+# ..... Initialization data .......................................................................................................
+# Define inputs that the initialization routine may need here:
+typedef	ExtLoads/ExtLd       InitInputType	IntKi	NumBlades	-	-	-	"Number of blades on the turbine" -
+typedef ^                       InitInputType   IntKi   NumBldNodes     {:}     -       -       "Number of blade nodes for each blade"  -
+typedef	^	                InitInputType	Logical	TwrAero	        -	.false.	-	"Flag that tells this module if the tower aero is on."	-
+typedef ^                       InitInputType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes for each blade"  -
+typedef	^	                InitInputType	ReKi	HubPos	{3}	-	-	"X-Y-Z reference position of hub"	m
+typedef	^	                InitInputType	R8Ki	HubOrient	{3}{3}	-	-	"DCM reference orientation of hub"	-
+typedef	^	                InitInputType	ReKi	NacellePos	{3}	-	-	"X-Y-Z reference position of Nacelle"	m
+typedef	^	                InitInputType	R8Ki    NacelleOrient	{3}{3}	-	-	"DCM reference orientation of Nacelle"	-
+typedef	^	                InitInputType	ReKi	BldRootPos	{:}{:}	-	-	"X-Y-Z reference position of each blade root (3 x NumBlades)"	m
+typedef	^	                InitInputType	R8Ki	BldRootOrient	{:}{:}{:}	-	-	"DCM reference orientation of blade root (3x3 x NumBlades )"	-
+typedef	^	                InitInputType	ReKi	BldPos	{:}{:}{:}	-	-	"X-Y-Z reference position of each blade (3 x NumBladeNodesMax x NumBlades)"	m
+typedef	^	                InitInputType	R8Ki	BldOrient	{:}{:}{:}{:}	-	-	"DCM reference orientation of blade (3x3 x NumBladeNodesMax x NumBlades )"	-
+typedef	^	                InitInputType	ReKi	TwrPos	{:}{:}	-	-	"X-Y-Z reference position of tower (3 x NumTowerNodes)"	m
+typedef	^	                InitInputType	R8Ki	TwrOrient	{:}{:}{:}	-	-	"DCM reference orientation of tower (3x3 x NumTowerNodes)"	-
+
+# Define outputs from the initialization routine here:
+typedef	^	InitOutputType	CHARACTER(ChanLen)	WriteOutputHdr	{:}	-	-	"Names of the output-to-file channels"	-       
+typedef	^	InitOutputType	CHARACTER(ChanLen)	WriteOutputUnt	{:}	-	-	"Units of the output-to-file channels"	-
+typedef	^	InitOutputType	ProgDesc	Ver	-	-	-	"This module's name, version, and date"	-
+typedef	^	InitOutputType	ReKi	AirDens	-	-	-	"Air density"	kg/m^3
+typedef	^	InitOutputType	CHARACTER(LinChanLen)	LinNames_y	{:}	-	-	"Names of the outputs used in linearization"	-
+typedef	^	InitOutputType	CHARACTER(LinChanLen)	LinNames_z	{:}	-	-	"Names of the constraint states used in linearization"	-
+typedef	^	InitOutputType	CHARACTER(LinChanLen)	LinNames_u	{:}	-	-	"Names of the inputs used in linearization"	-
+typedef	^	InitOutputType	LOGICAL	RotFrame_y	{:}	-	-	"Flag that tells FAST/MBC3 if the outputs used in linearization are in the rotating frame"	-
+typedef	^	InitOutputType	LOGICAL	RotFrame_z	{:}	-	-	"Flag that tells FAST/MBC3 if the constraint states used in linearization are in the rotating frame (not used for glue)"	-
+typedef	^	InitOutputType	LOGICAL	RotFrame_u	{:}	-	-	"Flag that tells FAST/MBC3 if the inputs used in linearization are in the rotating frame"	-
+typedef	^	InitOutputType	ReKi	TwrElev	{:}	-	-	"Elevation at tower node"	m
+typedef	^	InitOutputType	ReKi	TwrDiam	{:}	-	-	"Diameter of tower at node"	m
+
+# ..... States ....................................................................................................................
+# Define continuous (differentiable) states here:
+typedef ^       ContinuousStateType	ReKi	blah    -       -       -       "Something"     - 
+
+# Define discrete (nondifferentiable) states here:
+typedef ^       DiscreteStateType	ReKi	blah    -       -       -       "Something"     -
+
+# Define constraint states here:
+typedef ^       ConstraintStateType	ReKi	blah    -       -       -       "Something"     -
+
+# Define "other" states here:
+typedef ^       OtherStateType	ReKi	blah    -       -       -       "Something"     -
+
+# Define misc/optimization variables (any data that are not considered actual states) here:
+typedef ^       MiscVarType	ReKi	blah    -       -       -       "Something"     -
+
+# ..... Parameters ................................................................................................................
+# Define parameters here:
+typedef	^	ParameterType	IntKi	NumBlds      -       -       -       "Number of blades on the turbine" -
+typedef ^       ParameterType   IntKi   NumBldNds   {:}      -       -       "Number of blade nodes for each blade"  -
+typedef ^       ParameterType   IntKi   nTotBldNds   -       -       -       "Total number of blade nodes"   -
+typedef	^	ParameterType	Logical	TwrAero	        -	.FALSE.	-	"Flag that tells this module if the tower aero is on."	-
+typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes"  -
+
+
+# ..... Inputs ....................................................................................................................
+# Define inputs that are contained on the mesh here:
+typedef  ^  InputType   ExtLdDX_InputType  DX_u    -       -       -       "Data to send to external driver"
+typedef	^	InputType	MeshType	TowerMotion	-	-	-	"motion on the tower"	-
+typedef	^	InputType	MeshType	HubMotion	-	-	-	"motion on the hub"	-
+typedef	^	InputType	MeshType	NacelleMotion	-	-	-	"motion on the nacelle"	-
+typedef	^	InputType	MeshType	BladeRootMotion	{:}	-	-	"motion on each blade root"	-
+typedef	^	InputType	MeshType	BladeMotion	{:}	-	-	"motion on each blade"	-
+
+# ..... Outputs ...................................................................................................................
+# Define outputs that are contained on the mesh here:
+typedef ^ OutputType ExtLdDX_OutputType  DX_y    -       -       -       "Data to get from external driver"
+typedef ^ OutputType MeshType TowerLoad 	 -	-	-	"loads on the tower"	-
+typedef ^ OutputType MeshType BladeLoad	{:}	-	-	"loads on each blade"	-

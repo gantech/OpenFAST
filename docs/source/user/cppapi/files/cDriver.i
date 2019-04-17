@@ -30,17 +30,17 @@ n_checkpoint: 160        # Restart files will be written every so many time step
 set_exp_law_wind: false  # Set velocity at the the turbine using an exponential law profile.
 
 Turbine0:
-  
+
   turbine_base_pos: [ 0.0, 0.0, 0.0 ]  # The position of the turbine base for actuator-line simulations
-  
+
   num_force_pts_blade: 0               # The number of actuator points along each blade for actuator-line simulations
-  
+
   num_force_pts_tower: 0               # The number of actuator points along the tower for actuator-line simulations.
-  
+
   restart_filename: "banana"           # The checkpoint file for this turbine when restarting a simulation
-  
+
   FAST_input_filename: "t1_Test05.fst" # The FAST input file for this turbine
-  
+
   turb_id:  1                          # A unique turbine id for each turbine
 
 Turbine1:

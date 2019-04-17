@@ -22,6 +22,13 @@
 
 namespace fast {
 
+//! An id to indicate the type of simulation for each turbine - Simple/Actuator with optional externally specified inflow or Blade-Resolved with externally specified loads
+enum simType {
+    EXTINFLOW = 0,
+    EXTLOADS  = 1,
+    simType_END
+};
+
 //! A data structure to hold all turbine related information
 struct turbineDataType {
     //!Integer id for every turbine
@@ -36,6 +43,8 @@ struct turbineDataType {
     std::vector<float> TurbineBasePos;
     //! The approximate position of the hub of the turbine in global coordinates
     std::vector<double> TurbineHubPos;
+    //! Simulation type
+    simType sType;
     //! Number of blades
     int numBlades;
     //! Number of velocity nodes (AeroDyn) per blade
@@ -60,6 +69,12 @@ struct turbineDataType {
     float air_density;
     //! HDF-5 tag of file containing velocity (aerodyn) node data file for this turbine
     hid_t velNodeDataFile;
+    //! Number of nodes at which the forces and deflections are computed for blade-resolved FSI on each blade
+    std::vector<int> nBRfsiPtsBlade;
+    //! Total number of BR fsi points on all blades combined
+    int nTotBRfsiPtsBlade;
+    //! Number of nodes at which the forces and deflections are computed for blade-resolved FSI on the tower
+    int nBRfsiPtsTwr;
 };
 
 //! An id to indicate whether a particular actuator point is on the hub, node or tower
@@ -119,7 +134,44 @@ enum timeStep {
     timeStep_END
 };
 
+//! A data structure to hold all loads and deflections information for blade-resolved FSI simulations
+struct turbBRfsiDataType {
+    //! Tower reference position
+    std::vector<double> twr_ref_pos;
+    //! Tower deflections
+    std::vector<double> twr_def;
+    //! Tower velocity
+    std::vector<double> twr_vel;
+    //! Blade reference position
+    std::vector<double> bld_ref_pos;
+    //! Blade deflections
+    std::vector<double> bld_def;
+    //! Blade velocity
+    std::vector<double> bld_vel;
+    //! Hub reference position
+    std::vector<double> hub_ref_pos;
+    //! Hub deflections
+    std::vector<double> hub_def;
+    //! Hub velocity
+    std::vector<double> hub_vel;
+    //! Nacelle reference position
+    std::vector<double> nac_ref_pos;
+    //! Nacelle deflections
+    std::vector<double> nac_def;
+    //! Nacelle velocity
+    std::vector<double> nac_vel;
 
+    //! Tower loads
+    std::vector<double> twr_ld;
+    //! Blade loads
+    std::vector<double> bld_ld;
+    double twr_def_resid;
+    double twr_vel_resid;
+    double bld_def_resid;
+    double bld_vel_resid;
+    double twr_ld_resid;
+    double bld_ld_resid;
+};
 
 /**
  * A class to hold all input data for a simulation run through a OpenFAST C++ glue code
@@ -144,9 +196,8 @@ class fastInputs {
   int nEveryCheckPoint;
   //! Max time of the simulation
   double tMax;
-  //! Time step for driver. All turbines should have the same time step.
+  //! Time step for driver.
   double dtDriver;
-
   //! Supercontroller status: True/False.
   bool scStatus;
   //! Name of the dynamic library containing the supercontroller implementation
@@ -216,11 +267,18 @@ class OpenFAST {
   std::vector<std::vector<double> > velNodeData; // Position and velocity data at the velocity (aerodyn) nodes - (nTurbines, nTimesteps * nPoints * 6)
   //! Array containing data at the velocity and force nodes
   std::vector<std::vector<turbVelForceNodeDataType>> velForceNodeData;
+  //! Array containing forces and deflections data for blade-resolved FSI simulations.
+  std::vector<std::vector<turbBRfsiDataType>> brFSIData;
 
-  //! Data structure to get forces and deflections from OpenFAST
-  std::vector<ExtInfw_InputType_t> i_f_FAST; // Input from OpenFAST
-  //! Data structure to send velocity information to OpenFAST
-  std::vector<ExtInfw_OutputType_t> o_t_FAST; // Output to OpenFAST
+  //! Data structure to get forces and deflections from ExternalInflow module in OpenFAST
+  std::vector<ExtInfw_InputType_t> extinfw_i_f_FAST; // Input from OpenFAST
+  //! Data structure to send velocity information to ExternalInflow module in OpenFAST
+  std::vector<ExtInfw_OutputType_t> extinfw_o_t_FAST; // Output to OpenFAST
+
+  //! Data structure to get deflections from ExternalLoads module in OpenFAST
+  std::vector<ExtLdDX_InputType_t> extld_i_f_FAST; // Input from OpenFAST
+  //! Data structure to send force information to ExternalLoads module in OpenFAST
+  std::vector<ExtLdDX_OutputType_t> extld_o_t_FAST; // Output to OpenFAST
 
   //! Data structure to get inputs to supercontroller from turbines in OpenFAST
   std::vector<SC_InputType_t> sc_i_f_FAST;
@@ -358,6 +416,34 @@ class OpenFAST {
   //! Get the chord at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   double getChord(int iNode, int iTurbGlob);
 
+  //! Get processor containing turbine 'iTurbGlob'
+  int getProc(int iTurbGlob) {return turbineMapGlobToProc[iTurbGlob];}
+
+  //! Get the blade reference positions array 'bldRefPos' of turbine number 'iTurbGlob'
+  void getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob);
+  //! Get the blade deflections array 'bldDefl' of turbine number 'iTurbGlob' at time step 't'
+    void getBladeDisplacements(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  //! Get the tower reference positions array 'twrRefPos' of turbine number 'iTurbGlob'
+  void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob);
+  //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
+  void getTowerDisplacements(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  //! Get the hub reference position array 'hubRefPos' of turbine number 'iTurbGlob'
+  void getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob);
+  //! Get the hub deflections array 'hubDefl' of turbine number 'iTurbGlob' at time step 't'
+  void getHubDisplacement(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  //! Get the nacelle reference position array 'nacRefPos' of turbine number 'iTurbGlob'
+  void getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob);
+  //! Get the nacelle deflections array 'nacDefl' of turbine number 'iTurbGlob' at time step 't'
+  void getNacelleDisplacement(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+
+  //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
+  void setBladeForces(std::vector<double> & bldForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  //! Set the tower force array 'twrForce' of turbine number 'iTurbGlob' at time step 't'
+  void setTowerForces(std::vector<double> & twrForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+
+
+  //! Get all turbine parametric data
+  void get_turbineParams(int iTurbGlob, turbineDataType & turbData);
   //! Get the starting time step of the simulation. Safe to call from every MPI rank.
   int get_ntStart() { return ntStart; }
   //! Return a boolean flag whether the simulation is dryRun. Safe to call from every MPI rank.
@@ -402,6 +488,10 @@ class OpenFAST {
 
   //! An example function to set velocities at the Aerodyn nodes using a power law wind profile using an exponent of 0.2 and a reference wind speed of 10 m/s at 90 meters. Safe to call from every MPI rank.
   void setExpLawWindSpeed(double t) ; // An example to set velocities at the Aerodyn nodes
+
+  //! An example function to set a uniform X force at all blade nodes. Safe to call from every MPI rank.
+  void setUniformXBladeForces();
+
 
 private:
 
@@ -473,6 +563,9 @@ private:
   //! Get the total number of Actuator/force nodes in local turbine number 'iTurbLoc'
   int get_numForcePtsLoc(int iTurbLoc) { return turbineData[iTurbLoc].numForcePts; }
 
+  //! Get reference positions of blade-resolved FSI nodes from OpenFAST
+  void get_ref_positions_from_openfast(int iTurb);
+    
   void loadSuperController(const fastInputs & fi);
   void fillScInputsGlob() ;
   void fillScOutputsLoc() ;

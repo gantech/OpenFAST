@@ -42,6 +42,13 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
 
   //Read turbine data for a given turbine using the YAML node
   get_if_present(turbNode, "turb_id", fi.globTurbineData[iTurb].TurbID, iTurb);
+  std::string simType;
+  get_if_present(turbNode, "sim_type", simType, std::string("ext-inflow"));
+  if (simType == "ext-loads")
+      fi.globTurbineData[iTurb].sType = fast::EXTLOADS;
+  else
+      fi.globTurbineData[iTurb].sType = fast::EXTINFLOW;
+
   std::string emptyString = "";
   get_if_present(turbNode, "FAST_input_filename", fi.globTurbineData[iTurb].FASTInputFileName);
   get_if_present(turbNode, "restart_filename", fi.globTurbineData[iTurb].FASTRestartFileName);
@@ -65,7 +72,7 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
   get_if_present(turbNode, "air_density", fi.globTurbineData[iTurb].air_density, fZero);
 }
 
-void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd, int * couplingMode, bool * setExpLawWind, int * nIter) {
+void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd, int * couplingMode, bool * setExpLawWind, bool * setUniformXBladeForces, int * nIter) {
 
   fi.comm = MPI_COMM_WORLD;
 
@@ -73,7 +80,6 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
   if ( checkFileExists(cInterfaceInputFile) ) {
 
     YAML::Node cDriverInp = YAML::LoadFile(cInterfaceInputFile);
-
     get_required(cDriverInp, "n_turbines_glob", fi.nTurbinesGlob);
 
     if (fi.nTurbinesGlob > 0) {
@@ -118,6 +124,7 @@ void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, doubl
         get_required(cDriverInp, "dt_driver", fi.dtDriver);
         get_required(cDriverInp, "t_max", fi.tMax); // t_max is the total duration to which you want to run FAST. This should be the same or greater than the max time given in the FAST fst file.
         get_if_present(cDriverInp, "set_exp_law_wind", *setExpLawWind, false);
+        get_if_present(cDriverInp, "set_uniform_x_blade_forces", *setUniformXBladeForces, false);
 
         get_if_present(cDriverInp, "super_controller", fi.scStatus, false);
         if(fi.scStatus) {
@@ -161,12 +168,13 @@ int main() {
   int ntStart, ntEnd ; // This doesn't belong in the FAST - C++ interface
   int nSubsteps; //
   bool setExpLawWind; // Set wind speed at Aerodyn nodes based on an exponential profile. Useful for testing the C++ API before running actuator line simulations.
+  bool setUniformXBladeForces; // Set uniform X blade forces on all blade nodes
   int nIter;
 
   std::string cDriverInputFile="cDriver.i";
   fast::OpenFAST FAST;
   fast::fastInputs fi ;
-  readInputFile(fi, cDriverInputFile, &tEnd, &couplingMode, &setExpLawWind, &nIter);
+  readInputFile(fi, cDriverInputFile, &tEnd, &couplingMode, &setExpLawWind, &setUniformXBladeForces, &nIter);
 
   FAST.setInputs(fi);
   FAST.allocateTurbinesToProcsSimple();
@@ -191,6 +199,9 @@ int main() {
             // If running with a CFD solver, sample velocities at the actuator/velocity nodes here
             if (setExpLawWind)
                 FAST.setExpLawWindSpeed( (nt+1)*fi.dtDriver );
+            if (setUniformXBladeForces)
+                FAST.setUniformXBladeForces();
+
             for (int iSubstep=1; iSubstep < nSubsteps; iSubstep++) {
                 FAST.step();
                 std::cout << "iSubstep = " << iSubstep << std::endl ;

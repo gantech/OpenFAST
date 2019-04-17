@@ -30,6 +30,7 @@ include_directories(${ZLIB_INCLUDES})
 include_directories(${LIBXML2_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/modules-local/openfast-library/src/)
 include_directories(${CMAKE_BINARY_DIR}/modules-local/externalinflow/)
+include_directories(${CMAKE_BINARY_DIR}/modules-local/extloads/)
 include_directories(${CMAKE_BINARY_DIR}/modules-local/supercontroller/)
 include_directories(${MPI_INCLUDE_PATH})
 
@@ -49,7 +50,7 @@ add_executable(openfast-cpp
   src/FAST_Prog.cpp)
 
 target_link_libraries(openfast-cpp openfastcpplib openfastlib
-  ${MPI_LIBRARIES} ${YAML_LIBRARIES} 
+  ${MPI_LIBRARIES} ${YAML_LIBRARIES}
   ${HDF5_C_LIBRARIES}
   ${HDF5_HL_LIBRARIES}
   ${ZLIB_LIBRARIES}
