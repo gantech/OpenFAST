@@ -22,7 +22,7 @@ EXTERNAL_ROUTINE void FAST_AL_CFD_Init(int * iTurb, double *TMax, const char *In
                                        SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output,
    int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_BR_CFD_Restart(int * iTurb, const char *CheckpointRootName, int *AbortErrLev, double * dt, int * NumBl, int * n_t_global, ExtLdDX_InputType_t* ExtLdDX_Input, ExtLdDX_OutputType_t* ExtLdDX_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
-EXTERNAL_ROUTINE void FAST_BR_CFD_Init(int * iTurb, double *TMax, const char *InputFileName, int * TurbineID, float * TurbinePosition, int *AbortErrLev, double * dt, int * NumBl, ExtLdDX_InputType_t* ExtLdDX_Input, ExtLdDX_OutputType_t* ExtLdDX_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_BR_CFD_Init(int * iTurb, double *TMax, const char *InputFileName, int * TurbineID, float * TurbinePosition, int *AbortErrLev, double * dtDriver, double * dt, int * NumBl, ExtLdDX_InputType_t* ExtLdDX_Input, ExtLdDX_OutputType_t* ExtLdDX_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_CFD_Solution0(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_CFD_InitIOarrays_SS(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_CFD_Prework(int * iTurb, int *ErrStat, char *ErrMsg);

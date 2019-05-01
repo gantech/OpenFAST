@@ -422,20 +422,21 @@ subroutine FAST_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, NumOuts_c, d
 
 end subroutine FAST_Restart
 !==================================================================================================================================
-subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, AbortErrLev_c, dt_c, NumBl_c, &
+subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, AbortErrLev_c, dtDriver_c, dt_c, NumBl_c, &
      ExtLd_Input_from_FAST, ExtLd_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_BR_CFD_Init')
-!DEC$ ATTRIBUTES DLLEXPORT::FAST_CFD_Init
+!DEC$ ATTRIBUTES DLLEXPORT::FAST_BR_CFD_Init
    IMPLICIT NONE
 #ifndef IMPLICIT_DLLEXPORT
-!DEC$ ATTRIBUTES DLLEXPORT :: FAST_CFD_Init
-!GCC$ ATTRIBUTES DLLEXPORT :: FAST_CFD_Init
+!DEC$ ATTRIBUTES DLLEXPORT :: FAST_BR_CFD_Init
+!GCC$ ATTRIBUTES DLLEXPORT :: FAST_BR_CFD_Init
 #endif
    INTEGER(C_INT),         INTENT(IN   ) :: iTurb            ! Turbine number
    REAL(C_DOUBLE),         INTENT(IN   ) :: TMax
    CHARACTER(KIND=C_CHAR), INTENT(IN   ) :: InputFileName_c(IntfStrLen)
    INTEGER(C_INT),         INTENT(IN   ) :: TurbID           ! Need not be same as iTurb
    REAL(C_FLOAT),          INTENT(IN   ) :: TurbPosn(3)
-   REAL(C_DOUBLE),         INTENT(IN   ) :: dt_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: dtDriver_c
+   REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c
    INTEGER(C_INT),         INTENT(  OUT) :: AbortErrLev_c
    INTEGER(C_INT),         INTENT(  OUT) :: NumBl_c
    TYPE(ExtLdDX_InputType_C), INTENT(  OUT) :: ExtLd_Input_from_FAST
@@ -469,6 +470,7 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, Abor
    ExternInitData%SensorType = SensorType_None
    ExternInitData%NumCtrl2SC = 0
    ExternInitData%NumSC2Ctrl = 0
+   ExternInitData%DTdriver = dtDriver_c
 
    CALL FAST_InitializeAll_T( t_initial, 1_IntKi, Turbine(iTurb), ErrStat, ErrMsg, InputFileName, ExternInitData )
 
@@ -480,12 +482,7 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, Abor
       return
    end if
 
-   if ( abs(dt_c - Turbine(iTurb)%p_FAST%dt) .gt. 1e-6) then
-      CALL SetErrStat(ErrID_Fatal, "Time step specified in C++ API does not match with time step specified in OpenFAST input file.", ErrStat, ErrMsg, RoutineName )
-      ErrStat_c = ErrStat
-      ErrMsg_c  = TRANSFER( trim(ErrMsg)//C_NULL_CHAR, ErrMsg_c )
-      return
-   end if
+   dt_c = DBLE(Turbine(iTurb)%p_FAST%DT)
 
    NumBl_c     = Turbine(iTurb)%ED%p%NumBl
 
@@ -811,12 +808,7 @@ subroutine FAST_BR_CFD_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, dt_c,
       return
    end if
 
-
-   if (dt_c .ne. Turbine(iTurb)%p_FAST%dt) then
-      CALL SetErrStat(ErrID_Fatal, "Time step specified in C++ API does not match with time step specified in OpenFAST input file.", ErrStat, ErrMsg, RoutineName )
-      return
-   end if
-
+   write(*,*) 'Finished restoring OpenFAST from checkpoint'
    call SetExtLoads_pointers(iTurb, ExtLd_Input_from_FAST, ExtLd_Output_to_FAST)
 
    ErrStat_c     = ErrStat

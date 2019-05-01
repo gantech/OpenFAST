@@ -80,7 +80,9 @@ void fast::OpenFAST::init() {
                     checkError(ErrStat, ErrMsg);
                     
                 } else if(turbineData[iTurb].sType == EXTLOADS) {
-                    FAST_BR_CFD_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].numBlades, &ntStart, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_BR_CFD_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &ntStart, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+
+                    std::cerr << "numBlade nodes = " << extld_i_f_FAST[iTurb].nBladeNodes[0] << " " << extld_i_f_FAST[iTurb].nBladeNodes[1] << " " << extld_i_f_FAST[iTurb].nBladeNodes[2] << std::endl ;
                     turbineData[iTurb].inflowType = 0;
                     checkError(ErrStat, ErrMsg);
 
@@ -121,13 +123,12 @@ void fast::OpenFAST::init() {
                     
                 } else if(turbineData[iTurb].sType == EXTLOADS) {
 
-                    FAST_BR_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtFAST, &turbineData[iTurb].numBlades, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_BR_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
 
                     turbineData[iTurb].inflowType = 0;
                     
                 }
-                timeZero = true;
                 
                 allocateMemory_postInit(iTurb);
 
@@ -139,6 +140,7 @@ void fast::OpenFAST::init() {
                 get_data_from_openfast(fast::STATE_NP1);
 
             }
+            timeZero = true;
             checkAndSetSubsteps();
 
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
@@ -269,24 +271,61 @@ void fast::OpenFAST::solution0(bool writeFiles) {
 void fast::OpenFAST::set_state_from_state(fast::timeStep fromState, fast::timeStep toState) {
 
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-        int nvelpts = get_numVelPtsLoc(iTurb);
-        int nfpts = get_numForcePtsLoc(iTurb);
-        for (int i=0; i<nvelpts; i++) {
-            for (int j=0 ; j < 3; j++) {
-                velForceNodeData[iTurb][toState].x_vel[i*3+j] = velForceNodeData[iTurb][fromState].x_vel[i*3+j];
-                velForceNodeData[iTurb][toState].xdot_vel[i*3+j] = velForceNodeData[iTurb][fromState].xdot_vel[i*3+j];
-                velForceNodeData[iTurb][toState].vel_vel[i*3+j] = velForceNodeData[iTurb][fromState].vel_vel[i*3+j];
+
+        if (turbineData[iTurb].sType == EXTINFLOW) {
+            int nvelpts = get_numVelPtsLoc(iTurb);
+            int nfpts = get_numForcePtsLoc(iTurb);
+            for (int i=0; i<nvelpts; i++) {
+                for (int j=0 ; j < 3; j++) {
+                    velForceNodeData[iTurb][toState].x_vel[i*3+j] = velForceNodeData[iTurb][fromState].x_vel[i*3+j];
+                    velForceNodeData[iTurb][toState].xdot_vel[i*3+j] = velForceNodeData[iTurb][fromState].xdot_vel[i*3+j];
+                    velForceNodeData[iTurb][toState].vel_vel[i*3+j] = velForceNodeData[iTurb][fromState].vel_vel[i*3+j];
+                }
             }
-        }
-        for (int i=0; i<nfpts; i++) {
-            for (int j=0 ; j < 3; j++) {
-                velForceNodeData[iTurb][toState].x_force[i*3+j] = velForceNodeData[iTurb][fromState].x_force[i*3+j];
-                velForceNodeData[iTurb][toState].xdot_force[i*3+j] = velForceNodeData[iTurb][fromState].xdot_force[i*3+j];
-                velForceNodeData[iTurb][toState].vel_force[i*3+j] = velForceNodeData[iTurb][fromState].vel_force[i*3+j];
-                velForceNodeData[iTurb][toState].force[i*3+j] = velForceNodeData[iTurb][fromState].force[i*3+j];
+            for (int i=0; i<nfpts; i++) {
+                for (int j=0 ; j < 3; j++) {
+                    velForceNodeData[iTurb][toState].x_force[i*3+j] = velForceNodeData[iTurb][fromState].x_force[i*3+j];
+                    velForceNodeData[iTurb][toState].xdot_force[i*3+j] = velForceNodeData[iTurb][fromState].xdot_force[i*3+j];
+                    velForceNodeData[iTurb][toState].vel_force[i*3+j] = velForceNodeData[iTurb][fromState].vel_force[i*3+j];
+                    velForceNodeData[iTurb][toState].force[i*3+j] = velForceNodeData[iTurb][fromState].force[i*3+j];
+                }
+                for (int j=0;j<9;j++)
+                    velForceNodeData[iTurb][toState].orient_force[i*9+j] = velForceNodeData[iTurb][fromState].orient_force[i*9+j];
             }
-            for (int j=0;j<9;j++)
-                velForceNodeData[iTurb][toState].orient_force[i*9+j] = velForceNodeData[iTurb][fromState].orient_force[i*9+j];
+        } else if (turbineData[iTurb].sType == EXTLOADS) {
+
+            int numBlades = get_numBladesLoc(iTurb);
+            int nBRfsiPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
+            int nTotBRfsiPtsBlade = turbineData[iTurb].nTotBRfsiPtsBlade;
+            std::cerr << "Numblades = " << numBlades
+                      << ",nBRfsiPtsTwr = " << nBRfsiPtsTwr
+                      << ",nTotBRfsiPtsBlade = " << nTotBRfsiPtsBlade << std::endl;
+                
+            for (int i=0; i < nBRfsiPtsTwr; i++) {
+                for (int j=0; j < 6; j++) {
+                    brFSIData[iTurb][toState].twr_ref_pos[i*6+j] = brFSIData[iTurb][fromState].twr_ref_pos[i*6+j];
+                    brFSIData[iTurb][toState].twr_def[i*6+j] = brFSIData[iTurb][fromState].twr_def[i*6+j];
+                    brFSIData[iTurb][toState].twr_vel[i*6+j] = brFSIData[iTurb][fromState].twr_vel[i*6+j];
+                    brFSIData[iTurb][toState].twr_ld[i*6+j] = brFSIData[iTurb][fromState].twr_ld[i*6+j];
+                }
+            }
+            for (int i=0; i < nTotBRfsiPtsBlade; i++) {
+                for (int j=0; j < 6; j++) {
+                    brFSIData[iTurb][toState].bld_ref_pos[i*6+j] = brFSIData[iTurb][fromState].bld_ref_pos[i*6+j];
+                    brFSIData[iTurb][toState].bld_def[i*6+j] = brFSIData[iTurb][fromState].bld_def[i*6+j];
+                    brFSIData[iTurb][toState].bld_vel[i*6+j] = brFSIData[iTurb][fromState].bld_vel[i*6+j];
+                    brFSIData[iTurb][toState].bld_ld[i*6+j] = brFSIData[iTurb][fromState].bld_ld[i*6+j];
+                }
+            }
+            for (int j=0; j < 6; j++) {
+                brFSIData[iTurb][toState].hub_ref_pos[j] = brFSIData[iTurb][fromState].hub_ref_pos[j];
+                brFSIData[iTurb][toState].hub_def[j] = brFSIData[iTurb][fromState].hub_def[j];
+                brFSIData[iTurb][toState].hub_vel[j] = brFSIData[iTurb][fromState].hub_vel[j];
+                brFSIData[iTurb][toState].nac_ref_pos[j] = brFSIData[iTurb][fromState].nac_ref_pos[j];
+                brFSIData[iTurb][toState].nac_def[j] = brFSIData[iTurb][fromState].nac_def[j];
+                brFSIData[iTurb][toState].nac_vel[j] = brFSIData[iTurb][fromState].nac_vel[j];
+
+            }
         }
     }
     
@@ -1338,23 +1377,24 @@ void fast::OpenFAST::allocateMemory_postInit(int iTurbLoc) {
         for(int i=0; i < turbineData[iTurbLoc].numBlades; i++) {
             nTotBldNds += extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
             turbineData[iTurbLoc].nBRfsiPtsBlade[i] = extld_i_f_FAST[iTurbLoc].nBladeNodes[i];
+            turbineData[iTurbLoc].nTotBRfsiPtsBlade += turbineData[iTurbLoc].nBRfsiPtsBlade[i];
         }
         turbineData[iTurbLoc].nBRfsiPtsTwr = extld_i_f_FAST[iTurbLoc].nTowerNodes[0];
 
         // Allocate memory for reference position only for 1 time step - np1
-        brFSIData[iTurbLoc][3].twr_ref_pos.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
-        brFSIData[iTurbLoc][3].bld_ref_pos.resize(6*nTotBldNds);
-        brFSIData[iTurbLoc][3].hub_ref_pos.resize(6);
-        brFSIData[iTurbLoc][3].nac_ref_pos.resize(6);
         for(int k=0; k<4; k++) {
+            brFSIData[iTurbLoc][k].twr_ref_pos.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].twr_def.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].twr_vel.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
+            brFSIData[iTurbLoc][k].bld_ref_pos.resize(6*nTotBldNds);
             brFSIData[iTurbLoc][k].bld_def.resize(6*nTotBldNds);
             brFSIData[iTurbLoc][k].bld_vel.resize(6*nTotBldNds);
             brFSIData[iTurbLoc][k].twr_ld.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].bld_ld.resize(6*nTotBldNds);
+            brFSIData[iTurbLoc][k].hub_ref_pos.resize(6);
             brFSIData[iTurbLoc][k].hub_def.resize(6);
             brFSIData[iTurbLoc][k].hub_vel.resize(6);
+            brFSIData[iTurbLoc][k].nac_ref_pos.resize(6);
             brFSIData[iTurbLoc][k].nac_def.resize(6);
             brFSIData[iTurbLoc][k].nac_vel.resize(6);
         }
@@ -1553,16 +1593,14 @@ void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, i
 void fast::OpenFAST::send_data_to_openfast(fast::timeStep t) {
 
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-        if (turbineData[iTurb].inflowType == 2) {
+        if ( (turbineData[iTurb].sType == EXTLOADS) && (turbineData[iTurb].inflowType == 2) ) {
             int nvelpts = get_numVelPtsLoc(iTurb);
             for (int iNodeVel=0; iNodeVel < nvelpts; iNodeVel++) {
                 extinfw_o_t_FAST[iTurb].u[iNodeVel] = velForceNodeData[iTurb][t].vel_vel[iNodeVel*3+0];
                 extinfw_o_t_FAST[iTurb].v[iNodeVel] = velForceNodeData[iTurb][t].vel_vel[iNodeVel*3+1];
                 extinfw_o_t_FAST[iTurb].w[iNodeVel] = velForceNodeData[iTurb][t].vel_vel[iNodeVel*3+2];
             }
-        }
-
-        if(turbineData[iTurb].sType == EXTLOADS) {
+        } else if(turbineData[iTurb].sType == EXTLOADS) {
 
             int nBlades = turbineData[iTurb].numBlades;
             int iRunTot = 0;
@@ -1595,12 +1633,27 @@ void fast::OpenFAST::send_data_to_openfast(double ss_time) {
                 extinfw_o_t_FAST[iTurb].v[iNodeVel] = velForceNodeData[iTurb][fast::STATE_N].vel_vel[iNodeVel*3+1] + ss_time * (velForceNodeData[iTurb][fast::STATE_NP1].vel_vel[iNodeVel*3+1] - velForceNodeData[iTurb][fast::STATE_N].vel_vel[iNodeVel*3+1]);
                 extinfw_o_t_FAST[iTurb].w[iNodeVel] = velForceNodeData[iTurb][fast::STATE_N].vel_vel[iNodeVel*3+2] + ss_time * (velForceNodeData[iTurb][fast::STATE_NP1].vel_vel[iNodeVel*3+2] - velForceNodeData[iTurb][fast::STATE_N].vel_vel[iNodeVel*3+2]);
             }
+        } else if(turbineData[iTurb].sType == EXTLOADS) {
+
+            int nBlades = turbineData[iTurb].numBlades;
+            int iRunTot = 0;
+            for(int i=0; i < nBlades; i++) {
+                int nPtsBlade = turbineData[iTurb].nBRfsiPtsBlade[i];
+                for (int j=0; j < nPtsBlade; j++) {
+                    for (int k=0; k<6; k++) {
+                        extld_o_t_FAST[iTurb].bldLd[iRunTot*6+k] = brFSIData[iTurb][fast::STATE_N].bld_ld[iRunTot*6+k] + ss_time * (brFSIData[iTurb][fast::STATE_NP1].bld_ld[iRunTot*6+k] - brFSIData[iTurb][fast::STATE_N].bld_ld[iRunTot*6+k]);
+                    }
+                    iRunTot++;
+                }
+            }
+
+            int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
+            for (int i=0; i < nPtsTwr*6; i++)
+                extld_o_t_FAST[iTurb].twrLd[i] = brFSIData[iTurb][fast::STATE_N].twr_ld[i] + ss_time * (brFSIData[iTurb][fast::STATE_NP1].twr_ld[i] - brFSIData[iTurb][fast::STATE_N].twr_ld[i]);
+
         }
     }
-
-    //TODO: Implement sub-timestepping for blade-resolved FSI
-
-    std::cerr << "Sub-timestepping not implemented for blade-resolved FSI yet" << std::endl ;
+    
 }
 
 void fast::OpenFAST::get_data_from_openfast(timeStep t) {
@@ -1693,60 +1746,145 @@ void fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
 
     hid_t restartFile = H5Fopen(("of_cpp_" + std::to_string(n_t_global) + "_T" + std::to_string(iTurbGlob) + ".chkp.h5").c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 
-    int nvelpts_file, nfpts_file ;
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
 
-    {
-        hid_t attr = H5Aopen(restartFile, "nvelpts", H5P_DEFAULT);
-        herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &nvelpts_file) ;
-        H5Aclose(attr);
+        int nvelpts_file, nfpts_file ;
+        
+        {
+            hid_t attr = H5Aopen(restartFile, "nvelpts", H5P_DEFAULT);
+            herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &nvelpts_file) ;
+            H5Aclose(attr);
+            
+            attr = H5Aopen(restartFile, "nfpts", H5P_DEFAULT);
+            ret = H5Aread(attr, H5T_NATIVE_INT, &nfpts_file) ;
+            H5Aclose(attr);
+        }
+        
+        if( (nvelpts != nvelpts_file) || (nfpts != nfpts_file))
+            throw std::runtime_error("Number of velocity or force nodes from restart file does not match input.");
+        
+        if (nvelpts > 0) {
+            for (int j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
+                
+                std::string gName = "/data/" + std::to_string(j);
+                hid_t group_id = H5Gopen2(restartFile, gName.c_str(), H5P_DEFAULT);
+                
+                hid_t dataSet = H5Dopen2(group_id, "x_vel", H5P_DEFAULT);
+                herr_t status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_vel.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "xdot_vel", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_vel.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "vel_vel", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_vel.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "x_force", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_force.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "xdot_force", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_force.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "vel_force", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_force.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "force", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].force.data());
+                status = H5Dclose(dataSet);
+                
+                dataSet = H5Dopen2(group_id, "orient_force", H5P_DEFAULT);
+                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].orient_force.data());
+                status = H5Dclose(dataSet);
+            }
 
-        attr = H5Aopen(restartFile, "nfpts", H5P_DEFAULT);
-        ret = H5Aread(attr, H5T_NATIVE_INT, &nfpts_file) ;
-        H5Aclose(attr);
-    }
+        }
+    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
 
-    if( (nvelpts != nvelpts_file) || (nfpts != nfpts_file))
-        throw std::runtime_error("Number of velocity or force nodes from restart file does not match input.");
+        int numBladesFile, nBRfsiPtsTwrFile, nTotBRfsiPtsBladeFile;
 
-    if (nvelpts > 0) {
-        for (int j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
+        {
+            hid_t attr = H5Aopen(restartFile, "numBlades", H5P_DEFAULT);
+            herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &numBladesFile) ;
+            H5Aclose(attr);
+            
+            attr = H5Aopen(restartFile, "nBRfsiPtsTwr", H5P_DEFAULT);
+            ret = H5Aread(attr, H5T_NATIVE_INT, &nBRfsiPtsTwrFile) ;
+            H5Aclose(attr);
 
-            std::string gName = "/data/" + std::to_string(j);
-            hid_t group_id = H5Gopen2(restartFile, gName.c_str(), H5P_DEFAULT);
-
-            hid_t dataSet = H5Dopen2(group_id, "x_vel", H5P_DEFAULT);
-            herr_t status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_vel.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "xdot_vel", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_vel.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "vel_vel", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_vel.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "x_force", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_force.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "xdot_force", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_force.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "vel_force", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_force.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "force", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].force.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "orient_force", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].orient_force.data());
-            status = H5Dclose(dataSet);
+            attr = H5Aopen(restartFile, "nTotBRfsiPtsBlade", H5P_DEFAULT);
+            ret = H5Aread(attr, H5T_NATIVE_INT, &nTotBRfsiPtsBladeFile) ;
+            H5Aclose(attr);
+        
         }
 
+        for (int j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
+                
+            std::string gName = "/data/" + std::to_string(j);
+            hid_t group_id = H5Gopen2(restartFile, gName.c_str(), H5P_DEFAULT);
+                
+            hid_t dataSet = H5Dopen2(group_id, "twr_ref_pos", H5P_DEFAULT);
+            herr_t status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ref_pos.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "twr_def", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_def.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "twr_vel", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_vel.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "twr_ld", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ld.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "bld_ref_pos", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ref_pos.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "bld_def", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_def.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "bld_vel", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_vel.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "bld_ld", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ld.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "hub_ref_pos", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_ref_pos.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "hub_def", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_def.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "hub_vel", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_vel.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "nac_ref_pos", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_ref_pos.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "nac_def", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_def.data());
+            status = H5Dclose(dataSet);
+
+            dataSet = H5Dopen2(group_id, "nac_vel", H5P_DEFAULT);
+            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_vel.data());
+            status = H5Dclose(dataSet);
+            
+        }
+        
     }
 
     herr_t status = H5Fclose(restartFile);
@@ -1759,28 +1897,122 @@ void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
     /* // HDF5 stuff to write states to restart file or read back from it */
 
     int iTurbGlob = turbineMapProcToGlob[iTurbLoc];
-    int nvelpts = get_numVelPtsLoc(iTurbLoc);
-    int nfpts = get_numForcePtsLoc(iTurbLoc);
     hid_t restartFile = H5Fcreate(("of_cpp_" + std::to_string(n_t_global) + "_T" + std::to_string(iTurbGlob) + ".chkp.h5").c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
-    {
-        hsize_t dims[1];
-        dims[0] = 1;
-        hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-        hid_t attr = H5Acreate2(restartFile, "nvelpts", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-        herr_t status = H5Awrite(attr, H5T_NATIVE_INT, &nvelpts);
-        status = H5Aclose(attr);
-        status = H5Sclose(dataSpace);
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
 
-        dataSpace = H5Screate_simple(1, dims, NULL);
-        attr = H5Acreate2(restartFile, "nfpts", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-        status = H5Awrite(attr, H5T_NATIVE_INT, &nfpts);
-        status = H5Aclose(attr);
-        status = H5Sclose(dataSpace);
+        int nvelpts = get_numVelPtsLoc(iTurbLoc);
+        int nfpts = get_numForcePtsLoc(iTurbLoc);
+        
+        {
+            hsize_t dims[1];
+            dims[0] = 1;
+            hid_t dataSpace = H5Screate_simple(1, dims, NULL);
+            hid_t attr = H5Acreate2(restartFile, "nvelpts", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
+            herr_t status = H5Awrite(attr, H5T_NATIVE_INT, &nvelpts);
+            status = H5Aclose(attr);
+            status = H5Sclose(dataSpace);
+            
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            attr = H5Acreate2(restartFile, "nfpts", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
+            status = H5Awrite(attr, H5T_NATIVE_INT, &nfpts);
+            status = H5Aclose(attr);
+            status = H5Sclose(dataSpace);
+            
+        }
+        
+        if (nvelpts > 0) {
+            
+            /* Create groups */
+            hid_t group_id = H5Gcreate2(restartFile, "/data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            herr_t status = H5Gclose(group_id);
+            for (int j=0; j < 4; j++) { // Loop over states - NM2, STATE_NM1, N, NP1
+                std::string gName = "/data/" + std::to_string(j);
+                group_id = H5Gcreate2(restartFile, gName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                
+                hsize_t dims[1];
+                dims[0] = nvelpts*3;
+                hid_t dataSpace = H5Screate_simple(1, dims, NULL);
+                hid_t dataSet = H5Dcreate2(group_id, "x_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                herr_t status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_vel.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "xdot_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_vel.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "vel_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_vel.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dims[0] = nfpts*3;
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "x_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_force.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "xdot_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_force.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "vel_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_force.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].force.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+                dims[0] = nfpts*9;
+                dataSpace = H5Screate_simple(1, dims, NULL);
+                dataSet = H5Dcreate2(group_id, "orient_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].orient_force.data());
+                status = H5Dclose(dataSet);
+                status = H5Sclose(dataSpace);
+                
+            }
+        }
+    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
 
-    }
-
-    if (nvelpts > 0) {
+        int numBlades = get_numBladesLoc(iTurbLoc);
+        int nBRfsiPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+        int nTotBRfsiPtsBlade = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
+        std::cerr << "nTotBRfsiptsblade = " << nTotBRfsiPtsBlade << std::endl;
+        
+        {
+            hsize_t dims[1];
+            dims[0] = 1;
+            hid_t dataSpace = H5Screate_simple(1, dims, NULL);
+            hid_t attr = H5Acreate2(restartFile, "numBlades", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
+            herr_t status = H5Awrite(attr, H5T_NATIVE_INT, &numBlades);
+            status = H5Aclose(attr);
+            status = H5Sclose(dataSpace);
+            
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            attr = H5Acreate2(restartFile, "nBRfsiPtsTwr", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
+            status = H5Awrite(attr, H5T_NATIVE_INT, &nBRfsiPtsTwr);
+            status = H5Aclose(attr);
+            status = H5Sclose(dataSpace);
+            
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            attr = H5Acreate2(restartFile, "nTotBRfsiPtsBlade", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
+            status = H5Awrite(attr, H5T_NATIVE_INT, &nTotBRfsiPtsBlade);
+            status = H5Aclose(attr);
+            status = H5Sclose(dataSpace);
+            
+        }
 
         /* Create groups */
         hid_t group_id = H5Gcreate2(restartFile, "/data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -1790,60 +2022,102 @@ void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
             group_id = H5Gcreate2(restartFile, gName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
             hsize_t dims[1];
-            dims[0] = nvelpts*3;
+
+            //Tower
+            dims[0] = nBRfsiPtsTwr*6;
             hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-            hid_t dataSet = H5Dcreate2(group_id, "x_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            herr_t status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_vel.data());
+            hid_t dataSet = H5Dcreate2(group_id, "twr_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            herr_t status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ref_pos.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
             dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "xdot_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_vel.data());
+            dataSet = H5Dcreate2(group_id, "twr_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_def.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
             dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "vel_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_vel.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dims[0] = nfpts*3;
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "x_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_force.data());
+            dataSet = H5Dcreate2(group_id, "twr_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_vel.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
             dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "xdot_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_force.data());
+            dataSet = H5Dcreate2(group_id, "twr_ld", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ld.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
+            
+            //Blade
+            dims[0] = nTotBRfsiPtsBlade*6;
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "bld_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ref_pos.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
             dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "vel_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_force.data());
+            dataSet = H5Dcreate2(group_id, "bld_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_def.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
             dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].force.data());
+            dataSet = H5Dcreate2(group_id, "bld_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_vel.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
-            dims[0] = nfpts*9;
             dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "orient_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].orient_force.data());
+            dataSet = H5Dcreate2(group_id, "bld_ld", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ld.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
+            
+            dims[0] = 6;
+            
+            //Hub
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "hub_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_ref_pos.data());
             status = H5Dclose(dataSet);
             status = H5Sclose(dataSpace);
 
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "hub_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_def.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
+
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "hub_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_vel.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
+
+            //Nacelle
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "nac_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_ref_pos.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
+
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "nac_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_def.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
+
+            dataSpace = H5Screate_simple(1, dims, NULL);
+            dataSet = H5Dcreate2(group_id, "nac_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_vel.data());
+            status = H5Dclose(dataSet);
+            status = H5Sclose(dataSpace);
         }
-
+       
     }
+    
 
     herr_t status = H5Fclose(restartFile);
 
