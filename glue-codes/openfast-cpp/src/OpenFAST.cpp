@@ -339,6 +339,60 @@ void fast::OpenFAST::init_velForceNodeData() {
 
 }
 
+//! Dot product of two vectors
+double dot(double * a, double * b) {
+
+    return (a[0]*b[0] + a[1]*b[1] + a[2]*b[2]);
+
+}
+
+//! Cross product of two vectors
+void cross(double * a, double * b, double * aCrossb) {
+
+    aCrossb[0] = a[1]*b[2] - a[2]*b[1];
+    aCrossb[1] = a[2]*b[0] - a[0]*b[2];
+    aCrossb[2] = a[0]*b[1] - a[1]*b[0];
+
+}
+
+//! Compose Wiener-Milenkovic parameters 'p' and 'q' into 'pPlusq'. If a transpose of 'p' is required, set tranposeP to '-1', else leave blank or set to '+1'
+void composeWM(double * p, double * q, double * pPlusq, double transposeP, double transposeQ) {
+
+    double p0 = 2.0 - 0.125*dot(p,p);
+    double q0 = 2.0 - 0.125*dot(q,q);
+    std::vector<double> pCrossq(3,0.0);
+    cross(p, q, pCrossq.data());
+
+    double delta1 = (4.0-p0)*(4.0-q0);
+    double delta2 = p0*q0 - transposeP*dot(p,q);
+    double premultFac = 0.0;
+    if (delta2 < 0)
+        premultFac = -4.0/(delta1 - delta2);
+    else
+        premultFac = 4.0/(delta1 + delta2);
+
+    for (size_t i=0; i < 3; i++)
+        pPlusq[i] = premultFac * (transposeQ * p0 * q[i] + transposeP * q0 * p[i] + transposeP * transposeQ * pCrossq[i] );
+
+}
+
+//! Extrapolate Wiener-Milenkovic parameters from state 'nm2', 'nm1', 'n' to 'np1'
+void extrapRotation(double *rnm2, double *rnm1, double *rn, double *rnp1) {
+
+    std::array<double,3> rrnm1{ {0.0,0.0,0.0} };
+    std::array<double,3> rrn{ {0.0,0.0,0.0} };
+    std::array<double,3> rrnp1{ {0.0,0.0,0.0} };
+
+    composeWM(rnm2, rnm1, rrnm1.data(), -1.0, 1.0); // Remove rigid body rotaiton of rnm2 from rnm1
+    composeWM(rnm2, rn, rrn.data(), -1.0, 1.0); // Remove rigid body rotaiton of rnm2 from rnm1
+    for(int i=0; i<3; i++) {
+        rrnp1[i] = 3.0 * ( rrn[i] - rrnm1[i]) ;
+    }
+    composeWM(rnm2, rrnp1.data(), rnp1, 1.0, 1.0); //Add rigid body rotation of nm2 back
+    
+}
+
+
 void fast::OpenFAST::predict_states() {
 
     if (firstPass_) {
@@ -374,17 +428,21 @@ void fast::OpenFAST::predict_states() {
             if(turbineData[iTurb].sType == EXTLOADS) {
                 int nTotBladeNodes = turbineData[iTurb].nTotBRfsiPtsBlade;
                 for (int j=0; j < nTotBladeNodes; j++) {
-                    for (int k=0; k < 6; k++) {
+                    extrapRotation(&brFSIData[iTurb][fast::STATE_NM2].bld_def[j*6+3], &brFSIData[iTurb][fast::STATE_NM1].bld_def[j*6+3], &brFSIData[iTurb][fast::STATE_N].bld_def[j*6+3], &brFSIData[iTurb][fast::STATE_NP1].bld_def[j*6+3]);
+                    for (int k=0; k < 3; k++) {
                         brFSIData[iTurb][fast::STATE_NP1].bld_def[j*6+k] = brFSIData[iTurb][fast::STATE_NM2].bld_def[j*6+k] + 3.0*(brFSIData[iTurb][fast::STATE_N].bld_def[j*6+k] - brFSIData[iTurb][fast::STATE_NM1].bld_def[j*6+k]);
                         brFSIData[iTurb][fast::STATE_NP1].bld_vel[j*6+k] = brFSIData[iTurb][fast::STATE_NM2].bld_vel[j*6+k] + 3.0*(brFSIData[iTurb][fast::STATE_N].bld_vel[j*6+k] - brFSIData[iTurb][fast::STATE_NM1].bld_vel[j*6+k]);
+                        brFSIData[iTurb][fast::STATE_NP1].bld_vel[j*6+k+3] = brFSIData[iTurb][fast::STATE_NM2].bld_vel[j*6+k+3] + 3.0*(brFSIData[iTurb][fast::STATE_N].bld_vel[j*6+k+3] - brFSIData[iTurb][fast::STATE_NM1].bld_vel[j*6+k+3]);
                     }
                 }
 
                 int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
                 for (int j=0; j < nPtsTwr; j++) {
-                    for (int k = 0; k < 6; k++) {
+                    extrapRotation(&brFSIData[iTurb][fast::STATE_NM2].twr_def[j*6+3],&brFSIData[iTurb][fast::STATE_NM1].twr_def[j*6+3],&brFSIData[iTurb][fast::STATE_N].twr_def[j*6+3], &brFSIData[iTurb][fast::STATE_NP1].twr_def[j*6+3]);
+                    for (int k = 0; k < 3; k++) {
                         brFSIData[iTurb][fast::STATE_NP1].twr_def[j*6+k] = brFSIData[iTurb][fast::STATE_NM2].twr_def[j*6+k] + 3.0*(brFSIData[iTurb][fast::STATE_N].twr_def[j*6+k] - brFSIData[iTurb][fast::STATE_NM1].twr_def[j*6+k]);
                         brFSIData[iTurb][fast::STATE_NP1].twr_vel[j*6+k] = brFSIData[iTurb][fast::STATE_NM2].twr_vel[j*6+k] + 3.0*(brFSIData[iTurb][fast::STATE_N].twr_vel[j*6+k] - brFSIData[iTurb][fast::STATE_NM1].twr_vel[j*6+k]);
+                        brFSIData[iTurb][fast::STATE_NP1].twr_vel[j*6+k+3] = brFSIData[iTurb][fast::STATE_NM2].twr_vel[j*6+k+3] + 3.0*(brFSIData[iTurb][fast::STATE_N].twr_vel[j*6+k+3] - brFSIData[iTurb][fast::STATE_NM1].twr_vel[j*6+k+3]);
                     }
                 }
             }
