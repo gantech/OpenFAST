@@ -1,6 +1,7 @@
 #include "OpenFAST.H"
 #include "yaml-cpp/yaml.h"
 #include <iostream>
+#include <cmath>
 #include <mpi.h>
 
 inline bool checkFileExists(const std::string& name) {
@@ -70,6 +71,18 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
   get_if_present(turbNode, "nacelle_cd", fi.globTurbineData[iTurb].nacelle_cd, fZero);
   get_if_present(turbNode, "nacelle_area", fi.globTurbineData[iTurb].nacelle_area, fZero);
   get_if_present(turbNode, "air_density", fi.globTurbineData[iTurb].air_density, fZero);
+
+  if (simType == "ext-loads") {
+
+      get_if_present(turbNode, "az_blend_mean", fi.globTurbineData[iTurb].azBlendMean, 15.5*360.0*M_PI/180.0); //15.5 revs
+      get_if_present(turbNode, "az_blend_delta", fi.globTurbineData[iTurb].azBlendDelta, 360.0*M_PI/180.0);  // 1 rev
+      get_required(turbNode, "vel_mean", fi.globTurbineData[iTurb].velMean);
+      get_required(turbNode, "wind_dir", fi.globTurbineData[iTurb].windDir);
+      get_required(turbNode, "z_ref", fi.globTurbineData[iTurb].zRef);
+      get_required(turbNode, "shear_exp", fi.globTurbineData[iTurb].shearExp);
+      
+  }
+  
 }
 
 void readInputFile(fast::fastInputs & fi, std::string cInterfaceInputFile, double * tEnd, int * couplingMode, bool * setExpLawWind, bool * setUniformXBladeForces, int * nIter) {

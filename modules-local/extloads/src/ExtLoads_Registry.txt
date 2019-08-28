@@ -33,20 +33,19 @@ typedef	^	                InitInputType	ReKi	BldPos	{:}{:}{:}	-	-	"X-Y-Z referen
 typedef	^	                InitInputType	R8Ki	BldOrient	{:}{:}{:}{:}	-	-	"DCM reference orientation of blade (3x3 x NumBladeNodesMax x NumBlades )"	-
 typedef	^	                InitInputType	ReKi	TwrPos	{:}{:}	-	-	"X-Y-Z reference position of tower (3 x NumTowerNodes)"	m
 typedef	^	                InitInputType	R8Ki	TwrOrient	{:}{:}{:}	-	-	"DCM reference orientation of tower (3x3 x NumTowerNodes)"	-
+typedef ^                       InitInputType   ReKi    az_blend_mean  -     -       -       "Mean azimuth at which to blend the external and aerodyn loads" - 
+typedef ^                       InitInputType   ReKi    az_blend_delta -     -       -       "The width of the tanh function over which to blend the external and aerodyn loads" - 
+typedef ^                       InitInputType   ReKi    vel_mean        -       -       -       "Mean velocity at reference height" m/s
+typedef ^                       InitInputType   ReKi    wind_dir        -       -       -       "Wind direction"                    degrees
+typedef ^                       InitInputType   ReKi    z_ref           -       -       -       "Reference height for velocity profile"  m
+typedef ^                       InitInputType   ReKi    shear_exp       -       -       -       "Shear exponent" -
+        
 
 # Define outputs from the initialization routine here:
 typedef	^	InitOutputType	CHARACTER(ChanLen)	WriteOutputHdr	{:}	-	-	"Names of the output-to-file channels"	-       
 typedef	^	InitOutputType	CHARACTER(ChanLen)	WriteOutputUnt	{:}	-	-	"Units of the output-to-file channels"	-
 typedef	^	InitOutputType	ProgDesc	Ver	-	-	-	"This module's name, version, and date"	-
 typedef	^	InitOutputType	ReKi	AirDens	-	-	-	"Air density"	kg/m^3
-typedef	^	InitOutputType	CHARACTER(LinChanLen)	LinNames_y	{:}	-	-	"Names of the outputs used in linearization"	-
-typedef	^	InitOutputType	CHARACTER(LinChanLen)	LinNames_z	{:}	-	-	"Names of the constraint states used in linearization"	-
-typedef	^	InitOutputType	CHARACTER(LinChanLen)	LinNames_u	{:}	-	-	"Names of the inputs used in linearization"	-
-typedef	^	InitOutputType	LOGICAL	RotFrame_y	{:}	-	-	"Flag that tells FAST/MBC3 if the outputs used in linearization are in the rotating frame"	-
-typedef	^	InitOutputType	LOGICAL	RotFrame_z	{:}	-	-	"Flag that tells FAST/MBC3 if the constraint states used in linearization are in the rotating frame (not used for glue)"	-
-typedef	^	InitOutputType	LOGICAL	RotFrame_u	{:}	-	-	"Flag that tells FAST/MBC3 if the inputs used in linearization are in the rotating frame"	-
-typedef	^	InitOutputType	ReKi	TwrElev	{:}	-	-	"Elevation at tower node"	m
-typedef	^	InitOutputType	ReKi	TwrDiam	{:}	-	-	"Diameter of tower at node"	m
 
 # ..... States ....................................................................................................................
 # Define continuous (differentiable) states here:
@@ -55,14 +54,18 @@ typedef ^       ContinuousStateType	ReKi	blah    -       -       -       "Someth
 # Define discrete (nondifferentiable) states here:
 typedef ^       DiscreteStateType	ReKi	blah    -       -       -       "Something"     -
 
+#Defin misc variables here
+typedef ^       MiscVarType             ReKi    az      -       -      -        "Current azimuth"     -
+typedef ^       MiscVarType             ReKi    phi_cfd   -   -      -          "Blending ratio of load from external driver [0-1]"      - 
+
 # Define constraint states here:
 typedef ^       ConstraintStateType	ReKi	blah    -       -       -       "Something"     -
 
 # Define "other" states here:
-typedef ^       OtherStateType	ReKi	blah    -       -       -       "Something"     -
+typedef ^       OtherStateType	        ReKi	blah    -       -       -       "Something"     -
 
 # Define misc/optimization variables (any data that are not considered actual states) here:
-typedef ^       MiscVarType	ReKi	blah    -       -       -       "Something"     -
+
 
 # ..... Parameters ................................................................................................................
 # Define parameters here:
@@ -71,11 +74,17 @@ typedef ^       ParameterType   IntKi   NumBldNds   {:}      -       -       "Nu
 typedef ^       ParameterType   IntKi   nTotBldNds   -       -       -       "Total number of blade nodes"   -
 typedef	^	ParameterType	Logical	TwrAero	        -	.FALSE.	-	"Flag that tells this module if the tower aero is on."	-
 typedef ^       ParameterType   IntKi   NumTwrNds      -       -       -       "Number of tower nodes"  -
-
+typedef ^       ParameterType   ReKi    az_blend_mean  -     -       -       "Mean azimuth at which to blend the external and aerodyn loads" - 
+typedef ^       ParameterType   ReKi    az_blend_delta -     -       -       "The width of the tanh function over which to blend the external and aerodyn loads" - 
+typedef ^       ParameterType   ReKi    vel_mean       -     -       -       "Mean velocity at reference height" m/s
+typedef ^       ParameterType   ReKi    wind_dir       -     -       -       "Wind direction"  m
+typedef ^       ParameterType   ReKi    z_ref          -     -       -       "Reference height for velocity profile" degrees
+typedef ^       ParameterType   ReKi    shear_exp      -     -       -       "Shear exponent" - 
 
 # ..... Inputs ....................................................................................................................
 # Define inputs that are contained on the mesh here:
 typedef  ^  InputType   ExtLdDX_InputType  DX_u    -       -       -       "Data to send to external driver"
+typedef ^       InputType       ReKi            az              -       -       -       "Azimuth of rotor"
 typedef	^	InputType	MeshType	TowerMotion	-	-	-	"motion on the tower"	-
 typedef	^	InputType	MeshType	HubMotion	-	-	-	"motion on the hub"	-
 typedef	^	InputType	MeshType	NacelleMotion	-	-	-	"motion on the nacelle"	-
@@ -87,3 +96,5 @@ typedef	^	InputType	MeshType	BladeMotion	{:}	-	-	"motion on each blade"	-
 typedef ^ OutputType ExtLdDX_OutputType  DX_y    -       -       -       "Data to get from external driver"
 typedef ^ OutputType MeshType TowerLoad 	 -	-	-	"loads on the tower"	-
 typedef ^ OutputType MeshType BladeLoad	{:}	-	-	"loads on each blade"	-
+typedef ^ OutputType MeshType TowerLoadAD 	 -	-	-	"loads on the tower from aerodyn"	-
+typedef ^ OutputType MeshType BladeLoadAD	{:}	-	-	"loads on each blade from aerodyn"	-

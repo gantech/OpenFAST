@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cmath>
 #include <algorithm>
+#include <array>
 
 int fast::OpenFAST::AbortErrLev = ErrID_Fatal; // abort error level; compare with NWTC Library
 
@@ -123,7 +124,7 @@ void fast::OpenFAST::init() {
                     
                 } else if(turbineData[iTurb].sType == EXTLOADS) {
 
-                    FAST_BR_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_BR_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].azBlendMean, &turbineData[iTurb].azBlendDelta, &turbineData[iTurb].velMean, &turbineData[iTurb].windDir, &turbineData[iTurb].zRef, &turbineData[iTurb].shearExp, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
 
                     turbineData[iTurb].inflowType = 0;
@@ -297,10 +298,7 @@ void fast::OpenFAST::set_state_from_state(fast::timeStep fromState, fast::timeSt
             int numBlades = get_numBladesLoc(iTurb);
             int nBRfsiPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
             int nTotBRfsiPtsBlade = turbineData[iTurb].nTotBRfsiPtsBlade;
-            std::cerr << "Numblades = " << numBlades
-                      << ",nBRfsiPtsTwr = " << nBRfsiPtsTwr
-                      << ",nTotBRfsiPtsBlade = " << nTotBRfsiPtsBlade << std::endl;
-                
+            
             for (int i=0; i < nBRfsiPtsTwr; i++) {
                 for (int j=0; j < 6; j++) {
                     brFSIData[iTurb][toState].twr_ref_pos[i*6+j] = brFSIData[iTurb][fromState].twr_ref_pos[i*6+j];
@@ -971,6 +969,13 @@ void fast::OpenFAST::get_turbineParams(int iTurbGlob, turbineDataType & turbData
         turbData.nTotBRfsiPtsBlade += turbData.nBRfsiPtsBlade[i];
     }
     turbData.nBRfsiPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+    turbData.azBlendMean = turbineData[iTurbLoc].azBlendMean;
+    turbData.azBlendDelta = turbineData[iTurbLoc].azBlendDelta;
+    turbData.velMean = turbineData[iTurbLoc].velMean;
+    turbData.windDir = turbineData[iTurbLoc].windDir;
+    turbData.zRef = turbineData[iTurbLoc].zRef;
+    turbData.shearExp = turbineData[iTurbLoc].shearExp;
+    
 }
 
 void fast::OpenFAST::checkError(const int ErrStat, const char * ErrMsg)
@@ -1367,7 +1372,13 @@ void fast::OpenFAST::allocateMemory_preInit() {
         }
         turbineData[iTurb].numForcePtsBlade = globTurbineData[iTurbGlob].numForcePtsBlade;
         turbineData[iTurb].numForcePtsTwr = globTurbineData[iTurbGlob].numForcePtsTwr;
-
+        turbineData[iTurb].azBlendMean = globTurbineData[iTurbGlob].azBlendMean;
+        turbineData[iTurb].azBlendDelta = globTurbineData[iTurbGlob].azBlendDelta;
+        turbineData[iTurb].velMean = globTurbineData[iTurbGlob].velMean;
+        turbineData[iTurb].windDir = globTurbineData[iTurbGlob].windDir;
+        turbineData[iTurb].zRef = globTurbineData[iTurbGlob].zRef;
+        turbineData[iTurb].shearExp = globTurbineData[iTurbGlob].shearExp;
+        
         velForceNodeData[iTurb].resize(4); // To hold data for 4 time steps
         brFSIData[iTurb].resize(4);
 
@@ -2047,7 +2058,6 @@ void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
         int numBlades = get_numBladesLoc(iTurbLoc);
         int nBRfsiPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
         int nTotBRfsiPtsBlade = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
-        std::cerr << "nTotBRfsiptsblade = " << nTotBRfsiPtsBlade << std::endl;
         
         {
             hsize_t dims[1];

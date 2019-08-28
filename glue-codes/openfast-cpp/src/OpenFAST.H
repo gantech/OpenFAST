@@ -75,6 +75,18 @@ struct turbineDataType {
     int nTotBRfsiPtsBlade;
     //! Number of nodes at which the forces and deflections are computed for blade-resolved FSI on the tower
     int nBRfsiPtsTwr;
+    //! The mean azimuth at which the loads are blended between AeroDyn and CFD
+    double azBlendMean;
+    //! The delta azimuth over which the the loads are blended between AeroDyn and CFD
+    double azBlendDelta;
+    //! Mean velocity at reference height
+    double velMean;
+    //! Compass angle of wind direction (in degrees)
+    double windDir;
+    //! Reference height for velocity profile
+    double zRef;
+    //! Shear exponent of velocity profile
+    double shearExp;
 };
 
 //! An id to indicate whether a particular actuator point is on the hub, node or tower

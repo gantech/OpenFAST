@@ -22,10 +22,12 @@ typedef ExtLoadsDX/ExtLdDX       InputType      R8Ki            twrDef        {:
 typedef ^       InputType      R8Ki            bldDef        {:}     -       -       "Deformations on all blades - to send to external driver"
 typedef ^       InputType      R8Ki            hubDef        {:}     -       -       "Deformations on the hub  - to send to external driver"
 typedef ^       InputType      R8Ki            nacDef        {:}     -       -       "Deformations the nacelle - to send to external driver"
+typedef ^       InputType      R8Ki            bldRootDef    {:}     -       -       "Deformations of the blade root nodes - to send to external driver"
 typedef ^       InputType      R8Ki            twrRefPos     {:}     -       -       "Reference position of the tower nodes - to send to external driver"
 typedef ^       InputType      R8Ki            bldRefPos     {:}     -       -       "Reference position of the all blade nodes - to send to external driver"
 typedef ^       InputType      R8Ki            hubRefPos     {:}     -       -       "Reference position of the tower nodes - to send to external driver"
 typedef ^       InputType      R8Ki            nacRefPos     {:}     -       -       "Reference position of the all blade nodes - to send to external driver"
+typedef ^       InputType      R8Ki            bldRootRefPos {:}     -       -       "Reference position of the blade root nodes - to send to external driver"
 typedef ^       InputType      IntKi           nBlades       {:}     -       -       "Number of blades"
 typedef ^       InputType      IntKi           nBladeNodes   {:}     -       -       "Number of blade nodes for each blade"  -
 typedef ^       InputType      IntKi           nTowerNodes   {:}     -       -       "Number of tower nodes for each blade"  -

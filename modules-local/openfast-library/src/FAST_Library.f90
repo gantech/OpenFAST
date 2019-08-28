@@ -422,7 +422,8 @@ subroutine FAST_Restart(iTurb, CheckpointRootName_c, AbortErrLev_c, NumOuts_c, d
 
 end subroutine FAST_Restart
 !==================================================================================================================================
-subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, AbortErrLev_c, dtDriver_c, dt_c, NumBl_c, &
+subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, AbortErrLev_c, dtDriver_c, &
+     az_blend_mean_c, az_blend_delta_c, vel_mean_c, wind_dir_c, z_ref_c, shear_exp_c, dt_c, NumBl_c, &
      ExtLd_Input_from_FAST, ExtLd_Output_to_FAST, SC_Input_from_FAST, SC_Output_to_FAST, ErrStat_c, ErrMsg_c) BIND (C, NAME='FAST_BR_CFD_Init')
 !DEC$ ATTRIBUTES DLLEXPORT::FAST_BR_CFD_Init
    IMPLICIT NONE
@@ -436,6 +437,12 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, Abor
    INTEGER(C_INT),         INTENT(IN   ) :: TurbID           ! Need not be same as iTurb
    REAL(C_FLOAT),          INTENT(IN   ) :: TurbPosn(3)
    REAL(C_DOUBLE),         INTENT(IN   ) :: dtDriver_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: az_blend_mean_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: az_blend_delta_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: vel_mean_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: wind_dir_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: z_ref_c
+   REAL(C_DOUBLE),         INTENT(IN   ) :: shear_exp_c
    REAL(C_DOUBLE),         INTENT(  OUT) :: dt_c
    INTEGER(C_INT),         INTENT(  OUT) :: AbortErrLev_c
    INTEGER(C_INT),         INTENT(  OUT) :: NumBl_c
@@ -471,6 +478,12 @@ subroutine FAST_BR_CFD_Init(iTurb, TMax, InputFileName_c, TurbID, TurbPosn, Abor
    ExternInitData%NumCtrl2SC = 0
    ExternInitData%NumSC2Ctrl = 0
    ExternInitData%DTdriver = dtDriver_c
+   ExternInitData%az_blend_mean = az_blend_mean_c
+   ExternInitData%az_blend_delta = az_blend_delta_c
+   ExternInitData%vel_mean = vel_mean_c
+   ExternInitData%wind_dir = wind_dir_c
+   ExternInitData%z_ref = z_ref_c
+   ExternInitData%shear_exp = shear_exp_c
 
    CALL FAST_InitializeAll_T( t_initial, 1_IntKi, Turbine(iTurb), ErrStat, ErrMsg, InputFileName, ExternInitData )
 
