@@ -616,7 +616,31 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    u%DX_u%c_obj%nacDef_Len = 12; u%DX_u%c_obj%nacDef = C_LOC( u%DX_u%nacDef(1) )
    u%DX_u%c_obj%bldRootDef_Len = p%NumBlds*12; u%DX_u%c_obj%bldRootDef = C_LOC( u%DX_u%bldRootDef(1) )
    call ExtLd_ConvertInpDataForExtProg(u, p, ErrStat2, ErrMsg2 )
-   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   CALL AllocPAry( u%DX_u%bldChord, p%nTotBldNds, 'bldChord', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%bldRloc, p%nTotBldNds, 'bldRloc', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%twrdia, p%NumTwrNds, 'twrDia', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   CALL AllocPAry( u%DX_u%twrHloc, p%NumTwrNds, 'twrHloc', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   ! make sure the C versions are synced with these arrays
+   u%DX_u%c_obj%bldChord_Len = p%nTotBldNds; u%DX_u%c_obj%bldChord = C_LOC( u%DX_u%bldChord(1) )
+   u%DX_u%c_obj%bldRloc_Len = p%nTotBldNds; u%DX_u%c_obj%bldRloc = C_LOC( u%DX_u%bldRloc(1) )
+   u%DX_u%c_obj%twrDia_Len = p%NumTwrNds; u%DX_u%c_obj%twrDia = C_LOC( u%DX_u%twrDia(1) )
+   u%DX_u%c_obj%twrHloc_Len = p%NumTwrNds; u%DX_u%c_obj%twrHloc = C_LOC( u%DX_u%twrHloc(1) )
+
+   jTot = 1
+   do k=1,p%NumBlds
+      do j=1,p%NumBldNds(k)
+         u%DX_u%bldChord(jTot) = InitInp%bldChord(j,k)
+         u%DX_u%bldRloc(jTot) = InitInp%bldRloc(j,k)
+         jTot = jTot+1
+      end do
+   end do
+
+   do j=1,p%NumTwrNds
+      u%DX_u%twrDia(j) = InitInp%twrDia(j)
+      u%DX_u%twrHloc(j) = InitInp%twrHloc(j)
+   end do
    
 end subroutine Init_u
 !----------------------------------------------------------------------------------------------------------------------------------

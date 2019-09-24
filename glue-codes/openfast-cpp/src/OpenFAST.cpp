@@ -82,11 +82,10 @@ void fast::OpenFAST::init() {
                     
                 } else if(turbineData[iTurb].sType == EXTLOADS) {
                     FAST_BR_CFD_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &ntStart, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    checkError(ErrStat, ErrMsg);
 
                     std::cerr << "numBlade nodes = " << extld_i_f_FAST[iTurb].nBladeNodes[0] << " " << extld_i_f_FAST[iTurb].nBladeNodes[1] << " " << extld_i_f_FAST[iTurb].nBladeNodes[2] << std::endl ;
                     turbineData[iTurb].inflowType = 0;
-                    checkError(ErrStat, ErrMsg);
-
                 }
                 
                 nt_global = ntStart;
@@ -1086,8 +1085,12 @@ double fast::OpenFAST::getChord(int iNode, int iTurbGlob) {
 
     // Return blade chord/tower diameter at current node of current turbine
     int iTurbLoc = get_localTurbNo(iTurbGlob);
-    for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
-    return extinfw_i_f_FAST[iTurbLoc].forceNodesChord[iNode] ;
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {        
+        for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
+        return extinfw_i_f_FAST[iTurbLoc].forceNodesChord[iNode] ;
+    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
+        return extld_i_f_FAST[iTurbLoc].bldChord[iNode];
+    }
 
 }
 
@@ -1455,6 +1458,8 @@ void fast::OpenFAST::allocateMemory_postInit(int iTurbLoc) {
             brFSIData[iTurbLoc][k].twr_ref_pos.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].twr_def.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
             brFSIData[iTurbLoc][k].twr_vel.resize(6*turbineData[iTurbLoc].nBRfsiPtsTwr);
+            brFSIData[iTurbLoc][k].bld_rloc.resize(nTotBldNds);
+            brFSIData[iTurbLoc][k].bld_chord.resize(nTotBldNds);            
             brFSIData[iTurbLoc][k].bld_ref_pos.resize(6*nTotBldNds);
             brFSIData[iTurbLoc][k].bld_def.resize(6*nTotBldNds);
             brFSIData[iTurbLoc][k].bld_vel.resize(6*nTotBldNds);
@@ -2211,6 +2216,8 @@ void fast::OpenFAST::get_ref_positions_from_openfast(int iTurb) {
                     brFSIData[iTurb][fast::STATE_NP1].bld_ref_pos[iRunTot*6+k] = extld_i_f_FAST[iTurb].bldRefPos[iRunTot*6+k] + turbineData[iTurb].TurbineBasePos[k];
                     brFSIData[iTurb][fast::STATE_NP1].bld_ref_pos[iRunTot*6+k+3] = extld_i_f_FAST[iTurb].bldRefPos[iRunTot*6+k+3];
                 }
+                brFSIData[iTurb][fast::STATE_NP1].bld_chord[iRunTot] = extld_i_f_FAST[iTurb].bldChord[iRunTot];
+                brFSIData[iTurb][fast::STATE_NP1].bld_rloc[iRunTot] = extld_i_f_FAST[iTurb].bldRloc[iRunTot];                
                 iRunTot++;
             }
         }
@@ -2225,6 +2232,34 @@ void fast::OpenFAST::get_ref_positions_from_openfast(int iTurb) {
 
     }
 
+}
+
+void fast::OpenFAST::getBladeChord(std::vector<double> & bldChord, int iTurbGlob) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nBlades = get_numBladesLoc(iTurbLoc);
+    int iRunTot = 0;
+    for (int i=0; i < nBlades; i++) {
+        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+        for(int j=0; j<nPtsBlade; j++) {
+            bldChord[iRunTot] = brFSIData[iTurbLoc][fast::STATE_NP1].bld_chord[iRunTot];
+            iRunTot++;
+        }
+    }
+}
+
+void fast::OpenFAST::getBladeRloc(std::vector<double> & bldRloc, int iTurbGlob) {
+
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    int nBlades = get_numBladesLoc(iTurbLoc);
+    int iRunTot = 0;
+    for (int i=0; i < nBlades; i++) {
+        int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
+        for(int j=0; j<nPtsBlade; j++) {
+            bldRloc[iRunTot] = brFSIData[iTurbLoc][fast::STATE_NP1].bld_rloc[iRunTot];
+            iRunTot++;
+        }
+    }
 }
 
 void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob) {

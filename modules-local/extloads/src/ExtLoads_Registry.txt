@@ -39,6 +39,10 @@ typedef ^                       InitInputType   ReKi    vel_mean        -       
 typedef ^                       InitInputType   ReKi    wind_dir        -       -       -       "Wind direction"                    degrees
 typedef ^                       InitInputType   ReKi    z_ref           -       -       -       "Reference height for velocity profile"  m
 typedef ^                       InitInputType   ReKi    shear_exp       -       -       -       "Shear exponent" -
+typedef ^                       InitInputType   ReKi    BldChord       {:}{:}   -	-	"Blade chord  (NumBladeNodesMax x NumBlades)"	m
+typedef ^                       InitInputType   ReKi    BldRloc        {:}{:}   -	-	"Radial location of each node along the blade"	m
+typedef ^                       InitInputType   ReKi    TwrDia         {:}   -	-	"Tower diameter (NumTwrNodes)"	m
+typedef ^                       InitInputType   ReKi    TwrHloc        {:}   -	-	"Height location of each node along the tower"	m
         
 
 # Define outputs from the initialization routine here:

@@ -31,6 +31,11 @@ typedef ^       InputType      R8Ki            bldRootRefPos {:}     -       -  
 typedef ^       InputType      IntKi           nBlades       {:}     -       -       "Number of blades"
 typedef ^       InputType      IntKi           nBladeNodes   {:}     -       -       "Number of blade nodes for each blade"  -
 typedef ^       InputType      IntKi           nTowerNodes   {:}     -       -       "Number of tower nodes for each blade"  -
+typedef ^       InputType      R8Ki            bldChord      {:}     -       -       "Blade chord" m
+typedef ^       InputType      R8Ki            bldRloc       {:}     -       -       "Radial location along the blade" m
+typedef ^       InputType      R8Ki            twrDia        {:}     -       -       "Tower diameter" m
+typedef ^       InputType      R8Ki            twrHloc       {:}     -       -       "Height location along the tower" m
+
 
 # ..... Outputs ...................................................................................................................
 # Define outputs that are contained on the mesh here:

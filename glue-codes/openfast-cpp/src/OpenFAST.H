@@ -154,6 +154,10 @@ struct turbBRfsiDataType {
     std::vector<double> twr_def;
     //! Tower velocity
     std::vector<double> twr_vel;
+    //! Blade radial location
+    std::vector<double> bld_rloc;
+    //! Blade chord
+    std::vector<double> bld_chord;
     //! Blade reference position
     std::vector<double> bld_ref_pos;
     //! Blade deflections
@@ -431,6 +435,10 @@ class OpenFAST {
   //! Get processor containing turbine 'iTurbGlob'
   int getProc(int iTurbGlob) {return turbineMapGlobToProc[iTurbGlob];}
 
+  //! Get the blade chord array 'bldRloc' of turbine number 'iTurbGlob'
+  void getBladeChord(std::vector<double> & bldChord, int iTurbGlob);
+  //! Get the blade node radial locations array 'bldRloc' of turbine number 'iTurbGlob'
+  void getBladeRloc(std::vector<double> & bldRloc, int iTurbGlob);
   //! Get the blade reference positions array 'bldRefPos' of turbine number 'iTurbGlob'
   void getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob);
   //! Get the blade deflections array 'bldDefl' of turbine number 'iTurbGlob' at time step 't'

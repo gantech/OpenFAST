@@ -836,8 +836,12 @@ subroutine SetExtLoads_pointers(iTurb, ExtLd_iFromOF, ExtLd_oToOF)
    TYPE(ExtLdDX_InputType_C), INTENT(INOUT) :: ExtLd_iFromOF
    TYPE(ExtLdDX_OutputType_C),INTENT(INOUT) :: ExtLd_oToOF
 
+   ExtLd_iFromOF%twrHloc_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrHloc_Len; ExtLd_iFromOF%twrHloc = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrHloc
+   ExtLd_iFromOF%twrDia_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDia_Len; ExtLd_iFromOF%twrDia = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDia
    ExtLd_iFromOF%twrRefPos_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrRefPos_Len; ExtLd_iFromOF%twrRefPos = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrRefPos
    ExtLd_iFromOF%twrDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDef_Len; ExtLd_iFromOF%twrDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%twrDef
+   ExtLd_iFromOF%bldRloc_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldRloc_Len; ExtLd_iFromOF%bldRloc = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldRloc
+   ExtLd_iFromOF%bldChord_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldChord_Len; ExtLd_iFromOF%bldChord = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldChord
    ExtLd_iFromOF%bldRefPos_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldRefPos_Len; ExtLd_iFromOF%bldRefPos = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldRefPos
    ExtLd_iFromOF%bldDef_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldDef_Len; ExtLd_iFromOF%bldDef = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%bldDef
    ExtLd_iFromOF%nBlades_Len = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBlades_Len; ExtLd_iFromOF%nBlades = Turbine(iTurb)%ExtLd%u%DX_u%c_obj%nBlades
