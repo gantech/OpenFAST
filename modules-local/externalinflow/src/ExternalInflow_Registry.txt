@@ -69,6 +69,7 @@ typedef	^	InputType	ReKi	fz	{:}	-	-	"normalized z force at actuator force nodes"
 typedef	^	InputType	ReKi	momentx	{:}	-	-	"normalized x moment at actuator force nodes"	"Nm/kg/m^3"
 typedef	^	InputType	ReKi	momenty	{:}	-	-	"normalized y moment at actuator force nodes"	"Nm/kg/m^3"
 typedef	^	InputType	ReKi	momentz	{:}	-	-	"normalized z moment at actuator force nodes"	"Nm/kg/m^3"
+typedef ^       InputType       ReKi    forceRHloc        {:}     -       -       "Radial or height location at force nodes"         "m"  
 typedef ^       InputType       ReKi    forceNodesChord   {:}     -       -       "chord distribution at the actuator force nodes"   "m"
 typedef	^	InputType	ReKi	SuperController	{:}	-	-	"inputs to the super controller (from the turbine controller)"	-
 

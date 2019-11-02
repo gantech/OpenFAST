@@ -2166,7 +2166,7 @@ SUBROUTINE ReadPrimaryFile( InputFile, InputFileData, ADBlFile, OutFileRoot, UnE
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
    
       ! UACutout - Angle-of-attach beyond which unsteady aerodynamics are disabled (deg)
-!   CALL ReadVar( UnIn, InputFile, InputFileData%UACutout, "FLookup", "Angle-of-attach beyond which unsteady aerodynamics are disabled (deg)", ErrStat2, ErrMsg2, UnEc)
+!   CALL ReadVar( UnIn, InputFile, InputFileData%UACutout, "UACutout", "Angle-of-attach beyond which unsteady aerodynamics are disabled (deg)", ErrStat2, ErrMsg2, UnEc)
 !      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
       
       ! Return on error at end of section

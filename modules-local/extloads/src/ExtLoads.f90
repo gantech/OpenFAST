@@ -137,6 +137,8 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
       !............................................................................................
       ! Define and initialize inputs here 
       !............................................................................................
+
+   write(*,*) 'Initializing U '
    
    call Init_u( u, p, InitInp, errStat2, errMsg2 ) 
       call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
@@ -149,7 +151,8 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
   ! Initialize discrete states
    m%az = 0.0 
    m%phi_cfd = 0.0
-      
+
+   write(*,*) 'Initializing y '
       ! 
       !............................................................................................
       ! Define outputs here
@@ -161,7 +164,8 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
          return
       end if
    
-   
+      write(*,*) 'Initializing InitOut '
+      
       !............................................................................................
       ! Define initialization output here
       !............................................................................................

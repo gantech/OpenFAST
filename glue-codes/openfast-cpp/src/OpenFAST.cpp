@@ -1,26 +1,21 @@
 #include "OpenFAST.H"
-#include "hdf5.h"
 #include <iostream>
+#include <iomanip>
 #include <fstream>
+#include <sstream>
 #include <cmath>
 #include <algorithm>
 #include <array>
 
+inline void check_nc_error(int code, std::string msg) {
+    if (code != 0)
+        throw std::runtime_error("OpenFAST C++ API:: NetCDF error: " + msg);
+}
+
 int fast::OpenFAST::AbortErrLev = ErrID_Fatal; // abort error level; compare with NWTC Library
 
 //Constructor
-fast::fastInputs::fastInputs():
-    nTurbinesGlob(0),
-    dryRun(false),
-    debug(false),
-    tStart(-1.0),
-    nEveryCheckPoint(-1),
-    tMax(0.0),
-    dtDriver(0.0),
-    scStatus(false),
-    scLibFile(""),
-    numScInputs(0),
-    numScOutputs(0)
+fast::fastInputs::fastInputs()
 {
     //Nothing to do here
 }
@@ -33,6 +28,7 @@ fast::OpenFAST::OpenFAST():
     nTurbinesProc(0),
     nTurbinesGlob(0),
     simStart(fast::INIT),
+    driverOpenfastOffset_(0.0),
     timeZero(false),
     dtFAST(-1.0),
     dtDriver(-1.0),
@@ -43,7 +39,7 @@ fast::OpenFAST::OpenFAST():
     nt_global(0),
     nlinIter_(0),
     ntStart(0),
-    nEveryCheckPoint(-1),
+    restartFreq_(-1),
     scStatus(false),
     numScInputs(0),
     numScOutputs(0),
@@ -52,6 +48,11 @@ fast::OpenFAST::OpenFAST():
     worldMPIRank(-1),
     ErrStat(0)
 {
+    ncRstVarNames_ = {"time", "rst_filename", "twr_ref_pos", "bld_ref_pos", "nac_ref_pos", "hub_ref_pos", "twr_def", "twr_vel", "twr_ld", "bld_def", "bld_vel", "bld_ld", "hub_def", "hub_vel", "nac_def", "nac_vel", "x_vel", "xdot_vel", "vel_vel", "x_force", "xdot_force", "orient_force", "vel_force", "force"};
+    ncRstDimNames_ = {"n_tsteps", "n_states", "n_twr_data", "n_bld_data", "n_pt_data", "n_vel_pts_data", "n_force_pts_data", "n_force_pts_orient_data"};
+
+    ncOutVarNames_ = {"time", "twr_ref_pos", "twr_ref_orient", "bld_chord", "bld_rloc", "bld_ref_pos", "bld_ref_orient", "hub_ref_pos", "hub_ref_orient", "nac_ref_pos", "nac_ref_orient", "twr_disp", "twr_orient", "twr_vel", "twr_rotvel", "twr_moment", "bld_disp", "bld_orient", "bld_vel", "bld_rotvel", "bld_ld", "bld_ld_loc", "bld_moment", "hub_disp", "hub_orient", "hub_vel", "hub_rotvel", "nac_disp", "nac_orient", "nac_vel", "nac_rotvel"};
+    ncOutDimNames_ = {"n_tsteps", "n_dim", "n_twr_nds", "n_blds", "n_bld_nds"};
 }
 
 inline bool fast::OpenFAST::checkFileExists(const std::string& name) {
@@ -59,7 +60,496 @@ inline bool fast::OpenFAST::checkFileExists(const std::string& name) {
     return (stat (name.c_str(), &buffer) == 0);
 }
 
-// Generic time-stepping functions
+void fast::OpenFAST::findRestartFile(int iTurbLoc) {
+
+    int ncid;
+    size_t n_tsteps;
+    size_t count1 = 1;
+    double latest_time;
+
+    //Find the file and open it in read only mode
+    std::stringstream rstfile_ss;
+    rstfile_ss << "turb_" ;
+    rstfile_ss << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurbLoc];
+    rstfile_ss << "_rst.nc";
+    std::string rst_filename = rstfile_ss.str();
+    int ierr = nc_open(rst_filename.c_str(), NC_NOWRITE, &ncid);
+    check_nc_error(ierr, "nc_open");
+
+    
+    for (auto const& dim_name: ncRstDimNames_) {
+        int tmpDimID;
+        ierr = nc_inq_dimid(ncid, dim_name.data(), &tmpDimID);
+        if (ierr == NC_NOERR)
+            ncRstDimIDs_[dim_name] = tmpDimID;
+    }
+
+    for (auto const& var_name: ncRstVarNames_) {
+        int tmpVarID;
+        ierr = nc_inq_varid(ncid, var_name.data(), &tmpVarID);
+        if (ierr == NC_NOERR)
+            ncRstVarIDs_[var_name] = tmpVarID;        
+    }
+    
+    ierr = nc_inq_dimlen(ncid, ncRstDimIDs_["n_tsteps"], &n_tsteps);
+    check_nc_error(ierr, "nc_inq_dimlen");
+    n_tsteps -= 1; //To account for 0 based indexing    
+    ierr = nc_get_vara_double(ncid, ncRstVarIDs_["time"], &n_tsteps, &count1, &latest_time);
+    check_nc_error(ierr, "nc_get_vara_double - getting latest time");
+    tStart = latest_time;
+
+    char tmpOutFileRoot[INTERFACE_STRING_LENGTH];
+    ierr = nc_get_att_text(ncid, NC_GLOBAL, "out_file_root", tmpOutFileRoot);
+    turbineData[iTurbLoc].outFileRoot.assign(tmpOutFileRoot);
+    
+    ierr = nc_get_att_double(ncid, NC_GLOBAL, "dt_fast", &dtFAST);
+    check_nc_error(ierr, "nc_get_att_double");
+
+    ierr = nc_get_att_double(ncid, NC_GLOBAL, "dt_driver", &dtDriver);
+    check_nc_error(ierr, "nc_get_att_double");
+    
+    ierr = nc_get_att_int(ncid, NC_GLOBAL, "output_freq", &outputFreq_);
+    check_nc_error(ierr, "nc_get_att_int");
+
+    ierr = nc_get_att_int(ncid, NC_GLOBAL, "restart_freq", &restartFreq_);
+    check_nc_error(ierr, "nc_get_att_int");
+    
+    int tstep = std::round(latest_time/dtFAST);
+
+    std::stringstream rstfilename;
+    rstfilename << turbineData[iTurbLoc].outFileRoot <<  "." << tstep ;
+    turbineData[iTurbLoc].FASTRestartFileName = rstfilename.str();
+
+    std::cout << "Restarting from time " << latest_time << " at time step " << tstep << " from file name " << turbineData[iTurbLoc].FASTRestartFileName << std::endl ;
+    
+    nc_close(ncid);
+
+}
+
+void fast::OpenFAST::prepareRestartFile(int iTurbLoc) {
+
+    int ncid;
+    //This will destroy any existing file
+    std::stringstream rstfile_ss;
+    rstfile_ss << "turb_" ;
+    rstfile_ss << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurbLoc];
+    rstfile_ss << "_rst.nc";
+    std::string rst_filename = rstfile_ss.str();
+    int ierr = nc_create(rst_filename.c_str(), NC_CLOBBER, &ncid);
+    check_nc_error(ierr, "nc_create");
+
+    nc_put_att_text(ncid, NC_GLOBAL, "out_file_root", turbineData[iTurbLoc].outFileRoot.size()+1, turbineData[iTurbLoc].outFileRoot.c_str());
+    nc_put_att_double(ncid, NC_GLOBAL, "dt_fast", NC_DOUBLE, 1, &dtFAST);
+    nc_put_att_double(ncid, NC_GLOBAL, "dt_driver", NC_DOUBLE, 1, &dtDriver);
+    nc_put_att_int(ncid,NC_GLOBAL,"output_freq", NC_INT, 1, &outputFreq_);
+    nc_put_att_int(ncid,NC_GLOBAL,"restart_freq", NC_INT, 1, &restartFreq_);    
+    
+    //Define dimensions
+    int tmpDimID;
+    ierr = nc_def_dim(ncid, "n_tsteps", NC_UNLIMITED, &tmpDimID);
+    ncRstDimIDs_["n_tsteps"] = tmpDimID;
+    ierr = nc_def_dim(ncid, "n_states", 4, &tmpDimID);
+    ncRstDimIDs_["n_states"] = tmpDimID;
+
+    //Define variables
+    int tmpVarID;
+    ierr = nc_def_var(ncid, "time", NC_DOUBLE, 1, &ncRstDimIDs_["n_tsteps"], &tmpVarID);
+    ncRstVarIDs_["time"] = tmpVarID;
+    
+    if (turbineData[iTurbLoc].sType == EXTLOADS) {
+    
+        ierr = nc_def_dim(ncid, "n_twr_data", turbineData[iTurbLoc].nBRfsiPtsTwr*6, &tmpDimID);
+        ncRstDimIDs_["n_twr_data"] = tmpDimID;
+        ierr = nc_def_dim(ncid,"n_bld_data", turbineData[iTurbLoc].nTotBRfsiPtsBlade*6, &tmpDimID);
+        ncRstDimIDs_["n_bld_data"] = tmpDimID;
+        ierr = nc_def_dim(ncid,"n_pt_data", 6, &tmpDimID);
+        ncRstDimIDs_["n_pt_data"] = tmpDimID;
+        
+        const std::vector<int> twrDefLoadsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_twr_data"]};
+        const std::vector<int> bldDefLoadsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_bld_data"]};
+        const std::vector<int> ptDefLoadsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_pt_data"],};
+        
+        ierr = nc_def_var(ncid, "twr_def", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["twr_def"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_vel", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["twr_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_ld", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["twr_ld"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_def", NC_DOUBLE, 3, bldDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["bld_def"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_vel", NC_DOUBLE, 3, bldDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["bld_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ld", NC_DOUBLE, 3, bldDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["bld_ld"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_def", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["hub_def"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_vel", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["hub_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_def", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["nac_def"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_vel", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncRstVarIDs_["nac_vel"] = tmpVarID;
+        
+    } else if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+        
+        ierr = nc_def_dim(ncid, "n_vel_pts_data", turbineData[iTurbLoc].numVelPts*3, &tmpDimID);
+        ncRstDimIDs_["n_vel_pts_data"] = tmpDimID;
+        ierr = nc_def_dim(ncid, "n_force_pts_data", turbineData[iTurbLoc].numForcePts*3, &tmpDimID);
+        ncRstDimIDs_["n_force_pts_data"] = tmpDimID;
+        ierr = nc_def_dim(ncid, "n_force_pts_orient_data", turbineData[iTurbLoc].numForcePts*9, &tmpDimID);
+        ncRstDimIDs_["n_force_pts_orient_data"] = tmpDimID;
+
+        const std::vector<int> velPtsDataDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_vel_pts_data"]};
+        const std::vector<int> forcePtsDataDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_force_pts_data"],};
+        const std::vector<int> forcePtsOrientDataDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_force_pts_orient_data"],};
+
+        ierr = nc_def_var(ncid, "x_vel", NC_DOUBLE, 3, velPtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["x_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "xdot_vel", NC_DOUBLE, 3, velPtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["xdot_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "vel_vel", NC_DOUBLE, 3, velPtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["vel_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "xref_force", NC_DOUBLE, 1, &ncRstDimIDs_["n_force_pts_data"], &tmpVarID);
+        ncRstVarIDs_["xref_force"] = tmpVarID;
+        ierr = nc_def_var(ncid, "x_force", NC_DOUBLE, 3, forcePtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["x_force"] = tmpVarID;
+        ierr = nc_def_var(ncid, "xdot_force", NC_DOUBLE, 3, forcePtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["xdot_force"] = tmpVarID;
+        ierr = nc_def_var(ncid, "vel_force", NC_DOUBLE, 3, forcePtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["vel_force"] = tmpVarID;
+        ierr = nc_def_var(ncid, "force", NC_DOUBLE, 3, forcePtsDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["force"] = tmpVarID;
+        ierr = nc_def_var(ncid, "orient_force", NC_DOUBLE, 3, forcePtsOrientDataDims.data(), &tmpVarID);
+        ncRstVarIDs_["orient_force"] = tmpVarID;
+        
+    }
+
+    //! Indicate that we are done defining variables, ready to write data
+    ierr = nc_enddef(ncid);
+    check_nc_error(ierr, "nc_enddef");
+
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+        int nfpts_data = 3*get_numForcePtsLoc(iTurbLoc);
+        int ierr = nc_put_var_double(ncid, ncRstVarIDs_["xref_force"], velForceNodeData[iTurbLoc][fast::STATE_NP1].xref_force.data());
+    }
+    
+    ierr = nc_close(ncid);
+    check_nc_error(ierr, "nc_close");
+
+    
+}
+
+void fast::OpenFAST::prepareOutputFile(int iTurbLoc) {
+
+    int ncid;
+    //Create the file - this will destory any file
+    std::stringstream defloads_fstream;
+    defloads_fstream << "turb_" ;
+    defloads_fstream << std::setfill('0') << std::setw(2) << iTurbLoc;
+    defloads_fstream << "_output.nc";
+    std::string defloads_filename = defloads_fstream.str();
+    int ierr = nc_create(defloads_filename.c_str(), NC_CLOBBER, &ncid);
+    check_nc_error(ierr, "nc_create");
+
+    //Define dimensions
+    int tmpDimID;
+    ierr = nc_def_dim(ncid, "n_dim", 3, &tmpDimID);
+    ncOutDimIDs_["n_dim"] = tmpDimID;
+    ierr = nc_def_dim(ncid, "n_tsteps", NC_UNLIMITED, &tmpDimID);
+    ncOutDimIDs_["n_tsteps"] = tmpDimID;
+    
+    //Now define variables
+    int tmpVarID;
+    ierr = nc_def_var(ncid, "time", NC_DOUBLE, 1, &ncOutDimIDs_["n_tsteps"], &tmpVarID);
+    ncOutVarIDs_["time"] = tmpVarID;
+
+    if (turbineData[iTurbLoc].sType == EXTLOADS) {
+
+        int nBlades = turbineData[iTurbLoc].numBlades;
+        int nTwrPts = turbineData[iTurbLoc].nBRfsiPtsTwr;
+        int nTotBldPts = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
+        int nBldPts = nTotBldPts/nBlades;
+
+        ierr = nc_def_dim(ncid, "n_twr_nds", nTwrPts, &tmpDimID);
+        ncOutDimIDs_["n_twr_nds"] = tmpDimID;
+        ierr = nc_def_dim(ncid,"n_blds", nBlades, &tmpDimID);
+        ncOutDimIDs_["n_blds"] = tmpDimID;
+        ierr = nc_def_dim(ncid, "n_bld_nds", nBldPts, &tmpDimID);
+        ncOutDimIDs_["n_bld_nds"] = tmpDimID;
+        
+        const std::vector<int> twrRefDims{ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_twr_nds"]};
+        const std::vector<int> twrDefLoadsDims{ncOutDimIDs_["n_tsteps"], ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_twr_nds"]};
+        const std::vector<int> bldParamDims{ncOutDimIDs_["n_blds"], ncOutDimIDs_["n_bld_nds"]};
+        const std::vector<int> bldRefDims{ncOutDimIDs_["n_blds"], ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_bld_nds"]};
+        const std::vector<int> bldDefLoadsDims{ncOutDimIDs_["n_tsteps"], ncOutDimIDs_["n_blds"], ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_bld_nds"]};
+        const std::vector<int> ptRefDims{ncOutDimIDs_["n_dim"]};
+        const std::vector<int> ptDefLoadsDims{ncOutDimIDs_["n_tsteps"], ncOutDimIDs_["n_dim"]};
+
+        ierr = nc_def_var(ncid, "twr_ref_pos", NC_DOUBLE, 2, twrRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_ref_orient", NC_DOUBLE, 2, twrRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_ref_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_chord", NC_DOUBLE, 2, bldParamDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_chord"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_rloc", NC_DOUBLE, 2, bldParamDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_rloc"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ref_pos", NC_DOUBLE, 3, bldRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ref_orient", NC_DOUBLE, 3, bldRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ref_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_ref_pos", NC_DOUBLE, 1, ptRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_ref_orient", NC_DOUBLE, 1, ptRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_ref_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_ref_pos", NC_DOUBLE, 1, ptRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["nac_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_ref_orient", NC_DOUBLE, 1, ptRefDims.data(), &tmpVarID);
+        ncOutVarIDs_["nac_ref_orient"] = tmpVarID;
+        
+        ierr = nc_def_var(ncid, "twr_disp", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_orient", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_vel", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_rotvel", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_rotvel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_ld", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_ld"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_moment", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_moment"] = tmpVarID;
+        
+        ierr = nc_def_var(ncid, "bld_disp", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_orient", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_vel", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_rotvel", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_rotvel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ld", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ld"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ld_loc", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ld_loc"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_moment", NC_DOUBLE, 4, bldDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_moment"] = tmpVarID;
+    
+        ierr = nc_def_var(ncid, "hub_disp", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_orient", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_vel", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_rotvel", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_rotvel"] = tmpVarID;
+        
+        ierr = nc_def_var(ncid, "nac_disp", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["nac_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_orient", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["nac_orient"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_vel", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["nac_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "nac_rotvel", NC_DOUBLE, 3, ptDefLoadsDims.data(), &tmpVarID);
+        ncOutVarIDs_["nac_rotvel"] = tmpVarID;
+
+    } else if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+
+        int nBlades = get_numBladesLoc(iTurbLoc);
+        int nBldPts = get_numForcePtsBladeLoc(iTurbLoc);
+        int nTwrPts = get_numForcePtsTwrLoc(iTurbLoc);
+
+        ierr = nc_def_dim(ncid, "n_twr_nds", nTwrPts, &tmpDimID);
+        ncOutDimIDs_["n_twr_nds"] = tmpDimID;
+        ierr = nc_def_dim(ncid,"n_blds", nBlades, &tmpDimID);
+        ncOutDimIDs_["n_blds"] = tmpDimID;
+        ierr = nc_def_dim(ncid, "n_bld_nds", nBldPts, &tmpDimID);
+        ncOutDimIDs_["n_bld_nds"] = tmpDimID;
+        
+        const std::vector<int> twrRefDataDims{ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_twr_nds"]};
+        const std::vector<int> twrDataDims{ncOutDimIDs_["n_tsteps"], ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_twr_nds"]};
+        const std::vector<int> bldParamDims{ncOutDimIDs_["n_blds"], ncOutDimIDs_["n_bld_nds"]};
+        const std::vector<int> bldRefDataDims{ncOutDimIDs_["n_blds"], ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_bld_nds"]};
+        const std::vector<int> bldDataDims{ncOutDimIDs_["n_tsteps"], ncOutDimIDs_["n_blds"], ncOutDimIDs_["n_dim"], ncOutDimIDs_["n_bld_nds"]};
+        const std::vector<int> ptRefDataDims{ncOutDimIDs_["n_dim"]};
+        const std::vector<int> ptDataDims{ncOutDimIDs_["n_tsteps"], ncOutDimIDs_["n_dim"]};
+        
+        ierr = nc_def_var(ncid, "bld_chord", NC_DOUBLE, 2, bldParamDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_chord"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_rloc", NC_DOUBLE, 2, bldParamDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_rloc"] = tmpVarID;
+
+        ierr = nc_def_var(ncid, "twr_ref_pos", NC_DOUBLE, 2, twrRefDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_disp", NC_DOUBLE, 3, twrDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_vel", NC_DOUBLE, 3, twrDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "twr_ld", NC_DOUBLE, 3, twrDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["twr_ld"] = tmpVarID;
+
+        ierr = nc_def_var(ncid, "bld_ref_pos", NC_DOUBLE, 3, bldRefDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_disp", NC_DOUBLE, 4, bldDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_vel", NC_DOUBLE, 4, bldDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ld", NC_DOUBLE, 4, bldDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ld"] = tmpVarID;
+        ierr = nc_def_var(ncid, "bld_ld_loc", NC_DOUBLE, 4, bldDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["bld_ld_loc"] = tmpVarID;
+    
+        ierr = nc_def_var(ncid, "hub_ref_pos", NC_DOUBLE, 3, ptRefDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_ref_pos"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_disp", NC_DOUBLE, 3, ptDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_disp"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_vel", NC_DOUBLE, 3, ptDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_vel"] = tmpVarID;
+        ierr = nc_def_var(ncid, "hub_rotvel", NC_DOUBLE, 3, ptDataDims.data(), &tmpVarID);
+        ncOutVarIDs_["hub_rotvel"] = tmpVarID;
+        
+    }
+    
+    //! Indicate that we are done defining variables, ready to write data
+    ierr = nc_enddef(ncid);
+    check_nc_error(ierr, "nc_enddef");
+
+    if (turbineData[iTurbLoc].sType == EXTLOADS) {
+
+        int nBlades = turbineData[iTurbLoc].numBlades;
+        int nTwrPts = turbineData[iTurbLoc].nBRfsiPtsTwr;
+        int nTotBldPts = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
+        int nBldPts = nTotBldPts/nBlades;
+
+        std::vector<double> tmpArray;
+
+        tmpArray.resize(nTwrPts);
+        {
+            std::vector<size_t> count_dim{1,static_cast<size_t>(nTwrPts)};
+            for (size_t idim=0;idim < 3; idim++) {
+                for (size_t i=0; i < nTwrPts; i++) 
+                    tmpArray[i] = brFSIData[iTurbLoc][3].twr_ref_pos[i*6+idim];
+                std::vector<size_t> start_dim{idim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_ref_pos"], start_dim.data(),
+                                          count_dim.data(), tmpArray.data());
+            }
+            for (size_t idim=0;idim < 3; idim++) {
+                for (size_t i=0; i < nTwrPts; i++) 
+                    tmpArray[i] = brFSIData[iTurbLoc][3].twr_ref_pos[i*6+3+idim];
+                std::vector<size_t> start_dim{idim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_ref_orient"], start_dim.data(),
+                                          count_dim.data(), tmpArray.data());
+            }
+        }
+
+        tmpArray.resize(nBldPts);
+        {
+            std::vector<size_t> count_dim{1,1,static_cast<size_t>(nBldPts)};
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                int iStart = 0 ;
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    for (auto i=0; i < nBldPts; i++) {
+                        tmpArray[i] = brFSIData[iTurbLoc][3].bld_ref_pos[(iStart*6)+iDim];
+                        iStart++;
+                    }
+                    std::vector<size_t> start_dim{iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ref_pos"], start_dim.data(),
+                                              count_dim.data(), tmpArray.data());
+                }
+            }
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                int iStart = 0 ;
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    for (auto i=0; i < nBldPts; i++) {
+                        tmpArray[i] = brFSIData[iTurbLoc][3].bld_ref_pos[(iStart*6)+iDim+3];
+                        iStart++;
+                    }
+                    std::vector<size_t> start_dim{iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ref_orient"], start_dim.data(),
+                                              count_dim.data(), tmpArray.data());
+                }
+            }
+            
+            std::vector<size_t> param_count_dim{1,static_cast<size_t>(nBldPts)};
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (size_t i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_chord[iStart];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{iBlade,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_chord"], start_dim.data(),
+                                          param_count_dim.data(), tmpArray.data());
+            }
+            iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (size_t i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_rloc[iStart];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{iBlade,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_rloc"], start_dim.data(),
+                                          param_count_dim.data(), tmpArray.data());
+            }
+        }
+        
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["nac_ref_pos"],
+                                 &brFSIData[iTurbLoc][3].nac_ref_pos[0]);
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["nac_ref_orient"],
+                                 &brFSIData[iTurbLoc][3].nac_ref_pos[3]);
+        
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["hub_ref_pos"],
+                                 &brFSIData[iTurbLoc][3].hub_ref_pos[0]);
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["hub_ref_orient"],
+                                 &brFSIData[iTurbLoc][3].hub_ref_pos[3]);
+        
+    } else if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+
+        int nBlades = get_numBladesLoc(iTurbLoc);
+        int nBldPts = get_numForcePtsBladeLoc(iTurbLoc);
+        int nTwrPts = get_numForcePtsTwrLoc(iTurbLoc);
+        
+        std::vector<double> tmpArray;
+
+        {
+
+            tmpArray.resize(nBldPts);
+            std::vector<size_t> count_dim{1,1,static_cast<size_t>(nBldPts)};
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    int node_bld_start = (1 + iBlade * nBldPts);
+                    for (auto i=0; i < nBldPts; i++)
+                        tmpArray[i] = velForceNodeData[iTurbLoc][3].x_force[(node_bld_start+i)*3+iDim] ;
+                    std::vector<size_t> start_dim{iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ref_pos"], start_dim.data(), count_dim.data(), tmpArray.data());
+                }
+            }
+            
+            std::vector<size_t> param_count_dim{1,static_cast<size_t>(nBldPts)};
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                int iStart = 1 + iBlade*nBldPts;
+                for (size_t i=0; i < nBldPts; i++)
+                    tmpArray[i] = extinfw_i_f_FAST[iTurbLoc].forceNodesChord[iStart+i];
+                std::vector<size_t> start_dim{iBlade,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_chord"], start_dim.data(),
+                                          param_count_dim.data(), tmpArray.data());
+            }
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                int iStart = 1 + iBlade*nBldPts;
+                for (size_t i=0; i < nBldPts; i++)
+                    tmpArray[i] = extinfw_i_f_FAST[iTurbLoc].forceRHloc[iStart+i];
+                std::vector<size_t> start_dim{iBlade,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_rloc"], start_dim.data(),
+                                          param_count_dim.data(), tmpArray.data());
+            }
+        }
+    }
+    
+
+    ierr = nc_close(ncid);
+    check_nc_error(ierr, "nc_close");
+    
+}
+
 
 void fast::OpenFAST::init() {
   // Temporary buffer to pass filenames to OpenFAST fortran subroutines
@@ -74,14 +564,17 @@ void fast::OpenFAST::init() {
 
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
+                findRestartFile(iTurb);
+                char tmpRstFileRoot[INTERFACE_STRING_LENGTH];
+                strncpy(tmpRstFileRoot, turbineData[iTurb].FASTRestartFileName.c_str(), turbineData[iTurb].FASTRestartFileName.size());
+                tmpRstFileRoot[turbineData[iTurb].FASTRestartFileName.size()] = '\0';
                 if (turbineData[iTurb].sType == EXTINFLOW) {
-                
                     /* note that this will set nt_global inside the FAST library */
-                    FAST_AL_CFD_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &turbineData[iTurb].dt, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &ntStart, &extinfw_i_f_FAST[iTurb], &extinfw_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_AL_CFD_Restart(&iTurb, tmpRstFileRoot, &AbortErrLev, &turbineData[iTurb].dt, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &ntStart, &extinfw_i_f_FAST[iTurb], &extinfw_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
                     
                 } else if(turbineData[iTurb].sType == EXTLOADS) {
-                    FAST_BR_CFD_Restart(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &AbortErrLev, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &ntStart, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_BR_CFD_Restart(&iTurb, tmpRstFileRoot, &AbortErrLev, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &ntStart, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
 
                     std::cerr << "numBlade nodes = " << extld_i_f_FAST[iTurb].nBladeNodes[0] << " " << extld_i_f_FAST[iTurb].nBladeNodes[1] << " " << extld_i_f_FAST[iTurb].nBladeNodes[2] << std::endl ;
@@ -96,9 +589,6 @@ void fast::OpenFAST::init() {
             }
             checkAndSetSubsteps();
 
-            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
-                turbineData[iTurb].velNodeDataFile = openVelocityDataFile(iTurb, false);
-
             if(scStatus) {
                 sc->readRestartFile(nt_global);
             }
@@ -110,9 +600,11 @@ void fast::OpenFAST::init() {
             // this calls the Init() routines of each module
 
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+
+                char tmpOutFileRoot[INTERFACE_STRING_LENGTH];
                 if (turbineData[iTurb].sType == EXTINFLOW) {
                 
-                    FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].dt, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &extinfw_i_f_FAST[iTurb], &extinfw_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, tmpOutFileRoot, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].dt, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &extinfw_i_f_FAST[iTurb], &extinfw_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
 
                     turbineData[iTurb].numVelPtsTwr = extinfw_o_t_FAST[iTurb].u_Len - turbineData[iTurb].numBlades*turbineData[iTurb].numVelPtsBlade - 1;
@@ -123,28 +615,27 @@ void fast::OpenFAST::init() {
                     
                 } else if(turbineData[iTurb].sType == EXTLOADS) {
 
-                    FAST_BR_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].azBlendMean, &turbineData[iTurb].azBlendDelta, &turbineData[iTurb].velMean, &turbineData[iTurb].windDir, &turbineData[iTurb].zRef, &turbineData[iTurb].shearExp, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_BR_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, tmpOutFileRoot, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].azBlendMean, &turbineData[iTurb].azBlendDelta, &turbineData[iTurb].velMean, &turbineData[iTurb].windDir, &turbineData[iTurb].zRef, &turbineData[iTurb].shearExp, &turbineData[iTurb].dt, &turbineData[iTurb].numBlades, &extld_i_f_FAST[iTurb], &extld_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
 
                     turbineData[iTurb].inflowType = 0;
                     
                 }
+
+                turbineData[iTurb].outFileRoot.assign(tmpOutFileRoot, strlen(tmpOutFileRoot));
                 
                 allocateMemory_postInit(iTurb);
-
-                get_ref_positions_from_openfast(iTurb);
 
                 get_data_from_openfast(fast::STATE_NM2);
                 get_data_from_openfast(fast::STATE_NM1);
                 get_data_from_openfast(fast::STATE_N);
                 get_data_from_openfast(fast::STATE_NP1);
 
+                get_ref_positions_from_openfast(iTurb);
+
             }
             timeZero = true;
             checkAndSetSubsteps();
-
-            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
-                turbineData[iTurb].velNodeDataFile = openVelocityDataFile(iTurb, true);
 
             break ;
 
@@ -152,10 +643,11 @@ void fast::OpenFAST::init() {
 
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
+                findRestartFile(iTurb);
+                char tmpOutFileRoot[INTERFACE_STRING_LENGTH];
                 if (turbineData[iTurb].sType == EXTINFLOW) {
                 
-                
-                    FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].dt, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &extinfw_i_f_FAST[iTurb], &extinfw_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
+                    FAST_AL_CFD_Init(&iTurb, &tMax, turbineData[iTurb].FASTInputFileName.data(), &turbineData[iTurb].TurbID, tmpOutFileRoot, &numScOutputs, &numScInputs, &turbineData[iTurb].numForcePtsBlade, &turbineData[iTurb].numForcePtsTwr, turbineData[iTurb].TurbineBasePos.data(), &AbortErrLev, &dtDriver, &turbineData[iTurb].dt, &turbineData[iTurb].inflowType, &turbineData[iTurb].numBlades, &turbineData[iTurb].numVelPtsBlade, &turbineData[iTurb].numVelPtsTwr, &extinfw_i_f_FAST[iTurb], &extinfw_o_t_FAST[iTurb], &sc_i_f_FAST[iTurb], &sc_o_t_FAST[iTurb], &ErrStat, ErrMsg);
                     checkError(ErrStat, ErrMsg);
                     
                     timeZero = true;
@@ -173,6 +665,7 @@ void fast::OpenFAST::init() {
                     get_data_from_openfast(fast::STATE_N);
                     get_data_from_openfast(fast::STATE_NP1);
                     
+                    get_ref_positions_from_openfast(iTurb);
                 
                     checkAndSetSubsteps();
                     
@@ -183,28 +676,39 @@ void fast::OpenFAST::init() {
                     else
                         ntStartDriver = 0; //Typically for processors that don't contain any turbines
                     
-                    
+                    std::vector<int> velfile_ncid;
+                    velfile_ncid.resize(nTurbinesProc);
                     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-                        turbineData[iTurb].velNodeDataFile = openVelocityDataFile(iTurb, false);
-                        readVelocityData(iTurb, -1, 0, turbineData[iTurb].velNodeDataFile);
-                        int nVelPts = get_numVelPtsLoc(iTurb) ;
+                        velfile_ncid[iTurb] = openVelocityDataFile(iTurb);
+                        readVelocityData(iTurb, 0, 0, velfile_ncid[iTurb]);
                     }
                     
+                    int nVelPts = get_numVelPtsLoc(iTurb);
+                    std::cout << std::endl ;
+                    std::cout << "nt_global = " << 0 << " nlin_iter = " << 0 << std::endl ;
+                    for (size_t k = 0; k < nVelPts; k++)
+                         std::cout << k << ", " << velForceNodeData[iTurb][3].vel_vel[k*3 + 0] << " " << velForceNodeData[iTurb][3].vel_vel[k*3 + 1] << " " << velForceNodeData[iTurb][3].vel_vel[k*3 + 2] << " " << std::endl ;
+
+                    init_velForceNodeData();
                     solution0(false) ;
                     
                     for (int iPrestart=0 ; iPrestart < ntStartDriver; iPrestart++) {
                         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-                            int nlinIters = read_nlin_iters(iTurb, iPrestart*nSubsteps_, turbineData[iTurb].velNodeDataFile);
+                            int nlinIters = read_nlin_iters(iTurb, iPrestart+1, velfile_ncid[iTurb]);
                             for (int iNlin=0; iNlin < nlinIters; iNlin++) {
-                                readVelocityData(iTurb, iPrestart*nSubsteps_, iNlin, turbineData[iTurb].velNodeDataFile);
+                                readVelocityData(iTurb, iPrestart+1, iNlin, velfile_ncid[iTurb]);
                                 update_states_driver_time_step(false);
                             }
                             advance_to_next_driver_time_step(false);
                         }
-                        std::cerr << "nt_global =  " << nt_global << std::endl ;
                     }
+
+                    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
+                        nc_close(velfile_ncid[iTurb]);
                     
                     std::cerr << "Done with OpenFAST init" << std::endl ;
+
+                    readRestartFile(iTurb, nt_global);
                     
                 } else {
                     
@@ -234,7 +738,15 @@ void fast::OpenFAST::solution0(bool writeFiles) {
             sc->calcOutputs(scOutputsGlob);
             fillScOutputsLoc();
         }
-
+        
+        if (writeFiles) {
+            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+                prepareRestartFile(iTurb);
+                prepareOutputFile(iTurb);
+                prepareVelocityDataFile(iTurb);
+            }
+        }
+            
         // Unfortunately setVelocity only sets the velocity at 'n+1'. Need to copy 'n+1' to 'n'
         init_velForceNodeData() ;
         send_data_to_openfast(fast::STATE_NP1);
@@ -255,7 +767,7 @@ void fast::OpenFAST::solution0(bool writeFiles) {
         if (writeFiles) {
             for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
                 if (turbineData[iTurb].inflowType == 2)
-                    writeVelocityData(turbineData[iTurb].velNodeDataFile, iTurb, -1, 0);
+                    writeVelocityData(iTurb, -nSubsteps_, 0);
             }
         }
 
@@ -577,7 +1089,7 @@ void fast::OpenFAST::update_states_driver_time_step(bool writeFiles) {
     if (writeFiles) {
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
             if (turbineData[iTurb].inflowType == 2)
-                writeVelocityData(turbineData[iTurb].velNodeDataFile, iTurb, nt_global, nlinIter_);
+                writeVelocityData(iTurb, nt_global, nlinIter_);
         }
     }
 
@@ -593,36 +1105,8 @@ void fast::OpenFAST::advance_to_next_driver_time_step(bool writeFiles) {
     } else {
 
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-
-            if (writeFiles) {
-                if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-
-                    std::ofstream fastcpp_velocity_file;
-                    fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-                    fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
-                    for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
-                        fastcpp_velocity_file << extinfw_i_f_FAST[iTurb].pxVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzVel[iNode] << ", " << extinfw_o_t_FAST[iTurb].u[iNode] << ", " << extinfw_o_t_FAST[iTurb].v[iNode] << ", " << extinfw_o_t_FAST[iTurb].w[iNode] << " " << std::endl ;
-                    }
-                    fastcpp_velocity_file.close() ;
-
-                }
-            }
-
             FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
             checkError(ErrStat, ErrMsg);
-
-            if (writeFiles) {
-                if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-                    std::ofstream actuatorForcesFile;
-                    actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-                    actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
-                    for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
-                        actuatorForcesFile << extinfw_i_f_FAST[iTurb].pxForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].fx[iNode] << ", " << extinfw_i_f_FAST[iTurb].fy[iNode] << ", " << extinfw_i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;
-                    }
-                actuatorForcesFile.close() ;
-                }
-            }
-
         }
 
         if(scStatus) {
@@ -645,7 +1129,7 @@ void fast::OpenFAST::advance_to_next_driver_time_step(bool writeFiles) {
     set_state_from_state(fast::STATE_NP1, fast::STATE_N);
 
     if (writeFiles) {
-      if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
+      if ( (((nt_global - ntStart) % restartFreq_) == 0 )  && (nt_global != ntStart) ) {
           for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
               turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
               FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
@@ -658,6 +1142,12 @@ void fast::OpenFAST::advance_to_next_driver_time_step(bool writeFiles) {
               }
           }
       }
+
+      if ( (((nt_global - ntStart) % outputFreq_) == 0 )  && (nt_global != ntStart) ) {
+          for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
+              writeOutputFile(iTurb, nt_global);
+      }
+      
     }
 
     nlinIter_ = 0;
@@ -680,18 +1170,6 @@ void fast::OpenFAST::step(double ss_time) {
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
 
         // this advances the states, calls CalcOutput, and solves for next inputs. Predictor-corrector loop is imbeded here:
-
-        if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-
-            std::ofstream fastcpp_velocity_file;
-            fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-            fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
-            for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
-                fastcpp_velocity_file << extinfw_i_f_FAST[iTurb].pxVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzVel[iNode] << ", " << extinfw_o_t_FAST[iTurb].u[iNode] << ", " << extinfw_o_t_FAST[iTurb].v[iNode] << ", " << extinfw_o_t_FAST[iTurb].w[iNode] << " " << std::endl ;
-            }
-            fastcpp_velocity_file.close() ;
-        }
-
         FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
         send_data_to_openfast(ss_time);
@@ -699,16 +1177,6 @@ void fast::OpenFAST::step(double ss_time) {
         checkError(ErrStat, ErrMsg);
         FAST_CFD_AdvanceToNextTimeStep(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
-
-        if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-            std::ofstream actuatorForcesFile;
-            actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-            actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
-            for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
-                actuatorForcesFile << extinfw_i_f_FAST[iTurb].pxForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].fx[iNode] << ", " << extinfw_i_f_FAST[iTurb].fy[iNode] << ", " << extinfw_i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;
-            }
-            actuatorForcesFile.close() ;
-        }
 
     }
 
@@ -736,20 +1204,7 @@ void fast::OpenFAST::step(bool writeFiles) {
         // (note CFD could do subcycling around this step)
 
         if (turbineData[iTurb].inflowType == 2)
-            writeVelocityData(turbineData[iTurb].velNodeDataFile, iTurb, nt_global, 0);
-
-        if (writeFiles) {
-            if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-
-                std::ofstream fastcpp_velocity_file;
-                fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-                fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
-                for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
-                    fastcpp_velocity_file << extinfw_i_f_FAST[iTurb].pxVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzVel[iNode] << ", " << extinfw_o_t_FAST[iTurb].u[iNode] << ", " << extinfw_o_t_FAST[iTurb].v[iNode] << ", " << extinfw_o_t_FAST[iTurb].w[iNode] << " " << std::endl ;
-                }
-                fastcpp_velocity_file.close() ;
-            }
-        }
+            writeVelocityData(iTurb, nt_global, 0);
 
         FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
         checkError(ErrStat, ErrMsg);
@@ -779,19 +1234,7 @@ void fast::OpenFAST::step(bool writeFiles) {
                 );
 
         }
-
-        if (writeFiles) {
-            if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-                std::ofstream actuatorForcesFile;
-                actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-                actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
-                for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
-                    actuatorForcesFile << extinfw_i_f_FAST[iTurb].pxForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].fx[iNode] << ", " << extinfw_i_f_FAST[iTurb].fy[iNode] << ", " << extinfw_i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;
-                }
-                actuatorForcesFile.close() ;
-            }
-        }
-
+        
     }
 
     if(scStatus) {
@@ -806,20 +1249,28 @@ void fast::OpenFAST::step(bool writeFiles) {
         checkError(ErrStat, ErrMsg);
     }
 
-    if ( (((nt_global - ntStart) % nEveryCheckPoint) == 0 )  && (nt_global != ntStart) ) {
-        //sprintf(FASTRestartFileName, "../../CertTest/Test18.%d", nt_global);
-        for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-            turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
-            FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
-            checkError(ErrStat, ErrMsg);
-            writeRestartFile(iTurb, nt_global);
-        }
-        if(scStatus) {
-            if (fastMPIRank == 0) {
-                sc->writeRestartFile(nt_global);
+    if (writeFiles) {
+        if ( (((nt_global - ntStart) % restartFreq_) == 0 )  && (nt_global != ntStart) ) {
+            //sprintf(FASTRestartFileName, "../../CertTest/Test18.%d", nt_global);
+            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
+                turbineData[iTurb].FASTRestartFileName = " "; // if blank, it will use FAST convention <RootName>.nt_global
+                FAST_CreateCheckpoint(&iTurb, turbineData[iTurb].FASTRestartFileName.data(), &ErrStat, ErrMsg);
+                checkError(ErrStat, ErrMsg);
+                writeRestartFile(iTurb, nt_global);
+            }
+            if(scStatus) {
+                if (fastMPIRank == 0) {
+                    sc->writeRestartFile(nt_global);
+                }
             }
         }
+
+        if ( (((nt_global - ntStart) % outputFreq_) == 0 )  && (nt_global != ntStart) ) {
+            for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
+                writeOutputFile(iTurb, nt_global);
+        }
     }
+    
 }
 
 void fast::OpenFAST::calc_nacelle_force(
@@ -870,7 +1321,8 @@ void fast::OpenFAST::setInputs(const fast::fastInputs & fi ) {
 
         tStart = fi.tStart;
         simStart = fi.simStart;
-        nEveryCheckPoint = fi.nEveryCheckPoint;
+        restartFreq_ = fi.restartFreq_;
+        outputFreq_ = fi.outputFreq_;
         tMax = fi.tMax;
         loadSuperController(fi);
         dtDriver = fi.dtDriver;
@@ -925,7 +1377,7 @@ void fast::OpenFAST::setDriverCheckpoint(int nt_checkpoint_driver) {
 
     if (nTurbinesProc > 0) {
         if (nSubsteps_ > 0) {
-            nEveryCheckPoint = nt_checkpoint_driver * nSubsteps_;
+            restartFreq_ = nt_checkpoint_driver * nSubsteps_;
         } else {
             throw std::runtime_error("Trying to set driver checkpoint when nSubsteps_ is zero. Set driver time step first may be?");
         }
@@ -1081,6 +1533,19 @@ void fast::OpenFAST::getForce(std::vector<double> & currentForce, int iNode, int
 
 }
 
+double fast::OpenFAST::getRHloc(int iNode, int iTurbGlob) {
+
+    // Return radial location/height along blade/tower at current node of current turbine
+    int iTurbLoc = get_localTurbNo(iTurbGlob);
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {        
+        for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
+        return extinfw_i_f_FAST[iTurbLoc].forceRHloc[iNode] ;
+    } else {
+        return -1.0;
+    }
+
+}
+
 double fast::OpenFAST::getChord(int iNode, int iTurbGlob) {
 
     // Return blade chord/tower diameter at current node of current turbine
@@ -1088,8 +1553,8 @@ double fast::OpenFAST::getChord(int iNode, int iTurbGlob) {
     if (turbineData[iTurbLoc].sType == EXTINFLOW) {        
         for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
         return extinfw_i_f_FAST[iTurbLoc].forceNodesChord[iNode] ;
-    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
-        return extld_i_f_FAST[iTurbLoc].bldChord[iNode];
+    } else {
+        return -1.0;
     }
 
 }
@@ -1105,9 +1570,9 @@ void fast::OpenFAST::setVelocity(std::vector<double> & currentVelocity, int iNod
     }
 
     // Put this in send_data_to_openfast
-    extinfw_o_t_FAST[iTurbLoc].u[iNode] = currentVelocity[0];
-    extinfw_o_t_FAST[iTurbLoc].v[iNode] = currentVelocity[1];
-    extinfw_o_t_FAST[iTurbLoc].w[iNode] = currentVelocity[2];
+    // extinfw_o_t_FAST[iTurbLoc].u[iNode] = currentVelocity[0];
+    // extinfw_o_t_FAST[iTurbLoc].v[iNode] = currentVelocity[1];
+    // extinfw_o_t_FAST[iTurbLoc].w[iNode] = currentVelocity[2];
 }
 
 void fast::OpenFAST::setVelocityForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob) {
@@ -1132,16 +1597,6 @@ void fast::OpenFAST::interpolateVel_ForceToVelNodes() {
             double tmp = velForceNodeData[iTurb][fast::STATE_NP1].vel_force[k];
             velForceNodeData[iTurb][fast::STATE_NP1].vel_vel_resid += (velForceNodeData[iTurb][fast::STATE_NP1].vel_vel[k] - tmp)*(velForceNodeData[iTurb][fast::STATE_NP1].vel_vel[k] - tmp);
             velForceNodeData[iTurb][fast::STATE_NP1].vel_vel[k] = tmp;
-        }
-
-        if ( isDebug() ) {
-            std::ofstream actuatorVelFile;
-            actuatorVelFile.open("actuator_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-            actuatorVelFile << "# x, y, z, Vx, Vy, Vz" << std::endl ;
-            for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
-                actuatorVelFile << velForceNodeData[iTurb][fast::STATE_NP1].x_force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::STATE_NP1].x_force[iNode*3+1] << ", " << velForceNodeData[iTurb][fast::STATE_NP1].x_force[iNode*3+2] << ", " << velForceNodeData[iTurb][fast::STATE_NP1].vel_force[iNode*3+0] << ", " << velForceNodeData[iTurb][fast::STATE_NP1].vel_force[iNode*3+1] << ", " << velForceNodeData[iTurb][fast::STATE_NP1].vel_force[iNode*3+2] << " " << std::endl ;
-            }
-            actuatorVelFile.close() ;
         }
 
         // Do the blades first
@@ -1425,6 +1880,7 @@ void fast::OpenFAST::allocateMemory_postInit(int iTurbLoc) {
             int nfpts = get_numForcePtsLoc(iTurbLoc);
             int nvelpts = get_numVelPtsLoc(iTurbLoc);
 
+            velForceNodeData[iTurbLoc][3].xref_force.resize(3*nfpts);
             for(int k=0; k<4; k++) {
                 velForceNodeData[iTurbLoc][k].x_vel.resize(3*nvelpts) ;
                 velForceNodeData[iTurbLoc][k].xdot_vel.resize(3*nvelpts) ;
@@ -1489,9 +1945,6 @@ void fast::OpenFAST::end() {
 
     // Deallocate types we allocated earlier
 
-    for (int iTurb=0; iTurb < nTurbinesProc; iTurb++)
-        closeVelocityDataFile(nt_global, turbineData[iTurb].velNodeDataFile);
-
     if ( !dryRun) {
         bool stopTheProgram = false;
         for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
@@ -1519,155 +1972,109 @@ void fast::OpenFAST::end() {
 
 }
 
-int fast::OpenFAST::read_nlin_iters(int iTurb, int iTimestep, hid_t velDataFile) {
+int fast::OpenFAST::read_nlin_iters(int iTurb, int n_t_global, int ncid) {
 
     int nlin_iters = 0;
-    hid_t gid = H5Gopen2(velDataFile, ("/" + std::to_string(iTimestep) ).c_str(), H5P_DEFAULT);
-    hid_t attr = H5Aopen(gid, "nlin_iters", H5P_DEFAULT);
-    herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &nlin_iters);
-    H5Aclose(attr);
+    size_t count1 = 1;
+    size_t n_tsteps = n_t_global;
+    int ierr = nc_get_vara_int(ncid, 1, &n_tsteps, &count1, &nlin_iters);
+    
     return nlin_iters;
 
 }
 
 
-void fast::OpenFAST::readVelocityData(int iTurb, int iTimestep, int nlinIter, hid_t velDataFile) {
+void fast::OpenFAST::readVelocityData(int iTurb, int n_t_global, int nlinIter, int ncid) {
 
+    size_t n_tsteps = n_t_global;
+    const std::vector<size_t> start_dim{n_tsteps, static_cast<size_t>(nlinIter), 0};
+    int nVelPts = get_numVelPtsLoc(iTurb);
+    const std::vector<size_t> velPtsDataDims{1, 1, static_cast<size_t>(3*nVelPts)};
+    int ierr = nc_get_vara_double(ncid, 2, start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurb][fast::STATE_NP1].vel_vel.data());
+
+
+}
+
+int fast::OpenFAST::openVelocityDataFile(int iTurb) {
+
+    int ncid;
+    std::stringstream velfile_fstream;
+    velfile_fstream << "turb_" ;
+    velfile_fstream << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurb];
+    velfile_fstream << "_veldata.nc";
+    std::string velfile_filename = velfile_fstream.str();
+    int ierr = nc_open(velfile_filename.c_str(), NC_WRITE, &ncid);
+    check_nc_error(ierr, "nc_open");
+    return ncid;
+    
+}
+
+void fast::OpenFAST::prepareVelocityDataFile(int iTurb) {
+
+    // Open the file in create mode - this will destory any file
+    int ncid;
+    std::stringstream velfile_fstream;
+    velfile_fstream << "turb_" ;
+    velfile_fstream << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurb];
+    velfile_fstream << "_veldata.nc";
+    std::string velfile_filename = velfile_fstream.str();
+    int ierr = nc_create(velfile_filename.c_str(), NC_CLOBBER, &ncid);
+    check_nc_error(ierr, "nc_create");
+    
+    //Define dimensions
+    int tmpDimID;
+    ierr = nc_def_dim(ncid, "n_tsteps", NC_UNLIMITED, &tmpDimID);
+    ierr = nc_def_dim(ncid, "n_nonlin_iters_max", 2, &tmpDimID);        
+    ierr = nc_def_dim(ncid, "n_vel_pts_data", turbineData[iTurb].numVelPts*3, &tmpDimID);
+    
+    int tmpVarID;
+    tmpDimID = 0;
+    ierr = nc_def_var(ncid, "time", NC_DOUBLE, 1, &tmpDimID, &tmpVarID);
+    ierr = nc_def_var(ncid, "nlin_iters", NC_INT, 1, &tmpDimID, &tmpVarID);
+    const std::vector<int> velPtsDataDims{0, 1, 2};
+    ierr = nc_def_var(ncid, "vel_vel", NC_DOUBLE, 3, velPtsDataDims.data(), &tmpVarID);
+
+    //! Indicate that we are done defining variables, ready to write data
+    ierr = nc_enddef(ncid);
+    check_nc_error(ierr, "nc_enddef");
+    ierr = nc_close(ncid);
+    check_nc_error(ierr, "nc_close");
+}
+
+void fast::OpenFAST::writeVelocityData(int iTurb, int n_t_global, int nlinIter) {
+
+    /* // NetCDF stuff to write velocity data to file */
+    int ncid;
+    //Find the file and open it in append mode
+    std::stringstream velfile_ss;
+    velfile_ss << "turb_" ;
+    velfile_ss << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurb];
+    velfile_ss << "_veldata.nc";
+    std::string vel_filename = velfile_ss.str();
+    int ierr = nc_open(vel_filename.c_str(), NC_WRITE, &ncid);
+    check_nc_error(ierr, "nc_open");
+
+    size_t count1=1;
+    size_t n_tsteps = (n_t_global/nSubsteps_)+1;
+    double curTime = (n_t_global + nSubsteps_) * dtFAST;
+    ierr = nc_put_vara_double(ncid, 0, &n_tsteps, &count1, &curTime);
     int nVelPts = get_numVelPtsLoc(iTurb) ;
-    hid_t dset_id = H5Dopen2(velDataFile, ("/" + std::to_string(iTimestep) + "/" + std::to_string(nlinIter) + "/vel_vel").c_str(), H5P_DEFAULT);
-    herr_t status = H5Dread(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurb][fast::STATE_NP1].vel_vel.data());
-    status = H5Dclose(dset_id);
-}
+    const std::vector<size_t> velPtsDataDims{1, 1, static_cast<size_t>(3*nVelPts)};
+    const std::vector<size_t> start_dim{static_cast<size_t>(n_tsteps),static_cast<size_t>(nlinIter),0};
 
-hid_t fast::OpenFAST::openVelocityDataFile(int iTurb, bool createFile) {
-
-    hid_t velDataFile;
-    if (createFile) {
-        // Open the file in create mode
-        velDataFile = H5Fcreate(("velDatafile." + std::to_string(turbineMapProcToGlob[iTurb]) + ".h5").c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-
-        hsize_t dims[1];
-        dims[0] = 1;
-        hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-        hid_t attr = H5Acreate2(velDataFile, "nTimesteps", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-        herr_t status = H5Aclose(attr);
-        status = H5Sclose(dataSpace);
-
-        // for (int iTurb = 0; iTurb < nTurbinesProc; iTurb++) {
-        //     int nVelPts = get_numVelPtsLoc(iTurb);
-        //     hsize_t dims[3];
-        //     dims[0] = ntMax; dims[1] = nVelPts; dims[2] = 6 ;
-
-        //     hsize_t chunk_dims[3];
-        //     chunk_dims[0] = 1; chunk_dims[1] = nVelPts; chunk_dims[2] = 6;
-        //     hid_t dcpl_id = H5Pcreate(H5P_DATASET_CREATE);
-        //     H5Pset_chunk(dcpl_id, 3, chunk_dims);
-
-        //     hid_t dataSpace = H5Screate_simple(3, dims, NULL);
-        //     hid_t dataSet = H5Dcreate(velDataFile, ("/turbine" , H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
-
-        //     herr_t status = H5Pclose(dcpl_id);
-        //     status = H5Dclose(dataSet);
-        //     status = H5Sclose(dataSpace);
-        // }
-
-    } else {
-        // Open the file in append mode
-        velDataFile = H5Fopen( ("velDatafile." + std::to_string(turbineMapProcToGlob[iTurb]) + ".h5").c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-    }
-
-    return velDataFile;
-
-}
-
-herr_t fast::OpenFAST::closeVelocityDataFile(int nt_global, hid_t velDataFile) {
-
-    herr_t status = H5Fclose(velDataFile) ;
-    return status;
-}
-
-
-void fast::OpenFAST::backupVelocityDataFile(int iTurb, int curTimeStep, hid_t & velDataFile) {
-
-    closeVelocityDataFile(curTimeStep, velDataFile);
-
-    std::ifstream source("velDatafile." + std::to_string(turbineMapProcToGlob[iTurb]) + ".h5", std::ios::binary);
-    std::ofstream dest("velDatafile." + std::to_string(turbineMapProcToGlob[iTurb]) + ".h5." + std::to_string(curTimeStep) + ".bak", std::ios::binary);
-
-    dest << source.rdbuf();
-    source.close();
-    dest.close();
-
-    velDataFile = openVelocityDataFile(iTurb, false);
-}
-
-hid_t fast::OpenFAST::get_or_create_hdf_group(hid_t pid, const char* gname) {
-    hid_t gid = H5Gopen2(pid, gname, H5P_DEFAULT);
-    if (gid < 0)
-    gid = H5Gcreate2(pid, gname, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    return gid;
-}
-
-hid_t fast::OpenFAST::get_or_create_int_attr(hid_t pid, const char* attrname) {
-
-    hid_t attr_id = H5Aopen_by_name(pid, ".", attrname, H5P_DEFAULT, H5P_DEFAULT);
-
-    if (attr_id < 0) {
-        hsize_t dims[1];
-        dims[0] = 1;
-        hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-        attr_id = H5Acreate2(pid, attrname, H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-        herr_t status = H5Aclose(attr_id);
-        status = H5Sclose(dataSpace);
-        attr_id = H5Aopen_by_name(pid, ".", attrname, H5P_DEFAULT, H5P_DEFAULT);
-    }
-
-    return attr_id;
-
-}
-
-void fast::OpenFAST::writeVelocityData(hid_t h5File, int iTurb, int iTimestep, int nlinIter) {
-
-
-    /* Turn off error handling permanently */
-    //    H5Eset_auto(NULL, NULL);
-
-    std::cerr << "Trying to write vel data into hdf5 file for time step " << iTimestep << " nlin = " << nlinIter << std::endl;
-
-    int nVelPts = get_numVelPtsLoc(iTurb) ;
-    hsize_t dims[1]; dims[0] = nVelPts*3;
-    herr_t status;
-
-    hid_t tstep_gid = get_or_create_hdf_group(h5File, ("/" + std::to_string(iTimestep)).c_str());
-    hid_t nlin_gid = get_or_create_hdf_group(tstep_gid, ( std::to_string(nlinIter) ).c_str() );
-
-    hid_t dset_id = H5Dopen2(nlin_gid, "vel_vel", H5P_DEFAULT);
-    hid_t dspace_id;
-    if (dset_id < 0) {
-        dspace_id = H5Screate_simple(1, dims, NULL);
-        dset_id = H5Dcreate2(nlin_gid, "vel_vel", H5T_NATIVE_DOUBLE, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    } else {
-        dspace_id = H5Dget_space(dset_id);
-    }
-    H5Dwrite(dset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurb][fast::STATE_NP1].vel_vel.data());
-    H5Dclose(dset_id);
-    H5Sclose(dspace_id);
-
-    hid_t attr_id = get_or_create_int_attr(h5File, "nTimesteps" );
-    status = H5Awrite(attr_id, H5T_NATIVE_INT, &iTimestep);
-    status = H5Aclose(attr_id);
-
-    nlinIter += 1; //To adjust for 0 based indexing
-    attr_id = get_or_create_int_attr(tstep_gid, "nlin_iters");
-    status = H5Awrite(attr_id, H5T_NATIVE_INT, &nlinIter);
-    status = H5Aclose(attr_id);
+    std::cout << "Writing velocity data at time step " << n_tsteps << ", nonlinear iteration " << nlinIter << std::endl ;
+    ierr = nc_put_vara_double(ncid, 2, start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurb][3].vel_vel.data());
+    nlinIter += 1; // To account for 0-based indexing
+    ierr = nc_put_vara_int(ncid, 1, &n_tsteps, &count1, &nlinIter);
+    
+    nc_close(ncid);
 
 }
 
 void fast::OpenFAST::send_data_to_openfast(fast::timeStep t) {
 
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
-        if ( (turbineData[iTurb].sType == EXTLOADS) && (turbineData[iTurb].inflowType == 2) ) {
+        if ( (turbineData[iTurb].sType == EXTINFLOW) && (turbineData[iTurb].inflowType == 2) ) {
             int nvelpts = get_numVelPtsLoc(iTurb);
             for (int iNodeVel=0; iNodeVel < nvelpts; iNodeVel++) {
                 extinfw_o_t_FAST[iTurb].u[iNodeVel] = velForceNodeData[iTurb][t].vel_vel[iNodeVel*3+0];
@@ -1814,385 +2221,468 @@ void fast::OpenFAST::get_data_from_openfast(timeStep t) {
 
 void fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
 
-    int nvelpts = get_numVelPtsLoc(iTurbLoc);
-    int nfpts = get_numForcePtsLoc(iTurbLoc);
-    int iTurbGlob = turbineMapProcToGlob[iTurbLoc];
+    int ncid;
+    //Find the file and open it in append mode
+    std::stringstream rstfile_ss;
+    rstfile_ss << "turb_" ;
+    rstfile_ss << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurbLoc];
+    rstfile_ss << "_rst.nc";
+    std::string rst_filename = rstfile_ss.str();
+    int ierr = nc_open(rst_filename.c_str(), NC_NOWRITE, &ncid);
+    check_nc_error(ierr, "nc_open");
 
-    hid_t restartFile = H5Fopen(("of_cpp_" + std::to_string(n_t_global) + "_T" + std::to_string(iTurbGlob) + ".chkp.h5").c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-
-    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
-
-        int nvelpts_file, nfpts_file ;
+    size_t count1 = 1;
+    size_t n_tsteps;
+    ierr = nc_inq_dimlen(ncid, ncRstDimIDs_["n_tsteps"], &n_tsteps);
+    check_nc_error(ierr, "nc_inq_dimlen");
+    n_tsteps -= 1; // To account for 0 based indexing
         
-        {
-            hid_t attr = H5Aopen(restartFile, "nvelpts", H5P_DEFAULT);
-            herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &nvelpts_file) ;
-            H5Aclose(attr);
-            
-            attr = H5Aopen(restartFile, "nfpts", H5P_DEFAULT);
-            ret = H5Aread(attr, H5T_NATIVE_INT, &nfpts_file) ;
-            H5Aclose(attr);
-        }
-        
-        if( (nvelpts != nvelpts_file) || (nfpts != nfpts_file))
-            throw std::runtime_error("Number of velocity or force nodes from restart file does not match input.");
-        
-        if (nvelpts > 0) {
-            for (int j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
-                
-                std::string gName = "/data/" + std::to_string(j);
-                hid_t group_id = H5Gopen2(restartFile, gName.c_str(), H5P_DEFAULT);
-                
-                hid_t dataSet = H5Dopen2(group_id, "x_vel", H5P_DEFAULT);
-                herr_t status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_vel.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "xdot_vel", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_vel.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "vel_vel", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_vel.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "x_force", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_force.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "xdot_force", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_force.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "vel_force", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_force.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "force", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].force.data());
-                status = H5Dclose(dataSet);
-                
-                dataSet = H5Dopen2(group_id, "orient_force", H5P_DEFAULT);
-                status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].orient_force.data());
-                status = H5Dclose(dataSet);
-            }
-
-        }
-    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
-
-        int numBladesFile, nBRfsiPtsTwrFile, nTotBRfsiPtsBladeFile;
-
-        {
-            hid_t attr = H5Aopen(restartFile, "numBlades", H5P_DEFAULT);
-            herr_t ret = H5Aread(attr, H5T_NATIVE_INT, &numBladesFile) ;
-            H5Aclose(attr);
-            
-            attr = H5Aopen(restartFile, "nBRfsiPtsTwr", H5P_DEFAULT);
-            ret = H5Aread(attr, H5T_NATIVE_INT, &nBRfsiPtsTwrFile) ;
-            H5Aclose(attr);
-
-            attr = H5Aopen(restartFile, "nTotBRfsiPtsBlade", H5P_DEFAULT);
-            ret = H5Aread(attr, H5T_NATIVE_INT, &nTotBRfsiPtsBladeFile) ;
-            H5Aclose(attr);
-        
-        }
-
-        for (int j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
-                
-            std::string gName = "/data/" + std::to_string(j);
-            hid_t group_id = H5Gopen2(restartFile, gName.c_str(), H5P_DEFAULT);
-                
-            hid_t dataSet = H5Dopen2(group_id, "twr_ref_pos", H5P_DEFAULT);
-            herr_t status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ref_pos.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "twr_def", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_def.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "twr_vel", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_vel.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "twr_ld", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ld.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "bld_ref_pos", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ref_pos.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "bld_def", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_def.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "bld_vel", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_vel.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "bld_ld", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ld.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "hub_ref_pos", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_ref_pos.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "hub_def", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_def.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "hub_vel", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_vel.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "nac_ref_pos", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_ref_pos.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "nac_def", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_def.data());
-            status = H5Dclose(dataSet);
-
-            dataSet = H5Dopen2(group_id, "nac_vel", H5P_DEFAULT);
-            status = H5Dread(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_vel.data());
-            status = H5Dclose(dataSet);
-            
-        }
-        
-    }
-
-    herr_t status = H5Fclose(restartFile);
-
-}
-
-
-void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
-
-    /* // HDF5 stuff to write states to restart file or read back from it */
-
-    int iTurbGlob = turbineMapProcToGlob[iTurbLoc];
-    hid_t restartFile = H5Fcreate(("of_cpp_" + std::to_string(n_t_global) + "_T" + std::to_string(iTurbGlob) + ".chkp.h5").c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-
     if (turbineData[iTurbLoc].sType == EXTINFLOW) {
 
         int nvelpts = get_numVelPtsLoc(iTurbLoc);
         int nfpts = get_numForcePtsLoc(iTurbLoc);
         
-        {
-            hsize_t dims[1];
-            dims[0] = 1;
-            hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-            hid_t attr = H5Acreate2(restartFile, "nvelpts", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-            herr_t status = H5Awrite(attr, H5T_NATIVE_INT, &nvelpts);
-            status = H5Aclose(attr);
-            status = H5Sclose(dataSpace);
-            
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            attr = H5Acreate2(restartFile, "nfpts", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-            status = H5Awrite(attr, H5T_NATIVE_INT, &nfpts);
-            status = H5Aclose(attr);
-            status = H5Sclose(dataSpace);
-            
-        }
+        const std::vector<size_t> velPtsDataDims{1, 1, static_cast<size_t>(3*nvelpts)};
+        const std::vector<size_t> forcePtsDataDims{1, 1, static_cast<size_t>(3*nfpts)};
+        const std::vector<size_t> forcePtsOrientDataDims{1, 1, static_cast<size_t>(9*nfpts)};
+
+        ierr = nc_get_var_double(ncid, ncRstVarIDs_["xref_force"], velForceNodeData[iTurbLoc][fast::STATE_NP1].xref_force.data());
         
-        if (nvelpts > 0) {
-            
-            /* Create groups */
-            hid_t group_id = H5Gcreate2(restartFile, "/data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            herr_t status = H5Gclose(group_id);
-            for (int j=0; j < 4; j++) { // Loop over states - NM2, STATE_NM1, N, NP1
-                std::string gName = "/data/" + std::to_string(j);
-                group_id = H5Gcreate2(restartFile, gName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        for (size_t j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
+
+            const std::vector<size_t> start_dim{n_tsteps,j,0};
                 
-                hsize_t dims[1];
-                dims[0] = nvelpts*3;
-                hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-                hid_t dataSet = H5Dcreate2(group_id, "x_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                herr_t status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_vel.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "xdot_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_vel.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "vel_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_vel.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dims[0] = nfpts*3;
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "x_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].x_force.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "xdot_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].xdot_force.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "vel_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].vel_force.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].force.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-                dims[0] = nfpts*9;
-                dataSpace = H5Screate_simple(1, dims, NULL);
-                dataSet = H5Dcreate2(group_id, "orient_force", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, velForceNodeData[iTurbLoc][j].orient_force.data());
-                status = H5Dclose(dataSet);
-                status = H5Sclose(dataSpace);
-                
-            }
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["x_vel"], start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurbLoc][j].x_vel.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["xdot_vel"], start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurbLoc][j].xdot_vel.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["vel_vel"], start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurbLoc][j].vel_vel.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["x_force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].x_force.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["xdot_force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].xdot_force.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["vel_force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].vel_force.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].force.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["orient_force"], start_dim.data(), forcePtsOrientDataDims.data(), velForceNodeData[iTurbLoc][j].orient_force.data());
+
         }
+
     } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
 
-        int numBlades = get_numBladesLoc(iTurbLoc);
         int nBRfsiPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
         int nTotBRfsiPtsBlade = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
+        const std::vector<size_t> twrDataDims{1, 1, static_cast<size_t>(6*nBRfsiPtsTwr)};
+        const std::vector<size_t> bldDataDims{1, 1, static_cast<size_t>(6*nTotBRfsiPtsBlade)};
+        const std::vector<size_t> ptDataDims{1, 1, 6};
         
+        for (size_t j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
+                
+            const std::vector<size_t> start_dim{n_tsteps, j, 0};
+            
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["twr_def"], start_dim.data(), twrDataDims.data(), brFSIData[iTurbLoc][j].twr_def.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["twr_vel"], start_dim.data(), twrDataDims.data(), brFSIData[iTurbLoc][j].twr_vel.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["twr_ld"], start_dim.data(), twrDataDims.data(), brFSIData[iTurbLoc][j].twr_ld.data());
+
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["bld_def"], start_dim.data(), bldDataDims.data(), brFSIData[iTurbLoc][j].bld_def.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["bld_vel"], start_dim.data(), bldDataDims.data(), brFSIData[iTurbLoc][j].bld_vel.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["bld_ld"], start_dim.data(), bldDataDims.data(), brFSIData[iTurbLoc][j].bld_ld.data());
+            
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["hub_def"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].hub_def.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["hub_vel"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].hub_vel.data());
+
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["nac_def"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].nac_def.data());
+            ierr = nc_get_vara_double(ncid, ncRstVarIDs_["nac_vel"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].nac_vel.data());
+
+        }
+        
+    }
+
+    nc_close(ncid);
+
+}
+
+void fast::OpenFAST::cross(double * a, double * b, double * aCrossb) {
+
+    aCrossb[0] = a[1]*b[2] - a[2]*b[1];
+    aCrossb[1] = a[2]*b[0] - a[0]*b[2];
+    aCrossb[2] = a[0]*b[1] - a[1]*b[0];
+
+}
+
+
+//! Apply a DCM rotation 'dcm' to a vector 'r' into 'rRot'. To optionally transpose the rotation, set 'tranpose=-1.0'.
+void fast::OpenFAST::applyDCMrotation(double * dcm, double * r, double *rRot, double transpose) {
+
+    if (transpose > 0) {
+        for(size_t i=0; i < 3; i++) {
+            rRot[i] = 0.0;
+            for(size_t j=0; j < 3; j++)
+                rRot[i] += dcm[i*3+j] * r[j];
+        }
+    } else {
+        for(size_t i=0; i < 3; i++) {
+            rRot[i] = 0.0;
+            for(size_t j=0; j < 3; j++)
+                rRot[i] += dcm[j*3+i] * r[j];
+        }
+    }
+}
+
+//! Apply a Wiener-Milenkovic rotation 'wm' to a vector 'r' into 'rRot'. To optionally transpose the rotation, set 'tranpose=-1.0'.
+void fast::OpenFAST::applyWMrotation(double * wm, double * r, double *rRot, double transpose) {
+
+    double wm0 = 2.0-0.125*dot(wm, wm);
+    double nu = 2.0/(4.0-wm0);
+    double cosPhiO2 = 0.5*wm0*nu;
+    std::vector<double> wmCrossR(3,0.0);
+    cross(wm, r, wmCrossR.data());
+    std::vector<double> wmCrosswmCrossR(3,0.0);
+    cross(wm, wmCrossR.data(), wmCrosswmCrossR.data());
+
+    for(size_t i=0; i < 3; i++)
+        rRot[i] = r[i] + transpose * nu * cosPhiO2 * wmCrossR[i] + 0.5 * nu * nu * wmCrosswmCrossR[i];
+
+}
+
+
+void fast::OpenFAST::writeOutputFile(int iTurbLoc, int n_t_global) {
+
+    int ncid;
+    //Open the file in append mode
+    std::stringstream outfile_ss;
+    outfile_ss << "turb_" ;
+    outfile_ss << std::setfill('0') << std::setw(2) << iTurbLoc;
+    outfile_ss << "_output.nc";
+    std::string defloads_filename = outfile_ss.str();
+    int ierr = nc_open(defloads_filename.c_str(), NC_WRITE, &ncid);
+    check_nc_error(ierr, "nc_open");
+
+    size_t count1=1;
+    size_t n_tsteps = n_t_global/outputFreq_ - 1;
+    double curTime = n_t_global * dtFAST;
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["time"], &n_tsteps, &count1, &curTime);
+    
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+
+        // Nothing to do here yet
+        int nBlades = get_numBladesLoc(iTurbLoc);
+        int nBldPts = get_numForcePtsBladeLoc(iTurbLoc);
+        int nTwrPts = get_numForcePtsTwrLoc(iTurbLoc);
+        std::vector<double> tmpArray;
+
+        tmpArray.resize(nTwrPts);
         {
-            hsize_t dims[1];
-            dims[0] = 1;
-            hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-            hid_t attr = H5Acreate2(restartFile, "numBlades", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-            herr_t status = H5Awrite(attr, H5T_NATIVE_INT, &numBlades);
-            status = H5Aclose(attr);
-            status = H5Sclose(dataSpace);
-            
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            attr = H5Acreate2(restartFile, "nBRfsiPtsTwr", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-            status = H5Awrite(attr, H5T_NATIVE_INT, &nBRfsiPtsTwr);
-            status = H5Aclose(attr);
-            status = H5Sclose(dataSpace);
-            
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            attr = H5Acreate2(restartFile, "nTotBRfsiPtsBlade", H5T_NATIVE_INT, dataSpace, H5P_DEFAULT, H5P_DEFAULT) ;
-            status = H5Awrite(attr, H5T_NATIVE_INT, &nTotBRfsiPtsBlade);
-            status = H5Aclose(attr);
-            status = H5Sclose(dataSpace);
-            
+            int node_twr_start = (1 + nBlades * nBldPts)*3;
+            std::vector<size_t> count_dim{1,1,static_cast<size_t>(nTwrPts)};
+            for (size_t iDim=0; iDim < 3; iDim++) {
+                for (auto i=0; i < nTwrPts; i++) 
+                    tmpArray[i] = velForceNodeData[iTurbLoc][3].x_force[node_twr_start+i*3+iDim] - velForceNodeData[iTurbLoc][3].xref_force[node_twr_start+i*3+iDim] ;
+                std::vector<size_t> start_dim{n_tsteps,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_disp"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+            for (size_t iDim=0; iDim < 3; iDim++) {
+                for (auto i=0; i < nTwrPts; i++) 
+                    tmpArray[i] = velForceNodeData[iTurbLoc][3].xdot_force[node_twr_start+i*3+iDim] ;
+                std::vector<size_t> start_dim{n_tsteps,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_vel"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                for (auto i=0; i < nTwrPts; i++) 
+                    tmpArray[i] = velForceNodeData[iTurbLoc][3].force[node_twr_start+i*3+iDim] ;
+                std::vector<size_t> start_dim{n_tsteps,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_ld"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
         }
 
-        /* Create groups */
-        hid_t group_id = H5Gcreate2(restartFile, "/data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        herr_t status = H5Gclose(group_id);
-        for (int j=0; j < 4; j++) { // Loop over states - NM2, STATE_NM1, N, NP1
-            std::string gName = "/data/" + std::to_string(j);
-            group_id = H5Gcreate2(restartFile, gName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        tmpArray.resize(nBldPts);
+        {            
+            std::vector<size_t> count_dim{1,1,1,static_cast<size_t>(nBldPts)};
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    int node_bld_start = (1 + iBlade * nBldPts);
+                    for (auto i=0; i < nBldPts; i++)
+                        tmpArray[i] = velForceNodeData[iTurbLoc][3].x_force[(node_bld_start+i)*3+iDim] - velForceNodeData[iTurbLoc][3].xref_force[(node_bld_start+i)*3+iDim] ;
+                    std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_disp"], start_dim.data(), count_dim.data(), tmpArray.data());
+                }
+            }
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                int iStart = 0 ;
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    int node_bld_start = (1 + iBlade * nBldPts);
+                    for (auto i=0; i < nBldPts; i++)
+                        tmpArray[i] = velForceNodeData[iTurbLoc][3].xdot_force[(node_bld_start+i)*3+iDim] ;
+                    std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_vel"], start_dim.data(), count_dim.data(), tmpArray.data());
+                }
+            }
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                int iStart = 0 ;
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    int node_bld_start = (1 + iBlade * nBldPts);
+                    for (auto i=0; i < nBldPts; i++)
+                        tmpArray[i] = velForceNodeData[iTurbLoc][3].force[(node_bld_start+i)*3+iDim] ;
+                    std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ld"], start_dim.data(), count_dim.data(), tmpArray.data());
+                }
+            }
 
-            hsize_t dims[1];
-
-            //Tower
-            dims[0] = nBRfsiPtsTwr*6;
-            hid_t dataSpace = H5Screate_simple(1, dims, NULL);
-            hid_t dataSet = H5Dcreate2(group_id, "twr_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            herr_t status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ref_pos.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "twr_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_def.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "twr_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_vel.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "twr_ld", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].twr_ld.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-            
-            //Blade
-            dims[0] = nTotBRfsiPtsBlade*6;
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "bld_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ref_pos.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "bld_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_def.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "bld_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_vel.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "bld_ld", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].bld_ld.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-            
-            dims[0] = 6;
-            
-            //Hub
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "hub_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_ref_pos.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "hub_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_def.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "hub_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].hub_vel.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            //Nacelle
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "nac_ref_pos", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_ref_pos.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "nac_def", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_def.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
-
-            dataSpace = H5Screate_simple(1, dims, NULL);
-            dataSet = H5Dcreate2(group_id, "nac_vel", H5T_NATIVE_DOUBLE, dataSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            status = H5Dwrite(dataSet, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, brFSIData[iTurbLoc][j].nac_vel.data());
-            status = H5Dclose(dataSet);
-            status = H5Sclose(dataSpace);
+            std::vector<double> ld_loc(3*nBlades*nBldPts,0.0);
+            for (auto iBlade=0; iBlade < nBlades; iBlade++) {
+                int node_bld_start = (1 + iBlade * nBldPts);
+                for (auto i=0; i < nBldPts; i++) {
+                    applyDCMrotation(&velForceNodeData[iTurbLoc][3].orient_force[(node_bld_start + i)*9], &velForceNodeData[iTurbLoc][3].force[(node_bld_start+i)*3], &ld_loc[(node_bld_start-1)*3]);
+                }
+            }
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                int iStart = 0 ;
+                for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                    int node_bld_start = (iBlade * nBldPts);
+                    for (auto i=0; i < nBldPts; i++)
+                        tmpArray[i] = ld_loc[(node_bld_start+i)*3+iDim];
+                    std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ld_loc"], start_dim.data(), count_dim.data(), tmpArray.data());
+                }
+            }
         }
-       
+
+        tmpArray.resize(3);
+        for (auto i=0; i < 3; i++)
+            tmpArray[i] = velForceNodeData[iTurbLoc][3].x_force[i] - velForceNodeData[iTurbLoc][3].xref_force[i];
+        std::vector<size_t> start_dim{n_tsteps, 0};
+        std::vector<size_t> count_dim{1,3};
+        ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_disp"], start_dim.data(), count_dim.data(), tmpArray.data());
+        ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_vel"], start_dim.data(), count_dim.data(), &velForceNodeData[iTurbLoc][3].xdot_force[0]);
+        ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_ld"], start_dim.data(), count_dim.data(), &velForceNodeData[iTurbLoc][3].force[0]);
+
+    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
+
+        int nBlades = turbineData[iTurbLoc].numBlades;
+        int nTwrPts = turbineData[iTurbLoc].nBRfsiPtsTwr;
+        int nTotBldPts = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
+        int nBldPts = nTotBldPts/nBlades;
+
+        std::vector<double> tmpArray;
+        tmpArray.resize(nTwrPts);
+        {
+            std::vector<size_t> count_dim{1,1,static_cast<size_t>(nTwrPts)};
+            for (size_t iDim=0;iDim < 3; iDim++) {
+                for (auto i=0; i < nTwrPts; i++) 
+                    tmpArray[i] = brFSIData[iTurbLoc][3].twr_def[i*6+iDim] ;
+                std::vector<size_t> start_dim{n_tsteps,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_disp"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            for (auto i=0; i < nTwrPts; i++) 
+                tmpArray[i] = brFSIData[iTurbLoc][3].twr_def[i*6+3+iDim] ;
+            std::vector<size_t> start_dim{n_tsteps,iDim,0};
+            ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_orient"], start_dim.data(), count_dim.data(), tmpArray.data());
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            for (auto i=0; i < nTwrPts; i++) 
+                tmpArray[i] = brFSIData[iTurbLoc][3].twr_vel[i*6+iDim] ;
+            std::vector<size_t> start_dim{n_tsteps,iDim,0};
+            ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_vel"], start_dim.data(), count_dim.data(), tmpArray.data());
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            for (auto i=0; i < nTwrPts; i++) 
+                tmpArray[i] = brFSIData[iTurbLoc][3].twr_def[i*6+3+iDim] ;
+            std::vector<size_t> start_dim{n_tsteps,iDim,0};
+            ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_rotvel"], start_dim.data(), count_dim.data(), tmpArray.data());
+        }
+
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            for (auto i=0; i < nTwrPts; i++) 
+                tmpArray[i] = brFSIData[iTurbLoc][3].twr_ld[i*6+iDim] ;
+            std::vector<size_t> start_dim{n_tsteps,iDim,0};
+            ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_ld"], start_dim.data(), count_dim.data(), tmpArray.data());
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            for (auto i=0; i < nTwrPts; i++)
+                tmpArray[i] = brFSIData[iTurbLoc][3].twr_ld[i*6+3+iDim];
+            std::vector<size_t> start_dim{n_tsteps,iDim,0};
+            ierr = nc_put_vara_double(ncid, ncOutVarIDs_["twr_moment"], start_dim.data(), count_dim.data(), tmpArray.data());
+        }
+    }
+
+    tmpArray.resize(nBldPts);
+    {
+        std::vector<size_t> count_dim{1,1,1,static_cast<size_t>(nBldPts)};
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_def[(iStart*6)+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_disp"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_def[(iStart*6)+3+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_orient"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_vel[(iStart*6)+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_vel"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+        for (size_t iDim=0; iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_vel[(iStart*6)+3+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_rotvel"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_ld[(iStart*6)+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ld"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+
+        std::vector<double> ld_loc(3*nTotBldPts,0.0);
+        for (auto i=0; i < nTotBldPts; i++) {
+            applyWMrotation(&brFSIData[iTurbLoc][3].bld_def[i*6+3], &brFSIData[iTurbLoc][3].bld_ld[i*6], &ld_loc[i*3]);
+        }
+        for (size_t iDim=0;iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = ld_loc[iStart*3+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_ld_loc"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+
+        for (size_t iDim=0; iDim < 3; iDim++) {
+            int iStart = 0 ;
+            for (size_t iBlade=0; iBlade < nBlades; iBlade++) {
+                for (auto i=0; i < nBldPts; i++) {
+                    tmpArray[i] = brFSIData[iTurbLoc][3].bld_ld[(iStart*6)+3+iDim];
+                    iStart++;
+                }
+                std::vector<size_t> start_dim{n_tsteps,iBlade,iDim,0};
+                ierr = nc_put_vara_double(ncid, ncOutVarIDs_["bld_moment"], start_dim.data(), count_dim.data(), tmpArray.data());
+            }
+        }
+        
     }
     
+    std::vector<size_t> start_dim{n_tsteps, 0};
+    std::vector<size_t> count_dim{1,3};
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_disp"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].hub_def[0]);
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_orient"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].hub_def[3]);
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_vel"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].hub_vel[0]);    
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["hub_rotvel"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].hub_vel[3]);
 
-    herr_t status = H5Fclose(restartFile);
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["nac_disp"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].nac_def[0]);
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["nac_orient"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].nac_def[3]);
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["nac_vel"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].nac_vel[0]);    
+    ierr = nc_put_vara_double(ncid, ncOutVarIDs_["nac_rotvel"], start_dim.data(), count_dim.data(), &brFSIData[iTurbLoc][3].nac_vel[3]);
+        
+    }
+
+    nc_close(ncid);
+
+    
+    
+}
+
+void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
+
+    /* // NetCDF stuff to write states to restart file or read back from it */
+
+    int ncid;
+    //Find the file and open it in append mode
+    std::stringstream rstfile_ss;
+    rstfile_ss << "turb_" ;
+    rstfile_ss << std::setfill('0') << std::setw(2) << turbineMapProcToGlob[iTurbLoc];
+    rstfile_ss << "_rst.nc";
+    std::string rst_filename = rstfile_ss.str();
+    int ierr = nc_open(rst_filename.c_str(), NC_WRITE, &ncid);
+    check_nc_error(ierr, "nc_open");
+
+    size_t count1=1;
+    size_t n_tsteps = n_t_global/restartFreq_ - 1;
+    double curTime = n_t_global * dtFAST;
+    ierr = nc_put_vara_double(ncid, ncRstVarIDs_["time"], &n_tsteps, &count1, &curTime);
+    
+    if (turbineData[iTurbLoc].sType == EXTINFLOW) {
+
+        int nvelpts = get_numVelPtsLoc(iTurbLoc);
+        int nfpts = get_numForcePtsLoc(iTurbLoc);
+
+        const std::vector<size_t> velPtsDataDims{1, 1, static_cast<size_t>(3*nvelpts)};
+        const std::vector<size_t> forcePtsDataDims{1, 1, static_cast<size_t>(3*nfpts)};
+        const std::vector<size_t> forcePtsOrientDataDims{1, 1, static_cast<size_t>(9*nfpts)};
+        
+        for (size_t j=0; j < 4; j++) { // Loop over states - NM2, STATE_NM1, N, NP1
+
+            const std::vector<size_t> start_dim{n_tsteps,j,0};
+                
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["x_vel"], start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurbLoc][j].x_vel.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["xdot_vel"], start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurbLoc][j].xdot_vel.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["vel_vel"], start_dim.data(), velPtsDataDims.data(), velForceNodeData[iTurbLoc][j].vel_vel.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["x_force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].x_force.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["xdot_force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].xdot_force.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["vel_force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].vel_force.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["force"], start_dim.data(), forcePtsDataDims.data(), velForceNodeData[iTurbLoc][j].force.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["orient_force"], start_dim.data(), forcePtsOrientDataDims.data(), velForceNodeData[iTurbLoc][j].orient_force.data());
+        }
+
+    } else if (turbineData[iTurbLoc].sType == EXTLOADS) {
+        
+        int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
+        int nTotBldPts = turbineData[iTurbLoc].nTotBRfsiPtsBlade;
+        const std::vector<size_t> twrDataDims{1, 1, static_cast<size_t>(6*nPtsTwr)};
+        const std::vector<size_t> bldDataDims{1, 1, static_cast<size_t>(6*nTotBldPts)};
+        const std::vector<size_t> ptDataDims{1, 1, 6};
+        
+        for (size_t j=0; j < 4; j++) { // Loop over states - STATE_NM2, STATE_NM1, STATE_N, STATE_NP1
+
+            const std::vector<size_t> start_dim{n_tsteps, j, 0};
+            
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["twr_def"], start_dim.data(), twrDataDims.data(), brFSIData[iTurbLoc][j].twr_def.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["twr_vel"], start_dim.data(), twrDataDims.data(), brFSIData[iTurbLoc][j].twr_vel.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["twr_ld"], start_dim.data(), twrDataDims.data(), brFSIData[iTurbLoc][j].twr_ld.data());
+
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["bld_def"], start_dim.data(), bldDataDims.data(), brFSIData[iTurbLoc][j].bld_def.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["bld_vel"], start_dim.data(), bldDataDims.data(), brFSIData[iTurbLoc][j].bld_vel.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["bld_ld"], start_dim.data(), bldDataDims.data(), brFSIData[iTurbLoc][j].bld_ld.data());
+            
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["hub_def"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].hub_def.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["hub_vel"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].hub_vel.data());
+
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["nac_def"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].nac_def.data());
+            ierr = nc_put_vara_double(ncid, ncRstVarIDs_["nac_vel"], start_dim.data(), ptDataDims.data(), brFSIData[iTurbLoc][j].nac_vel.data());
+        }
+               
+    }
+
+    nc_close(ncid);
+    
 
 }
 
@@ -2230,6 +2720,15 @@ void fast::OpenFAST::get_ref_positions_from_openfast(int iTurb) {
             }
         }
 
+    } else if(turbineData[iTurb].sType == EXTINFLOW) {
+
+        if (turbineData[iTurb].inflowType == 2) {
+            int nfpts = get_numForcePtsLoc(iTurb);
+            for (auto i=0; i<nfpts; i++) {
+                for (auto j=0; j < 3; j++)
+                    velForceNodeData[iTurb][fast::STATE_NP1].xref_force[i*3+j] = velForceNodeData[iTurb][fast::STATE_NP1].x_force[i*3+j] ;
+            }
+        }
     }
 
 }
@@ -2326,7 +2825,6 @@ void fast::OpenFAST::getTowerDisplacements(std::vector<double> & twrDefl, std::v
 void fast::OpenFAST::getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob) {
 
     int iTurbLoc = get_localTurbNo(iTurbGlob);
-    std::cout << "Hey.. I'm in getHubRefPosition" << std::endl ;
     for (int j=0; j < 6; j++)
         hubRefPos[j] = brFSIData[iTurbLoc][fast::STATE_NP1].hub_ref_pos[j];
 

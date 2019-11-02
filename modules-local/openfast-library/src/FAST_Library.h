@@ -16,13 +16,13 @@ EXTERNAL_ROUTINE void FAST_AllocateTurbines(int * iTurb, int *ErrStat, char *Err
 
 EXTERNAL_ROUTINE void FAST_AL_CFD_Restart(int * iTurb, const char *CheckpointRootName, int *AbortErrLev, double * dt, int * InflowType, int * NumBl, int * NumBlElem, int * NumTwrElem, int * n_t_global,
    ExtInfw_InputType_t* ExtInfw_Input, ExtInfw_OutputType_t* ExtInfw_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
-EXTERNAL_ROUTINE void FAST_AL_CFD_Init(int * iTurb, double *TMax, const char *InputFileName, int * TurbineID, int * NumSC2Ctrl, int * NumCtrl2SC, int * NumActForcePtsBlade, int * NumActForcePtsTower, float * TurbinePosition,
+EXTERNAL_ROUTINE void FAST_AL_CFD_Init(int * iTurb, double *TMax, const char *InputFileName, int * TurbineID, char *OutFileRoot, int * NumSC2Ctrl, int * NumCtrl2SC, int * NumActForcePtsBlade, int * NumActForcePtsTower, float * TurbinePosition,
                                        int *AbortErrLev, double * dtDriver, double * dt, int * InflowType, int * NumBl, int * NumBlElem, int * NumTwrElem,
                                        ExtInfw_InputType_t* ExtInfw_Input, ExtInfw_OutputType_t* ExtInfw_Output,
                                        SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output,
    int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_BR_CFD_Restart(int * iTurb, const char *CheckpointRootName, int *AbortErrLev, double * dt, int * NumBl, int * n_t_global, ExtLdDX_InputType_t* ExtLdDX_Input, ExtLdDX_OutputType_t* ExtLdDX_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
-EXTERNAL_ROUTINE void FAST_BR_CFD_Init(int * iTurb, double *TMax, const char *InputFileName, int * TurbineID, float * TurbinePosition, int *AbortErrLev, double * dtDriver, double * az_blend_mean, double * az_blend_delta, double * vel_mean, double * wind_dir, double * z_ref, double * shear_exp, double * dt, int * NumBl, ExtLdDX_InputType_t* ExtLdDX_Input, ExtLdDX_OutputType_t* ExtLdDX_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
+EXTERNAL_ROUTINE void FAST_BR_CFD_Init(int * iTurb, double *TMax, const char *InputFileName, int * TurbineID, char *OutFileRoot, float * TurbinePosition, int *AbortErrLev, double * dtDriver, double * az_blend_mean, double * az_blend_delta, double * vel_mean, double * wind_dir, double * z_ref, double * shear_exp, double * dt, int * NumBl, ExtLdDX_InputType_t* ExtLdDX_Input, ExtLdDX_OutputType_t* ExtLdDX_Output, SC_InputType_t* SC_Input, SC_OutputType_t* SC_Output, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_CFD_Solution0(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_CFD_InitIOarrays_SS(int * iTurb, int *ErrStat, char *ErrMsg);
 EXTERNAL_ROUTINE void FAST_CFD_Prework(int * iTurb, int *ErrStat, char *ErrMsg);

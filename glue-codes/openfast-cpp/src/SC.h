@@ -2,7 +2,6 @@
 #include "SuperController_Types.h"
 #include <sstream>
 #include <iostream>
-#include "hdf5.h"
 #include <string>
 
 class SuperController {

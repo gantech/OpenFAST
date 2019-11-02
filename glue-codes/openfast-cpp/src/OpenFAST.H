@@ -6,8 +6,10 @@
 #include <cstring>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 #include <set>
 #include <map>
+#include "netcdf.h"
 #include "dlfcn.h"
 //TODO: The skip MPICXX is put in place primarily to get around errors in OpenFOAM. This will cause problems if the driver program uses C++ API for MPI.
 #ifndef OMPI_SKIP_MPICXX
@@ -37,6 +39,8 @@ struct turbineDataType {
     std::string FASTInputFileName;
     //! The restart/checkpoint file name.
     std::string FASTRestartFileName;
+    //! Output file root
+    std::string outFileRoot;
     //! The time step for OpenFAST for this turbine
     double dt;
     //! The position of the base of the turbine in global coordinates
@@ -67,8 +71,6 @@ struct turbineDataType {
     float nacelle_area;
     //! Air density around this turbine
     float air_density;
-    //! HDF-5 tag of file containing velocity (aerodyn) node data file for this turbine
-    hid_t velNodeDataFile;
     //! Number of nodes at which the forces and deflections are computed for blade-resolved FSI on each blade
     std::vector<int> nBRfsiPtsBlade;
     //! Total number of BR fsi points on all blades combined
@@ -117,6 +119,8 @@ struct turbVelForceNodeDataType {
     std::vector<double> xdot_vel;
     //! Sampled velocity at velocity nodes
     std::vector<double> vel_vel;
+    //! Reference location at force nodes
+    std::vector<double> xref_force;
     //! Blade location at force nodes
     std::vector<double> x_force;
     //! Blade velocity at force nodes
@@ -199,27 +203,30 @@ class fastInputs {
   //! MPI Communicator
   MPI_Comm comm;
   //! Total number of turbines in the simulation
-  int nTurbinesGlob;
+  int nTurbinesGlob{0};
   //! The simulation will not run if dryRun is set to true. However, the simulation will read the input files, allocate turbines to processors and prepare to run the individual turbine instances. This flag is useful to test the setup of the simulation before running it.
-  bool dryRun;
+  bool dryRun{false};
   //! Enable debug outputs if set to true
-  bool debug;
+  bool debug{false};
   //! Start time of the simulation
-  double tStart;
+  double tStart{-1.0};
   //! Start type of the simulation: 'INIT', 'TRUERESTART' or 'RESTARTDRIVERINITFAST'.
   simStartType simStart;
   //!Restart files will be written every so many time stneps
-  int nEveryCheckPoint;
+  int restartFreq_{-1};
+  //!Output files will be written every so many time stneps
+  int outputFreq_{100};
   //! Max time of the simulation
-  double tMax;
+  double tMax{0.0};
   //! Time step for driver.
-  double dtDriver;
+  double dtDriver{0.0};
   //! Supercontroller status: True/False.
-  bool scStatus;
+  bool scStatus{false};
   //! Name of the dynamic library containing the supercontroller implementation
-  std::string scLibFile;
+  std::string scLibFile{""};
   //! Number of inputs and output to the supercontroller from/to each turbine
-  int numScInputs, numScOutputs;
+  int numScInputs{0};
+  int numScOutputs{0};
 
   //! Vector of turbine specific input data
   std::vector<turbineDataType>  globTurbineData;
@@ -252,6 +259,8 @@ class OpenFAST {
   int nTurbinesGlob;
   //! Start type of the simulation: 'INIT', 'TRUERESTART' or 'RESTARTDRIVERINITFAST'.
   simStartType simStart;
+  //! Offset between driver and openfast simulation time  - t_driver - t_openfast
+  double driverOpenfastOffset_; 
   //! Is the time now zero: True/False
   bool timeZero;
   //! Time step for FAST. All turbines on a given processor should have the same time step.
@@ -272,8 +281,26 @@ class OpenFAST {
   int nlinIter_;
   //! The starting time step number
   int ntStart;
-  //! Restart files will be written every so many time stneps
-  int nEveryCheckPoint;
+  //! Restart files will be written every so many time steps
+  int restartFreq_;
+  //! Output files will be written every so many time steps
+  int outputFreq_{100};
+
+  //! Map of `{variableName : netCDF_ID}` obtained from the NetCDF C interface
+  std::vector<std::string> ncOutVarNames_;
+  std::unordered_map<std::string, int> ncOutVarIDs_;
+
+  //! Map of `{dimName : netCDF_ID}` obtained from the NetCDF C interface    
+  std::vector<std::string> ncOutDimNames_;
+  std::unordered_map<std::string, int> ncOutDimIDs_;
+    
+  //! Map of `{variableName : netCDF_ID}` obtained from the NetCDF C interface
+  std::vector<std::string> ncRstVarNames_;
+  std::unordered_map<std::string, int> ncRstVarIDs_;
+
+  //! Map of `{dimName : netCDF_ID}` obtained from the NetCDF C interface    
+  std::vector<std::string> ncRstDimNames_;
+  std::unordered_map<std::string, int> ncRstDimIDs_;
 
   std::vector<turbineDataType> globTurbineData; //All turbines
   std::vector<turbineDataType> turbineData;   // Only for turbines on the proc
@@ -431,6 +458,8 @@ class OpenFAST {
   void getForce(std::vector<double> & force, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
   //! Get the chord at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   double getChord(int iNode, int iTurbGlob);
+  //! Get the radial location/height along blade/tower at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
+  double getRHloc(int iNode, int iTurbGlob);
 
   //! Get processor containing turbine 'iTurbGlob'
   int getProc(int iTurbGlob) {return turbineMapGlobToProc[iTurbGlob];}
@@ -518,6 +547,16 @@ private:
   //! Set state from another state
   void set_state_from_state(fast::timeStep fromState, fast::timeStep toState);
 
+  //! Preprare the C+++ output file for a new OpenFAST simulation
+  void prepareOutputFile(int iTurbLoc);
+  //! Write output data to file
+  void writeOutputFile(int iTurbLoc, int n_t_global);
+    
+  //! Find the OpenFAST restart file from the C++ restart file for a restarted simulation 
+  void findRestartFile(int iTurbLoc);
+  //! Preprare the C+++ restart file for a new OpenFAST simulation
+  void prepareRestartFile(int iTurbLoc);
+    
   //! Read velocity and force node data at time step 'n', 'n-1' and 'n-2' to allow for a clean restart
   void readRestartFile(int iTurbLoc, int n_t_global);
   //! Write velocity and force node data at time step 'n', 'n-1' and 'n-2' to allow for a clean restart
@@ -534,22 +573,16 @@ private:
                           float & fy,
                           float & fz);
 
-  //! Open 'velData.h5' file to in preparation to write velocity data for all turbines
-  hid_t openVelocityDataFile(int iTurb, bool createFile);
-  //! RRead the number of nonlinear iterations for a given driver time step
-  int read_nlin_iters(int iTurb, int iTimestep, hid_t velDataFile);
-  //! Read velocity data at the Aerodyn nodes for all turbines from 'velData.h5'
-  void readVelocityData(int iTurb, int iTimestep, int iNlinIter, hid_t velDatafile);
-  //! Write velocity data at the Aerodyn nodes for all turbines to 'velData.h5'
-  void writeVelocityData(hid_t h5file, int iTurb, int iTimestep, int nlinIter);
-  //! Close 'velData.h5' file
-  herr_t closeVelocityDataFile(int nt_global, hid_t velDataFile);
-  //! Backup the velocity data file
-  void backupVelocityDataFile(int iTurb, int curTimeStep, hid_t & velDataFile);
-  //! Get or create HDF5 group in a hdf5 file or a group id
-  hid_t get_or_create_hdf_group(hid_t pid, const char* gname);
-  //! Get or create integer attribute in a hdf5 file or a group id
-  hid_t get_or_create_int_attr(hid_t pid, const char* gname);
+  //! Create velocity data file in preparation to write velocity data    
+  void prepareVelocityDataFile(int iTurb);    
+  //! Open velocity data file to read velocity data
+  int openVelocityDataFile(int iTurb);
+  //! Read the number of nonlinear iterations for a given driver time step
+  int read_nlin_iters(int iTurb, int iTimestep, int ncid);
+  //! Read velocity data at the Aerodyn nodes from velocity data file
+  void readVelocityData(int iTurb, int iTimestep, int iNlinIter, int ncid);
+  //! Write velocity data at the Aerodyn nodes from velocity data file
+  void writeVelocityData(int iTurb, int iTimestep, int nlinIter);
 
   //! Check whether the error status is ok. If not quit gracefully by printing the error message
   void checkError(const int ErrStat, const char * ErrMsg);
@@ -593,6 +626,13 @@ private:
   //! Apply the velocity data at the Aerodyn nodes in 'velData' to turbine number 'iTurb' at time step 'iPrestart' through the data structure 'cDriver_Output_to_FAST'
   void applyVelocityData(int iPrestart, int iTurb, ExtInfw_OutputType_t o_t_FAST, std::vector<double> & velData) ;
 
+  //! Compute cross product a x b and store it into aCrossB
+  void cross(double * a, double * b, double * aCrossB);
+  //! Apply a Wiener-Milenkovic rotation 'wm' to a vector 'r' into 'rRot'. To optionally transpose the rotation, set 'tranpose=-1.0'.
+  void applyWMrotation(double * wm, double * r, double *rRot, double transpose = 1.0);
+  //! Apply a Direction Cosine Matrix rotation 'dcm' to a vector 'r' into 'rRot'. To optionally transpose the rotation, set 'tranpose=-1.0'.
+  void applyDCMrotation(double * dcm, double * r, double *rRot, double transpose = 1.0);
+    
 };
 
 }

@@ -137,7 +137,7 @@ SUBROUTINE Init_ExtInfw( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_A
    CALL AllocPAry( ExtInfw%u%momenty, ExtInfw%p%NnodesForce, 'momenty', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( ExtInfw%u%momentz, ExtInfw%p%NnodesForce, 'momentz', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( ExtInfw%u%forceNodesChord, ExtInfw%p%NnodesForce, 'forceNodesChord', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-
+   CALL AllocPAry( ExtInfw%u%forceRHloc, ExtInfw%p%NnodesForce, 'forceRHloc', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    
    IF (InitInp%NumCtrl2SC > 0) THEN
       CALL AllocPAry( ExtInfw%u%SuperController, InitInp%NumCtrl2SC, 'u%SuperController', ErrStat2, ErrMsg2 )
@@ -167,6 +167,7 @@ SUBROUTINE Init_ExtInfw( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_A
    ExtInfw%u%c_obj%momenty_Len = ExtInfw%p%NnodesForce; ExtInfw%u%c_obj%momenty = C_LOC( ExtInfw%u%momenty(1) )
    ExtInfw%u%c_obj%momentz_Len = ExtInfw%p%NnodesForce; ExtInfw%u%c_obj%momentz = C_LOC( ExtInfw%u%momentz(1) )
    ExtInfw%u%c_obj%forceNodesChord_Len = ExtInfw%p%NnodesForce; ExtInfw%u%c_obj%forceNodesChord = C_LOC( ExtInfw%u%forceNodesChord(1) )
+   ExtInfw%u%c_obj%forceRHloc_Len = ExtInfw%p%NnodesForce; ExtInfw%u%c_obj%forceRHloc = C_LOC( ExtInfw%u%forceRHloc(1))
    if (InitInp%NumCtrl2SC > 0) then
       ExtInfw%u%c_obj%SuperController_Len = InitInp%NumCtrl2SC
       ExtInfw%u%c_obj%SuperController     = C_LOC( ExtInfw%u%SuperController(1) )
@@ -179,8 +180,9 @@ SUBROUTINE Init_ExtInfw( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_A
    call ExtInfw_InterpolateForceNodesChord(initOut_AD, ExtInfw%p, ExtInfw%u, ErrStat2, ErrMsg2) !Interpolates the chord distribution to the force nodes
    call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
    call ExtInfw_CreateActForceMotionsMesh( p_FAST, y_ED, y_BD, InitInp, ExtInfw, ErrStat2, ErrMsg2)
-   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
-
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+   call ExtInfw_CreateRHloc(ExtInfw,ErrStat2,ErrMsg2)
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       !............................................................................................
    ! Allocate arrays and set up mappings to point loads (for AD15 only):
       ! (bjj: note that normally I'd put these things in the FAST_ModuleMapType, but I don't want
@@ -839,6 +841,37 @@ SUBROUTINE ExtInfw_CreateActForceMotionsMesh( p_FAST, y_ED, y_BD, InitIn_ExtInfw
       DEALLOCATE(tmpActForceMotionsMesh)
 
 END SUBROUTINE ExtInfw_CreateActForceMotionsMesh
+!----------------------------------------------------------------------------------------------------------------------------------
+SUBROUTINE ExtInfw_CreateRHloc(ExtInfw, ErrStat, ErrMsg)
+
+  TYPE(ExternalInflow_Data),             INTENT(INOUT)  :: ExtInfw        ! data for the ExternalInflow integration module
+  INTEGER(IntKi),                  INTENT(  OUT)  :: ErrStat     ! Error status of the operation
+  CHARACTER(*),                    INTENT(  OUT)  :: ErrMsg      ! Error message if ErrStat /= ErrID_None
+
+  INTEGER(IntKi)                                  :: k,j
+  REAL(ReKi)                                      :: bldLength, towerFlexL
+
+
+  ExtInfw%u%forceRHloc(1) = 0.0
+
+  do k = 1, ExtInfw%p%NumBl
+     bldLength = 0.0
+     do j = 2, ExtInfw%p%NnodesForceBlade
+        bldLength = bldLength + norm2(ExtInfw%m%ActForceMotionsPoints(k)%Position(:,j) - ExtInfw%m%ActForceMotionsPoints(k)%Position(:,j-1))
+     end do
+     ExtInfw%u%forceRHloc(2+(k-1)*ExtInfw%p%NnodesForceBlade:1+k*ExtInfw%p%NnodesForceBlade) = ExtInfw%p%forceBldEtaNodes * bldLength
+  end do
+
+  do k = ExtInfw%p%NumBl+1,ExtInfw%p%NMappings
+     towerFlexL = 0.0
+     do j=2,ExtInfw%p%NnodesForceTower
+        towerFlexL = towerFlexL + norm2(ExtInfw%m%ActForceMotionsPoints(k)%Position(:,j) - ExtInfw%m%ActForceMotionsPoints(k)%Position(:,j-1))
+     end do
+     ExtInfw%u%forceRHloc(2+ExtInfw%p%NumBl*ExtInfw%p%NnodesForceBlade:1+ExtInfw%p%NumBl*ExtInfw%p%NnodesForceBlade+ExtInfw%p%NnodesForceTower) = ExtInfw%p%forceTwrEtaNodes * towerFlexL
+  end do
+  
+END SUBROUTINE ExtInfw_CreateRHloc
+
 !----------------------------------------------------------------------------------------------------------------------------------
 SUBROUTINE ExtInfw_CreateTmpActForceMotionsMesh( p_FAST, y_ED, y_BD, p_ExtInfw, InitIn_ExtInfw, tmpActForceMotions, ErrStat, ErrMsg )
 !..................................................................................................................................
