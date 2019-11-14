@@ -1503,6 +1503,7 @@ MODULE AeroDyn_IO
    
    integer(intKi), parameter        :: AFAeroMod_steady      = 1  ! steady model
    integer(intKi), parameter        :: AFAeroMod_BL_unsteady = 2  ! Beddoes-Leishman unsteady model
+   integer(intKi), parameter        :: AFAeroMod_ML          = 3  ! Machine Learning model
    
    integer(intKi), parameter        :: TwrPotent_none     = 0  ! none
    integer(intKi), parameter        :: TwrPotent_baseline = 1  ! baseline potential flow
@@ -2151,8 +2152,7 @@ SUBROUTINE ReadPrimaryFile( InputFile, InputFileData, ADBlFile, OutFileRoot, UnE
       ! tau1_const - time constant for DBEMT (s) [used only when WakeMod=2 and DBEMT_Mod=1]:
    CALL ReadVar( UnIn, InputFile, InputFileData%tau1_const, "tau1_const", "time constant for DBEMT (s) [used only when WakeMod=2 and DBEMT_Mod=1]", ErrStat2, ErrMsg2, UnEc)
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-      
-   
+
    !----------- BEDDOES-LEISHMAN UNSTEADY AIRFOIL AERODYNAMICS OPTIONS -------------
    CALL ReadCom( UnIn, InputFile, 'Section Header: Beddoes-Leishman Unsteady Airfoil Aerodynamics Options', ErrStat2, ErrMsg2, UnEc )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
@@ -2167,7 +2167,14 @@ SUBROUTINE ReadPrimaryFile( InputFile, InputFileData, ADBlFile, OutFileRoot, UnE
    
       ! UACutout - Angle-of-attach beyond which unsteady aerodynamics are disabled (deg)
 !   CALL ReadVar( UnIn, InputFile, InputFileData%UACutout, "FLookup", "Angle-of-attach beyond which unsteady aerodynamics are disabled (deg)", ErrStat2, ErrMsg2, UnEc)
-!      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+!      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   CALL ReadCom( UnIn, InputFile, 'Section Header: Machine Learning Unsteady Airfoil Aerodynamics Options', ErrStat2, ErrMsg2, UnEc )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   CALL ReadVar( UnIn, InputFile, InputFileData%UA_ML_LibName, "UA_ML_LibName", "Name/location of external libary used for Unsteady Aerodynamics (-)", ErrStat2, ErrMsg2, UnEc )
+      CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
       
       ! Return on error at end of section
    IF ( ErrStat >= AbortErrLev ) THEN
@@ -2558,6 +2565,8 @@ SUBROUTINE AD_PrintSum( InputFileData, p, u, y, ErrStat, ErrMsg )
    
    ! AFAeroMod
    select case (InputFileData%AFAeroMod)
+      case (AFAeroMod_ML)
+         Msg = 'Machine Learning model'
       case (AFAeroMod_BL_unsteady)
          Msg = 'Beddoes-Leishman unsteady model'
       case (AFAeroMod_steady)
@@ -2709,6 +2718,11 @@ SUBROUTINE AD_PrintSum( InputFileData, p, u, y, ErrStat, ErrMsg )
       end if   
       WRITE (UnSu,Ec_LgFrmt) InputFileData%FLookup, 'FLookup', "Use a lookup for f'? "//TRIM(Msg)      
       
+   end if
+
+   if (InputFileData%AFAeroMod==AFAeroMod_ML) then
+      WRITE (UnSu,'(A)') '======  Machine Learning Unsteady Airfoil Aerodynamics Options  ====================================='
+      WRITE (UnSu,Ec_LgFrmt) 'External library name: ',  InputFileData%UA_ML_LibName
    end if
    
    WRITE (UnSu,'(A)') '======  Outputs  ===================================================================================='

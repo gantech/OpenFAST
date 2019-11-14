@@ -213,10 +213,21 @@ subroutine Compute_UA_AirfoilCoefs( AOA, U, Re, AFInfo, &
    u_UA%alpha = AOA   
    u_UA%Re    = Re
    u_UA%U     = U
-   
+
+   if (p_UA%AFAeroMod == 1) then
+      
    call UA_CalcOutput(u_UA, p_UA, xd_UA, OtherState_UA, AFInfo, y_UA, m_UA, errStat2, errMsg2 )
       call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName ) 
       if (errStat >= AbortErrLev) return
+      
+   else
+
+   call UA_CalcOutput_ML(u_UA, p_UA, xd_UA, OtherState_UA, AFInfo, y_UA, m_UA, errStat2, errMsg2)
+      call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName ) 
+      if (errStat >= AbortErrLev) return
+
+   end if
+      
 
    Cl         = y_UA%Cl
    Cd         = y_UA%Cd

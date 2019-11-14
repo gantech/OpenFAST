@@ -1510,9 +1510,10 @@ SUBROUTINE ValidateInputData( InitInp, InputFileData, NumBl, ErrStat, ErrMsg )
          'or '//trim(num2lstr(WakeMod_DBEMT))//' (DBEMT).', ErrStat, ErrMsg, RoutineName ) 
    end if
    
-   if (InputFileData%AFAeroMod /= AFAeroMod_Steady .and. InputFileData%AFAeroMod /= AFAeroMod_BL_unsteady) then
+   if (InputFileData%AFAeroMod /= AFAeroMod_Steady .and. InputFileData%AFAeroMod /= AFAeroMod_BL_unsteady .and. InputFileData%AFAeroMod /= AFAeroMod_ML) then
       call SetErrStat ( ErrID_Fatal, 'AFAeroMod must be '//trim(num2lstr(AFAeroMod_Steady))//' (steady) or '//&
-                        trim(num2lstr(AFAeroMod_BL_unsteady))//' (Beddoes-Leishman unsteady).', ErrStat, ErrMsg, RoutineName ) 
+           trim(num2lstr(AFAeroMod_BL_unsteady))//' (Beddoes-Leishman unsteady) or '//&
+           trim(num2lstr(AFAeroMod_ML))//' (Machine Learning).', ErrStat, ErrMsg, RoutineName ) 
    end if
    if (InputFileData%TwrPotent /= TwrPotent_none .and. InputFileData%TwrPotent /= TwrPotent_baseline .and. InputFileData%TwrPotent /= TwrPotent_Bak) then
       call SetErrStat ( ErrID_Fatal, 'TwrPotent must be 0 (none), 1 (baseline potential flow), or 2 (potential flow with Bak correction).', ErrStat, ErrMsg, RoutineName ) 
@@ -1883,7 +1884,9 @@ SUBROUTINE Init_BEMTmodule( InputFileData, u_AD, u, p, x, xd, z, OtherState, y, 
      end do
   end do
    
-   InitInp%UA_Flag    = InputFileData%AFAeroMod == AFAeroMod_BL_unsteady
+   InitInp%UA_Flag    = (InputFileData%AFAeroMod == AFAeroMod_BL_unsteady) .or. (InputFileData%AFAeroMod == AFAeroMod_ML)
+   InitInp%AFAeroMod  = InputFileData%AFAeroMod
+   InitInp%UA_ML_LibName = InputFileData%UA_ML_LibName
    InitInp%UAMod      = InputFileData%UAMod
    InitInp%Flookup    = InputFileData%Flookup
    InitInp%a_s        = InputFileData%SpdSound

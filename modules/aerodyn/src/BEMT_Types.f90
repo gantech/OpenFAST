@@ -60,6 +60,8 @@ IMPLICIT NONE
     REAL(ReKi) , DIMENSION(:,:), ALLOCATABLE  :: rLocal      !< Radial distance to blade node from the center of rotation, measured in the rotor plane, needed for DBEMT [m]
     INTEGER(IntKi)  :: UAMod      !< Model for the dynamic stall equations [1 = Leishman/Beddoes, 2 = Gonzalez, 3 = Minnema] [-]
     LOGICAL  :: UA_Flag      !< logical flag indicating whether to use UnsteadyAero [-]
+    INTEGER(IntKi)  :: AFAeroMod      !< type of unsteady aerodynamics model [1 = LB, 2 = ML] [-]
+    CHARACTER(1024)  :: UA_ML_LibName      !< Name of the ML Library file for UA including the full path [-]
     LOGICAL  :: Flookup      !< Use table lookup for f' and f''  [-]
     REAL(ReKi)  :: a_s      !< speed of sound [m/s]
     INTEGER(IntKi)  :: DBEMT_Mod      !< DBEMT model.  1 = constant tau1, 2 = time dependent tau1 [-]
@@ -137,6 +139,8 @@ IMPLICIT NONE
     TYPE(UA_ParameterType)  :: UA      !< parameters for UnsteadyAero [-]
     TYPE(DBEMT_ParameterType)  :: DBEMT      !< parameters for DBEMT [-]
     LOGICAL  :: UA_Flag      !< logical flag indicating whether to use UnsteadyAero [-]
+    INTEGER(IntKi)  :: AFAeroMod      !< type of unsteady aerodynamics model [1 = LB, 2 = ML] [-]
+    CHARACTER(1024)  :: UA_ML_LibName      !< name of the ML Library file for UA including the full path [-]
     INTEGER(IntKi)  :: DBEMT_Mod      !< DBEMT Model.  0 = constant tau1, 1 = time dependent tau1 [-]
     REAL(ReKi)  :: yawCorrFactor      !< constant used in Pitt/Peters skewed wake model (default is 15*pi/32) [-]
   END TYPE BEMT_ParameterType
@@ -283,6 +287,8 @@ IF (ALLOCATED(SrcInitInputData%rLocal)) THEN
 ENDIF
     DstInitInputData%UAMod = SrcInitInputData%UAMod
     DstInitInputData%UA_Flag = SrcInitInputData%UA_Flag
+    DstInitInputData%AFAeroMod = SrcInitInputData%AFAeroMod
+    DstInitInputData%UA_ML_LibName = SrcInitInputData%UA_ML_LibName
     DstInitInputData%Flookup = SrcInitInputData%Flookup
     DstInitInputData%a_s = SrcInitInputData%a_s
     DstInitInputData%DBEMT_Mod = SrcInitInputData%DBEMT_Mod
@@ -400,6 +406,8 @@ ENDIF
   END IF
       Int_BufSz  = Int_BufSz  + 1  ! UAMod
       Int_BufSz  = Int_BufSz  + 1  ! UA_Flag
+      Int_BufSz  = Int_BufSz  + 1  ! AFAeroMod
+      Int_BufSz  = Int_BufSz  + 1*LEN(InData%UA_ML_LibName)  ! UA_ML_LibName
       Int_BufSz  = Int_BufSz  + 1  ! Flookup
       Re_BufSz   = Re_BufSz   + 1  ! a_s
       Int_BufSz  = Int_BufSz  + 1  ! DBEMT_Mod
@@ -554,6 +562,12 @@ ENDIF
       Int_Xferred   = Int_Xferred   + 1
       IntKiBuf ( Int_Xferred:Int_Xferred+1-1 ) = TRANSFER( InData%UA_Flag , IntKiBuf(1), 1)
       Int_Xferred   = Int_Xferred   + 1
+      IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%AFAeroMod
+      Int_Xferred   = Int_Xferred   + 1
+        DO I = 1, LEN(InData%UA_ML_LibName)
+          IntKiBuf(Int_Xferred) = ICHAR(InData%UA_ML_LibName(I:I), IntKi)
+          Int_Xferred = Int_Xferred   + 1
+        END DO ! I
       IntKiBuf ( Int_Xferred:Int_Xferred+1-1 ) = TRANSFER( InData%Flookup , IntKiBuf(1), 1)
       Int_Xferred   = Int_Xferred   + 1
       ReKiBuf ( Re_Xferred:Re_Xferred+(1)-1 ) = InData%a_s
@@ -782,6 +796,12 @@ ENDIF
       Int_Xferred   = Int_Xferred + 1
       OutData%UA_Flag = TRANSFER( IntKiBuf( Int_Xferred ), mask0 )
       Int_Xferred   = Int_Xferred + 1
+      OutData%AFAeroMod = IntKiBuf( Int_Xferred ) 
+      Int_Xferred   = Int_Xferred + 1
+      DO I = 1, LEN(OutData%UA_ML_LibName)
+        OutData%UA_ML_LibName(I:I) = CHAR(IntKiBuf(Int_Xferred))
+        Int_Xferred = Int_Xferred   + 1
+      END DO ! I
       OutData%Flookup = TRANSFER( IntKiBuf( Int_Xferred ), mask0 )
       Int_Xferred   = Int_Xferred + 1
       OutData%a_s = ReKiBuf( Re_Xferred )
@@ -2913,6 +2933,8 @@ ENDIF
          CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg,RoutineName)
          IF (ErrStat>=AbortErrLev) RETURN
     DstParamData%UA_Flag = SrcParamData%UA_Flag
+    DstParamData%AFAeroMod = SrcParamData%AFAeroMod
+    DstParamData%UA_ML_LibName = SrcParamData%UA_ML_LibName
     DstParamData%DBEMT_Mod = SrcParamData%DBEMT_Mod
     DstParamData%yawCorrFactor = SrcParamData%yawCorrFactor
  END SUBROUTINE BEMT_CopyParam
@@ -3056,6 +3078,8 @@ ENDIF
          DEALLOCATE(Int_Buf)
       END IF
       Int_BufSz  = Int_BufSz  + 1  ! UA_Flag
+      Int_BufSz  = Int_BufSz  + 1  ! AFAeroMod
+      Int_BufSz  = Int_BufSz  + 1*LEN(InData%UA_ML_LibName)  ! UA_ML_LibName
       Int_BufSz  = Int_BufSz  + 1  ! DBEMT_Mod
       Re_BufSz   = Re_BufSz   + 1  ! yawCorrFactor
   IF ( Re_BufSz  .GT. 0 ) THEN 
@@ -3250,6 +3274,12 @@ ENDIF
       ENDIF
       IntKiBuf ( Int_Xferred:Int_Xferred+1-1 ) = TRANSFER( InData%UA_Flag , IntKiBuf(1), 1)
       Int_Xferred   = Int_Xferred   + 1
+      IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%AFAeroMod
+      Int_Xferred   = Int_Xferred   + 1
+        DO I = 1, LEN(InData%UA_ML_LibName)
+          IntKiBuf(Int_Xferred) = ICHAR(InData%UA_ML_LibName(I:I), IntKi)
+          Int_Xferred = Int_Xferred   + 1
+        END DO ! I
       IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%DBEMT_Mod
       Int_Xferred   = Int_Xferred   + 1
       ReKiBuf ( Re_Xferred:Re_Xferred+(1)-1 ) = InData%yawCorrFactor
@@ -3529,6 +3559,12 @@ ENDIF
       IF(ALLOCATED(Int_Buf)) DEALLOCATE(Int_Buf)
       OutData%UA_Flag = TRANSFER( IntKiBuf( Int_Xferred ), mask0 )
       Int_Xferred   = Int_Xferred + 1
+      OutData%AFAeroMod = IntKiBuf( Int_Xferred ) 
+      Int_Xferred   = Int_Xferred + 1
+      DO I = 1, LEN(OutData%UA_ML_LibName)
+        OutData%UA_ML_LibName(I:I) = CHAR(IntKiBuf(Int_Xferred))
+        Int_Xferred = Int_Xferred   + 1
+      END DO ! I
       OutData%DBEMT_Mod = IntKiBuf( Int_Xferred ) 
       Int_Xferred   = Int_Xferred + 1
       OutData%yawCorrFactor = ReKiBuf( Re_Xferred )

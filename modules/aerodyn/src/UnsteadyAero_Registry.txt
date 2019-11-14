@@ -25,7 +25,9 @@ typedef   ^                            ^                             CHARACTER(1
 typedef   ^                            ^                             ReKi                     c                               {:}{:}        -         -        "Chord length at node" m
 typedef   ^                            ^                             INTEGER                  numBlades                       -             -         -        "Number nodes of all blades"    -
 typedef   ^                            ^                             INTEGER                  nNodesPerBlade                  -             -         -        "Number nodes per blades"    -
-typedef   ^                            ^                             INTEGER                  UAMod                           -             -         -        "Model for the dynamic stall equations [1 = Leishman/Beddoes, 2 = Gonzalez, 3 = Minnema]"    -
+typedef   ^                            ^                             INTEGER                  UAMod                           -             -         -        "Model for the dynamic stall equations [1 = Leishman/Beddoes, 2 = Gonzalez, 3 = Minnema, 4 = ML]"    -
+typedef   ^                            ^                             INTEGER                  AFAeroMod                       -          -         -        "type of unsteady aerodynamics model [1 = LB, 2 = ML]"       -
+typedef   ^                            ^                             CHARACTER(1024)	      UA_ML_LibName	              -          -	   -	    "Name of the ML Library file for UA including the full path"  -
 typedef   ^                            ^                             ReKi                     a_s                             -             -         -        "speed of sound"        m/s
 typedef   ^                            ^                             LOGICAL                  Flookup                         -             -         -        "Use table lookup for f' and f'' "    -
 #typedef   ^                            ^                             INTEGER                  AFIndx                          {:}{:}        -         -        "Airfoil index for given blade node" -
@@ -146,10 +148,15 @@ typedef   ^                            OtherStateType                ReKi       
 # ..... Misc/Optimization variables.................................................................................................
 # Define any data that are used only for efficiency purposes (these variables are not associated with time):
 #   e.g. indices for searching in an array, large arrays that are local variables in any routine called multiple times, etc.
+# these COULD be OtherStates or just scalar local variables (they are calcaulted/used in UpdateDiscState and written to WriteOutput in CalcOutput)
 typedef   ^                            MiscVarType                   Logical                  FirstWarn_M                     -             -         -        "flag so Mach number warning doesn't get repeated forever" -
 typedef   ^                            MiscVarType                   INTEGER                  iBladeNode                      -             -         -        "index for the blade node being operated on (within the current blade)" -
 typedef   ^                            MiscVarType                   INTEGER                  iBlade                          -             -         -        "index for the blade being operated on" -
-# these COULD be OtherStates or just scalar local variables (they are calcaulted/used in UpdateDiscState and written to WriteOutput in CalcOutput)
+typedef   ^                            MiscVarType                   ReKi                     alpha_minus1                    {:}{:}        -         -        "angle of attack, previous time step"      rad
+typedef   ^                            MiscVarType                   ReKi                     alpha_minus2                    {:}{:}        -         -        "angle of attack, 2 time steps ago"      rad
+typedef   ^                            MiscVarType                   ReKi                     alpha_minus3                    {:}{:}        -         -        "angle of attack, 3 time steps ago"      rad
+typedef   ^                            MiscVarType                   ReKi                     alpha_dot                       {:}{:}        -         -        "time derivative of angle of attack"      rad/s
+typedef   ^                            MiscVarType                   ReKi                     alpha_d_dot                     {:}{:}        -         -        "double time derivative of angle of attack"    rad/s^2
 typedef   ^                            MiscVarType                   LOGICAL                  TESF                            {:}{:}        -         -        "logical flag indicating if trailing edge separation is possible"   -
 typedef   ^                            MiscVarType                   LOGICAL                  LESF                            {:}{:}        -         -        "logical flag indicating if leading edge separation is possible"   -
 typedef   ^                            MiscVarType                   LOGICAL                  VRTX                            {:}{:}        -         -        "logical flag indicating if a vortex is being processed"   -
@@ -166,6 +173,8 @@ typedef   ^                            ^                             ReKi       
 typedef   ^                            ^                             INTEGER                  numBlades                       -             -         -        "Number nodes of all blades"    -
 typedef   ^                            ^                             INTEGER                  nNodesPerBlade                  -             -         -        "Number nodes per blades"    -
 typedef   ^                            ^                             INTEGER                  UAMod                           -             -         -        "Model for the dynamic stall equations [1 = Leishman/Beddoes, 2 = Gonzalez, 3 = Minnema]"    -
+typedef   ^                            ^                             INTEGER                  AFAeroMod                       -          -         -        "type of unsteady aerodynamics model [1 = LB, 2 = ML]"       -
+typedef   ^                            ^                             CHARACTER(1024)	      UA_ML_LibName	              -          -	   -	    "Name of the ML Library file for UA including the full path"  -
 typedef   ^                            ^                             LOGICAL                  Flookup                         -             -         -        "Use table lookup for f' and f'' "    -
 typedef   ^                            ^                             ReKi                     a_s                             -             -         -        "speed of sound"        m/s
 typedef   ^                            ^                             INTEGER                  NumOuts                         -             -         -        "Number of outputs"        -

@@ -128,7 +128,9 @@ subroutine BEMT_Set_UA_InitData( InitInp, interval, Init_UA_Data, errStat, errMs
    Init_UA_Data%nNodesPerBlade  = InitInp%numBladeNodes
                                   
    Init_UA_Data%NumOuts         = 0
-   Init_UA_Data%UAMod           = InitInp%UAMod  
+   Init_UA_Data%UAMod           = InitInp%UAMod
+   Init_UA_Data%AFAeroMod       = InitInp%AFAeroMod
+   Init_UA_Data%UA_ML_LibName   = InitInp%UA_ML_LibName
    Init_UA_Data%Flookup         = InitInp%Flookup
    Init_UA_Data%a_s             = InitInp%a_s ! m/s  
    
@@ -159,7 +161,9 @@ subroutine BEMT_SetParameters( InitInp, p, errStat, errMsg )
 
    p%numBladeNodes  = InitInp%numBladeNodes 
    p%numBlades      = InitInp%numBlades    
-   p%UA_Flag        = InitInp%UA_Flag   
+   p%UA_Flag        = InitInp%UA_Flag
+   p%AFAeroMod      = InitInp%AFAeroMod
+   p%UA_ML_LibName  = InitInp%UA_ML_LibName
    p%DBEMT_Mod      = InitInp%DBEMT_Mod
 
    
@@ -805,7 +809,8 @@ subroutine BEMT_CheckInitUA(p, OtherState, AFInfo, ErrStat, ErrMsg)
 
    ErrStat = ErrID_None
    ErrMsg = ""
-   
+
+   if (p%AFAeroMod == 1) then
    
       do j = 1,p%numBlades
          do i = 1,p%numBladeNodes ! Loop over blades and nodes
@@ -830,6 +835,8 @@ subroutine BEMT_CheckInitUA(p, OtherState, AFInfo, ErrStat, ErrMsg)
             
          end do
       end do
+
+   end if
       
 end subroutine BEMT_CheckInitUA
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -1098,6 +1105,9 @@ subroutine BEMT_UpdateStates( t, n, u1, u2,  p, x, xd, z, OtherState, AFInfo, m,
 
             ! check if UA inputs are valid, or if we should turn it off:
             call Mpi2pi(u_UA%alpha) ! put alpha in [-pi,pi] before checking its value
+
+            if(p%AFAeroMod == 1) then
+               
             if ( abs(u_UA%alpha) >= AFInfo(p%AFIndx(i,j))%Table(1)%UA_BL%UACutout ) then  ! Is the angle of attack larger than the UA cut-out for this airfoil?
                OtherState%UA_Flag(i,j) = .FALSE.
                call WrScr( 'Warning: Turning off Unsteady Aerodynamics due to high angle-of-attack. BladeNode = '//trim(num2lstr(i))//', Blade = '//trim(num2lstr(j))//&
@@ -1112,6 +1122,8 @@ subroutine BEMT_UpdateStates( t, n, u1, u2,  p, x, xd, z, OtherState, AFInfo, m,
                      call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName//trim(NodeText(i,j)))
                      if (errStat >= AbortErrLev) return
                   end if
+            end if
+               
             end if
          end if      ! if (OtherState%UA_Flag(i,j)) then
                

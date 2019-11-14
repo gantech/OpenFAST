@@ -49,6 +49,8 @@ typedef   ^                            ^                             ReKi       
 typedef   ^                            ^                             ReKi                     rLocal                          {:}{:}     -         -        "Radial distance to blade node from the center of rotation, measured in the rotor plane, needed for DBEMT" m
 typedef   ^                            ^                             INTEGER                  UAMod                           -          -         -        "Model for the dynamic stall equations [1 = Leishman/Beddoes, 2 = Gonzalez, 3 = Minnema]"    -
 typedef   ^                            ^                             LOGICAL                  UA_Flag                         -          -         -        "logical flag indicating whether to use UnsteadyAero"        -
+typedef   ^                            ^                             INTEGER                  AFAeroMod                       -          -         -        "type of unsteady aerodynamics model [1 = LB, 2 = ML]"       -
+typedef   ^                            ^                             CHARACTER(1024)	      UA_ML_LibName	              -          -	   -	    "Name of the ML Library file for UA including the full path"  -
 typedef   ^                            ^                             LOGICAL                  Flookup                         -          -         -        "Use table lookup for f' and f'' "    -
 typedef   ^                            ^                             ReKi                     a_s                             -          -         -        "speed of sound"        m/s
 typedef   ^                            ^                             IntKi                    DBEMT_Mod                       -          -         -        "DBEMT model.  1 = constant tau1, 2 = time dependent tau1" -
@@ -127,6 +129,8 @@ typedef   ^                            ^                             ReKi       
 typedef   ^                            ^                             UA_ParameterType         UA                              -             -         -        "parameters for UnsteadyAero"        -
 typedef   ^                            ^                             DBEMT_ParameterType      DBEMT                           -             -         -        "parameters for DBEMT"        -
 typedef   ^                            ^                             LOGICAL                  UA_Flag                         -             -         -        "logical flag indicating whether to use UnsteadyAero"        -
+typedef   ^                            ^                             INTEGER                  AFAeroMod                       -             -         -        "type of unsteady aerodynamics model [1 = LB, 2 = ML]"       -
+typedef   ^                            ^                             CHARACTER(1024)	      UA_ML_LibName	              -             -	      -	       "name of the ML Library file for UA including the full path"  -
 typedef   ^                            ^                             IntKi                    DBEMT_Mod                       -             -         -        "DBEMT Model.  0 = constant tau1, 1 = time dependent tau1" -
 typedef   ^                            ^                             ReKi                     yawCorrFactor                   -             -         -        "constant used in Pitt/Peters skewed wake model (default is 15*pi/32)" -
 #

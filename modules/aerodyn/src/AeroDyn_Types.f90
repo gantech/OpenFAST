@@ -111,6 +111,7 @@ IMPLICIT NONE
     LOGICAL  :: TIDrag      !< Include the drag term in the tangential-induction calculation? [unused when WakeMod=0 or TanInd=FALSE] [flag]
     REAL(ReKi)  :: IndToler      !< Convergence tolerance for BEM induction factors [unused when WakeMod=0] [-]
     REAL(ReKi)  :: MaxIter      !< Maximum number of iteration steps [unused when WakeMod=0] [-]
+    CHARACTER(1024)  :: UA_ML_LibName      !< Name of the ML Library file for UA including the full path [-]
     INTEGER(IntKi)  :: UAMod      !< Unsteady Aero Model Switch (switch) {1=Baseline model (Original), 2=Gonzalez's variant (changes in Cn,Cc,Cm), 3=Minemma/Pierce variant (changes in Cc and Cm)} [used only when AFAeroMod=2] [-]
     LOGICAL  :: FLookup      !< Flag to indicate whether a lookup for f' will be calculated (TRUE) or whether best-fit exponential equations will be used (FALSE); if FALSE S1-S4 must be provided in airfoil input files [used only when AFAeroMod=2] [flag]
     REAL(ReKi)  :: InCol_Alfa      !< The column in the airfoil tables that contains the angle of attack [-]
@@ -2504,6 +2505,7 @@ ENDIF
     DstInputFileData%TIDrag = SrcInputFileData%TIDrag
     DstInputFileData%IndToler = SrcInputFileData%IndToler
     DstInputFileData%MaxIter = SrcInputFileData%MaxIter
+    DstInputFileData%UA_ML_LibName = SrcInputFileData%UA_ML_LibName
     DstInputFileData%UAMod = SrcInputFileData%UAMod
     DstInputFileData%FLookup = SrcInputFileData%FLookup
     DstInputFileData%InCol_Alfa = SrcInputFileData%InCol_Alfa
@@ -2690,6 +2692,7 @@ ENDIF
       Int_BufSz  = Int_BufSz  + 1  ! TIDrag
       Re_BufSz   = Re_BufSz   + 1  ! IndToler
       Re_BufSz   = Re_BufSz   + 1  ! MaxIter
+      Int_BufSz  = Int_BufSz  + 1*LEN(InData%UA_ML_LibName)  ! UA_ML_LibName
       Int_BufSz  = Int_BufSz  + 1  ! UAMod
       Int_BufSz  = Int_BufSz  + 1  ! FLookup
       Re_BufSz   = Re_BufSz   + 1  ! InCol_Alfa
@@ -2830,6 +2833,10 @@ ENDIF
       Re_Xferred   = Re_Xferred   + 1
       ReKiBuf ( Re_Xferred:Re_Xferred+(1)-1 ) = InData%MaxIter
       Re_Xferred   = Re_Xferred   + 1
+        DO I = 1, LEN(InData%UA_ML_LibName)
+          IntKiBuf(Int_Xferred) = ICHAR(InData%UA_ML_LibName(I:I), IntKi)
+          Int_Xferred = Int_Xferred   + 1
+        END DO ! I
       IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%UAMod
       Int_Xferred   = Int_Xferred   + 1
       IntKiBuf ( Int_Xferred:Int_Xferred+1-1 ) = TRANSFER( InData%FLookup , IntKiBuf(1), 1)
@@ -3061,6 +3068,10 @@ ENDIF
       Re_Xferred   = Re_Xferred + 1
       OutData%MaxIter = ReKiBuf( Re_Xferred )
       Re_Xferred   = Re_Xferred + 1
+      DO I = 1, LEN(OutData%UA_ML_LibName)
+        OutData%UA_ML_LibName(I:I) = CHAR(IntKiBuf(Int_Xferred))
+        Int_Xferred = Int_Xferred   + 1
+      END DO ! I
       OutData%UAMod = IntKiBuf( Int_Xferred ) 
       Int_Xferred   = Int_Xferred + 1
       OutData%FLookup = TRANSFER( IntKiBuf( Int_Xferred ), mask0 )

@@ -35,12 +35,14 @@ private
    public :: UA_UpdateDiscOtherState
    public :: UA_UpdateStates
    public :: UA_CalcOutput
+   public :: UA_CalcOutput_ML   
 
    public :: UA_ReInit
 
    integer(intki), parameter :: UA_Baseline      = 1   ! UAMod = 1 [Baseline model (Original)]
    integer(intki), parameter :: UA_Gonzalez      = 2   ! UAMod = 2 [Gonzalez's variant (changes in Cn,Cc,Cm)]
    integer(intki), parameter :: UA_MinemmaPierce = 3   ! UAMod = 3 [Minemma/Pierce variant (changes in Cc and Cm)]
+   integer(intki), parameter :: UA_ML            = 4   ! UAMod = 4 [Machine Learning model (changes in Cn,Cc and Cm)]
    
    real(ReKi),     parameter :: Gonzales_factor = 0.2_ReKi   ! this factor, proposed by Gonzales (for "all" models) is used to modify Cc to account for negative values seen at f=0 (see Eqn 1.40)
    
@@ -677,7 +679,9 @@ subroutine UA_SetParameters( dt, InitInp, p, ErrStat, ErrMsg )
    p%c          = InitInp%c         ! this can't be 0
    p%numBlades  = InitInp%numBlades
    p%nNodesPerBlade  = InitInp%nNodesPerBlade
-   p%UAMod      = InitInp%UAMod    
+   p%UAMod      = InitInp%UAMod
+   p%AFAeroMod  = InitInp%AFAeroMod
+   p%UA_ML_LibName = InitInp%UA_ML_LibName
    p%a_s        = InitInp%a_s ! this can't be 0
    p%Flookup    = InitInp%Flookup
    
@@ -706,6 +710,7 @@ subroutine UA_InitStates_Misc( p, xd, OtherState, m, ErrStat, ErrMsg )
    ErrMsg  = ""
    ErrStat = ErrID_None
    
+   if (p%AFAeroMod == 1) then
    
       ! allocate all the state arrays
    call AllocAry( xd%alpha_minus1,        p%nNodesPerBlade,p%numBlades, 'xd%alpha_minus1', ErrStat2, ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
@@ -751,6 +756,16 @@ subroutine UA_InitStates_Misc( p, xd, OtherState, m, ErrStat, ErrMsg )
 #endif  
    
    if (ErrStat >= AbortErrLev) return
+
+   else
+
+      call AllocAry( m%alpha_minus1,        p%nNodesPerBlade,p%numBlades, 'm%alpha_minus1', ErrStat2, ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+      call AllocAry( m%alpha_minus2,        p%nNodesPerBlade,p%numBlades, 'm%alpha_minus2', ErrStat2, ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+      call AllocAry( m%alpha_minus3,        p%nNodesPerBlade,p%numBlades, 'm%alpha_minus3', ErrStat2, ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+      call AllocAry( m%alpha_dot,           p%nNodesPerBlade,p%numBlades, 'm%alpha_dot', ErrStat2, ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+      call AllocAry( m%alpha_d_dot,         p%nNodesPerBlade,p%numBlades, 'm%alpha_d_dot', ErrStat2, ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+       
+   end if
    
    
    call UA_ReInit( p, xd, OtherState, m )   ! initializes values of states and misc vars
@@ -764,6 +779,8 @@ subroutine UA_ReInit( p, xd, OtherState, m )
    type(UA_OtherStateType),      intent(inout)  :: OtherState  ! Initial other states
    type(UA_MiscVarType),         intent(inout)  :: m           ! Initial misc/optimization variables
 
+   if (p%AFAeroMod == 1) then
+      
    m%FirstWarn_M = .true.   
    
    OtherState%sigma1    = 1.0_ReKi
@@ -808,7 +825,17 @@ subroutine UA_ReInit( p, xd, OtherState, m )
    xd%tau_V                = 0.0_ReKi 
    xd%tau_V_minus1         = 0.0_ReKi 
    xd%Cn_v_minus1          = 0.0_ReKi
-   xd%C_V_minus1           = 0.0_ReKi  ! This probably should not be set to 0.0, but should be set 
+   xd%C_V_minus1           = 0.0_ReKi  ! This probably should not be set to 0.0, but should be set
+
+   else
+
+      m%alpha_minus1         = 0.0_ReKi
+      m%alpha_minus2         = 0.0_ReKi
+      m%alpha_minus3         = 0.0_ReKi
+      m%alpha_dot            = 0.0_ReKi
+      m%alpha_d_dot          = 0.0_ReKi
+
+   end if
 
 end subroutine UA_ReInit
 !==============================================================================
@@ -865,11 +892,13 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
    call UA_SetParameters( interval, InitInp, p, ErrStat2, ErrMsg2 )
       call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
       if (ErrStat >= AbortErrLev) return    
-   
+
       ! initialize the discrete states, other states, and misc variables
    call UA_InitStates_Misc( p, xd, OtherState, m, ErrStat2, ErrMsg2 )     ! initialize the continuous states
       call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
       if (ErrStat >= AbortErrLev) return    
+
+   if (p%AFAeroMod == 1) then
       
 #ifdef UA_OUTS   
 
@@ -982,6 +1011,12 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
 #else
    p%NumOuts = 0
 #endif   
+
+   else
+
+      !CALL THE Init function of the ML model through a dynamic library call
+      
+   end if
    
 end subroutine UA_Init
 !==============================================================================     
@@ -1534,6 +1569,77 @@ subroutine UA_CalcOutput( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, ErrMsg
 #endif
    
 end subroutine UA_CalcOutput
+
+!============================================================================== 
+subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, ErrMsg )   
+! Routine for computing outputs, used in loose coupling only.
+!..............................................................................
+   
+   type(UA_InputType),           intent(in   )  :: u           ! Inputs at Time
+   type(UA_ParameterType),       intent(in   )  :: p           ! Parameters
+   type(UA_DiscreteStateType),   intent(in   )  :: xd          ! Discrete states at Time
+   type(UA_OtherStateType),      intent(in   )  :: OtherState  ! Other states at Time
+   type(AFInfoType),             intent(in   )  :: AFInfo      ! The airfoil parameter data
+   type(UA_OutputType),          intent(inout)  :: y           ! Outputs computed at Time (Input only so that mesh con-
+                                                               !   nectivity information does not have to be recalculated)
+   type(UA_MiscVarType),         intent(inout)  :: misc        ! Misc/optimization variables
+   integer(IntKi),               intent(  out)  :: ErrStat     ! Error status of the operation
+   character(*),                 intent(  out)  :: ErrMsg      ! Error message if ErrStat /= ErrID_None
+
+   
+   integer(IntKi)                                         :: errStat2        ! Error status of the operation (secondary error)
+   character(ErrMsgLen)                                   :: errMsg2         ! Error message if ErrStat2 /= ErrID_None
+   character(*), parameter                                :: RoutineName = 'UA_CalcOutput_ML'
+
+   real                            :: IntAFCoefs(4)                ! The interpolated airfoil coefficients.
+   real(reki)                      :: Alpha
+   integer                         :: s1
+   real(reki)                      :: Cl, Cd, Cm
+
+
+   !Calculate steady state airfoil coefs first
+   s1 = size(AFInfo%Table(1)%Coefs,2)
+   Alpha = u%alpha
+   call MPi2Pi ( Alpha ) ! change AOA into range of -pi to pi
+   IntAFCoefs(1:s1) = CubicSplineInterpM( Alpha  &
+        , AFInfo%Table(1)%Alpha &
+        , AFInfo%Table(1)%Coefs &
+        , AFInfo%Table(1)%SplineCoefs &
+        , ErrStat, ErrMsg )
+
+
+   Cl    = IntAFCoefs(1)
+   Cd    = IntAFCoefs(2)
+   Cm    = 0.0_Reki  !Set these to zero unless there is data to be read in
+
+   if ( AFInfo%ColCm > 0 ) Cm = IntAFCoefs(AFInfo%ColCm)
+
+
+   !Calculate angle of attack derivatives using backward differencing
+   misc%alpha_dot(misc%iBlade, misc%iBladeNode) = \
+       (3.0 * Alpha \
+       - 4.0 * misc%alpha_minus1(misc%iBlade, misc%iBladeNode) \
+       + misc%alpha_minus2(misc%iBlade, misc%iBladeNode) ) * 0.5 / p%dt
+   misc%alpha_d_dot(misc%iBlade, misc%iBladeNode) = \
+       (2.0 * Alpha \
+       - 5.0 * misc%alpha_minus1(misc%iBlade, misc%iBladeNode) \
+       + 4.0*misc%alpha_minus2(misc%iBlade, misc%iBladeNode) \
+       - misc%alpha_minus3(misc%iBlade, misc%iBladeNode)) / ( p%dt * p%dt )
+
+   !Call UA model some how for this blade/node combo and update Cl, Cd and Cm with deltas
+   
+   y%Cl = Cl
+   y%Cd = Cd
+   y%Cm = Cm
+
+   !Reset all the previous AoA's
+   misc%alpha_minus3(misc%iBlade, misc%iBladeNode) = misc%alpha_minus2(misc%iBlade, misc%iBladeNode)
+   misc%alpha_minus2(misc%iBlade, misc%iBladeNode) = misc%alpha_minus1(misc%iBlade, misc%iBladeNode)
+   misc%alpha_minus1(misc%iBlade, misc%iBladeNode) = Alpha
+
+   
+end subroutine UA_CalcOutput_ML
+ 
 !==============================================================================   
 !> This subroutine checks that the Mach number is valid. If M > 0.3, the theory 
 !! is invalid. If M > 1, numerical issues result in the code.
