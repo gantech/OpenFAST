@@ -30,7 +30,7 @@ typedef   ^                            ^                             INTEGER    
 typedef   ^                            ^                             CHARACTER(1024)	      UA_ML_LibName	              -          -	   -	    "Name of the ML Library file for UA including the full path"  -
 typedef   ^                            ^                             ReKi                     a_s                             -             -         -        "speed of sound"        m/s
 typedef   ^                            ^                             LOGICAL                  Flookup                         -             -         -        "Use table lookup for f' and f'' "    -
-#typedef   ^                            ^                             INTEGER                  AFIndx                          {:}{:}        -         -        "Airfoil index for given blade node" -
+typedef   ^                            ^                             INTEGER                  AFIndx                          {:}{:}        -         -        "Airfoil index for given blade node" -
 #typedef   ^                            ^                             AFI_ParameterType        AFI_Params                      -             -         -        "Airfoil Info parameter data structure" -
 #typedef   ^                            ^                             CHARACTER(20)            OutFmt                          -             -         -        "Output format for numerical results"    -
 #typedef   ^                            ^                             CHARACTER(20)            OutSFmt                         -             -         -        "Output format for header strings"    -
@@ -177,6 +177,7 @@ typedef   ^                            ^                             INTEGER    
 typedef   ^                            ^                             CHARACTER(1024)	      UA_ML_LibName	              -          -	   -	    "Name of the ML Library file for UA including the full path"  -
 typedef   ^                            ^                             LOGICAL                  Flookup                         -             -         -        "Use table lookup for f' and f'' "    -
 typedef   ^                            ^                             ReKi                     a_s                             -             -         -        "speed of sound"        m/s
+typedef   ^                            ^                             INTEGER                  AFIndx                          {:}{:}        -         -        "Airfoil index for given blade node" -
 typedef   ^                            ^                             INTEGER                  NumOuts                         -             -         -        "Number of outputs"        -
 typedef   ^                            ^                             INTEGER                  OutSwtch                        -             -         -        "Output requested channels to: [1=Unsteady.out 2=GlueCode.out  3=both files]"    -
 typedef   ^                            ^                             CHARACTER(20)            OutFmt                          -             -         -        "Output format for numerical results"    -

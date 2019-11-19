@@ -23,6 +23,10 @@ if (GENERATE_TYPES)
   generate_f90_types(src/AeroDyn_Driver_Registry.txt ${CMAKE_CURRENT_LIST_DIR}/src/AeroDyn_Driver_Types.f90 -noextrap)
 endif()
 
+find_package(UAeroML REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(torch REQUIRED)
+
 # AeroDyn lib
 set(AD_LIBS_SOURCES
   src/AeroDyn.f90
@@ -42,7 +46,7 @@ set(AD_LIBS_SOURCES
 )
 
 add_library(aerodynlib ${AD_LIBS_SOURCES})
-target_link_libraries(aerodynlib nwtclibs)
+target_link_libraries(aerodynlib nwtclibs UAeroML::uaero_ml yaml-cpp ${TORCH_LIBRARIES})
 
 # AeroDyn driver
 set(AD_DRIVER_SOURCES
@@ -52,7 +56,7 @@ set(AD_DRIVER_SOURCES
 )
 
 add_executable(aerodyn_driver ${AD_DRIVER_SOURCES})
-target_link_libraries(aerodyn_driver aerodynlib nwtclibs versioninfolib ${CMAKE_DL_LIBS})
+target_link_libraries(aerodyn_driver aerodynlib nwtclibs versioninfolib ${CMAKE_DL_LIBS} UAeroML::uaero_ml yaml-cpp ${TORCH_LIBRARIES})
 
 # UnsteadyAero driver
 set(UA_DRIVER_SOURCES
@@ -60,7 +64,7 @@ set(UA_DRIVER_SOURCES
   src/UA_Dvr_Subs.f90
 )
 add_executable(unsteadyaero_driver ${UA_DRIVER_SOURCES})
-target_link_libraries(unsteadyaero_driver aerodynlib nwtclibs versioninfolib ${CMAKE_DL_LIBS})
+target_link_libraries(unsteadyaero_driver aerodynlib nwtclibs versioninfolib ${CMAKE_DL_LIBS} UAeroML::uaero_ml yaml-cpp ${TORCH_LIBRARIES})
 
 install(TARGETS unsteadyaero_driver aerodyn_driver aerodynlib
   EXPORT "${CMAKE_PROJECT_NAME}Libraries"

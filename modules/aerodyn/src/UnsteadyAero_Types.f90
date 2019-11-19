@@ -46,6 +46,7 @@ IMPLICIT NONE
     CHARACTER(1024)  :: UA_ML_LibName      !< Name of the ML Library file for UA including the full path [-]
     REAL(ReKi)  :: a_s      !< speed of sound [m/s]
     LOGICAL  :: Flookup      !< Use table lookup for f' and f''  [-]
+    INTEGER(IntKi) , DIMENSION(:,:), ALLOCATABLE  :: AFIndx      !< Airfoil index for given blade node [-]
     INTEGER(IntKi)  :: NumOuts      !< The number of outputs for this module as requested in the input file [-]
   END TYPE UA_InitInputType
 ! =======================
@@ -182,6 +183,7 @@ IMPLICIT NONE
     CHARACTER(1024)  :: UA_ML_LibName      !< Name of the ML Library file for UA including the full path [-]
     LOGICAL  :: Flookup      !< Use table lookup for f' and f''  [-]
     REAL(ReKi)  :: a_s      !< speed of sound [m/s]
+    INTEGER(IntKi) , DIMENSION(:,:), ALLOCATABLE  :: AFIndx      !< Airfoil index for given blade node [-]
     INTEGER(IntKi)  :: NumOuts      !< Number of outputs [-]
     INTEGER(IntKi)  :: OutSwtch      !< Output requested channels to: [1=Unsteady.out 2=GlueCode.out  3=both files] [-]
     CHARACTER(20)  :: OutFmt      !< Output format for numerical results [-]
@@ -247,6 +249,20 @@ ENDIF
     DstInitInputData%UA_ML_LibName = SrcInitInputData%UA_ML_LibName
     DstInitInputData%a_s = SrcInitInputData%a_s
     DstInitInputData%Flookup = SrcInitInputData%Flookup
+IF (ALLOCATED(SrcInitInputData%AFIndx)) THEN
+  i1_l = LBOUND(SrcInitInputData%AFIndx,1)
+  i1_u = UBOUND(SrcInitInputData%AFIndx,1)
+  i2_l = LBOUND(SrcInitInputData%AFIndx,2)
+  i2_u = UBOUND(SrcInitInputData%AFIndx,2)
+  IF (.NOT. ALLOCATED(DstInitInputData%AFIndx)) THEN 
+    ALLOCATE(DstInitInputData%AFIndx(i1_l:i1_u,i2_l:i2_u),STAT=ErrStat2)
+    IF (ErrStat2 /= 0) THEN 
+      CALL SetErrStat(ErrID_Fatal, 'Error allocating DstInitInputData%AFIndx.', ErrStat, ErrMsg,RoutineName)
+      RETURN
+    END IF
+  END IF
+    DstInitInputData%AFIndx = SrcInitInputData%AFIndx
+ENDIF
     DstInitInputData%NumOuts = SrcInitInputData%NumOuts
  END SUBROUTINE UA_CopyInitInput
 
@@ -261,6 +277,9 @@ ENDIF
   ErrMsg  = ""
 IF (ALLOCATED(InitInputData%c)) THEN
   DEALLOCATE(InitInputData%c)
+ENDIF
+IF (ALLOCATED(InitInputData%AFIndx)) THEN
+  DEALLOCATE(InitInputData%AFIndx)
 ENDIF
  END SUBROUTINE UA_DestroyInitInput
 
@@ -313,6 +332,11 @@ ENDIF
       Int_BufSz  = Int_BufSz  + 1*LEN(InData%UA_ML_LibName)  ! UA_ML_LibName
       Re_BufSz   = Re_BufSz   + 1  ! a_s
       Int_BufSz  = Int_BufSz  + 1  ! Flookup
+  Int_BufSz   = Int_BufSz   + 1     ! AFIndx allocated yes/no
+  IF ( ALLOCATED(InData%AFIndx) ) THEN
+    Int_BufSz   = Int_BufSz   + 2*2  ! AFIndx upper/lower bounds for each dimension
+      Int_BufSz  = Int_BufSz  + SIZE(InData%AFIndx)  ! AFIndx
+  END IF
       Int_BufSz  = Int_BufSz  + 1  ! NumOuts
   IF ( Re_BufSz  .GT. 0 ) THEN 
      ALLOCATE( ReKiBuf(  Re_BufSz  ), STAT=ErrStat2 )
@@ -379,6 +403,22 @@ ENDIF
       Re_Xferred   = Re_Xferred   + 1
       IntKiBuf ( Int_Xferred:Int_Xferred+1-1 ) = TRANSFER( InData%Flookup , IntKiBuf(1), 1)
       Int_Xferred   = Int_Xferred   + 1
+  IF ( .NOT. ALLOCATED(InData%AFIndx) ) THEN
+    IntKiBuf( Int_Xferred ) = 0
+    Int_Xferred = Int_Xferred + 1
+  ELSE
+    IntKiBuf( Int_Xferred ) = 1
+    Int_Xferred = Int_Xferred + 1
+    IntKiBuf( Int_Xferred    ) = LBOUND(InData%AFIndx,1)
+    IntKiBuf( Int_Xferred + 1) = UBOUND(InData%AFIndx,1)
+    Int_Xferred = Int_Xferred + 2
+    IntKiBuf( Int_Xferred    ) = LBOUND(InData%AFIndx,2)
+    IntKiBuf( Int_Xferred + 1) = UBOUND(InData%AFIndx,2)
+    Int_Xferred = Int_Xferred + 2
+
+      IF (SIZE(InData%AFIndx)>0) IntKiBuf ( Int_Xferred:Int_Xferred+(SIZE(InData%AFIndx))-1 ) = PACK(InData%AFIndx,.TRUE.)
+      Int_Xferred   = Int_Xferred   + SIZE(InData%AFIndx)
+  END IF
       IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%NumOuts
       Int_Xferred   = Int_Xferred   + 1
  END SUBROUTINE UA_PackInitInput
@@ -465,6 +505,32 @@ ENDIF
       Re_Xferred   = Re_Xferred + 1
       OutData%Flookup = TRANSFER( IntKiBuf( Int_Xferred ), mask0 )
       Int_Xferred   = Int_Xferred + 1
+  IF ( IntKiBuf( Int_Xferred ) == 0 ) THEN  ! AFIndx not allocated
+    Int_Xferred = Int_Xferred + 1
+  ELSE
+    Int_Xferred = Int_Xferred + 1
+    i1_l = IntKiBuf( Int_Xferred    )
+    i1_u = IntKiBuf( Int_Xferred + 1)
+    Int_Xferred = Int_Xferred + 2
+    i2_l = IntKiBuf( Int_Xferred    )
+    i2_u = IntKiBuf( Int_Xferred + 1)
+    Int_Xferred = Int_Xferred + 2
+    IF (ALLOCATED(OutData%AFIndx)) DEALLOCATE(OutData%AFIndx)
+    ALLOCATE(OutData%AFIndx(i1_l:i1_u,i2_l:i2_u),STAT=ErrStat2)
+    IF (ErrStat2 /= 0) THEN 
+       CALL SetErrStat(ErrID_Fatal, 'Error allocating OutData%AFIndx.', ErrStat, ErrMsg,RoutineName)
+       RETURN
+    END IF
+    ALLOCATE(mask2(i1_l:i1_u,i2_l:i2_u),STAT=ErrStat2)
+    IF (ErrStat2 /= 0) THEN 
+       CALL SetErrStat(ErrID_Fatal, 'Error allocating mask2.', ErrStat, ErrMsg,RoutineName)
+       RETURN
+    END IF
+    mask2 = .TRUE. 
+      IF (SIZE(OutData%AFIndx)>0) OutData%AFIndx = UNPACK( IntKiBuf ( Int_Xferred:Int_Xferred+(SIZE(OutData%AFIndx))-1 ), mask2, 0_IntKi )
+      Int_Xferred   = Int_Xferred   + SIZE(OutData%AFIndx)
+    DEALLOCATE(mask2)
+  END IF
       OutData%NumOuts = IntKiBuf( Int_Xferred ) 
       Int_Xferred   = Int_Xferred + 1
  END SUBROUTINE UA_UnPackInitInput
@@ -4596,6 +4662,20 @@ ENDIF
     DstParamData%UA_ML_LibName = SrcParamData%UA_ML_LibName
     DstParamData%Flookup = SrcParamData%Flookup
     DstParamData%a_s = SrcParamData%a_s
+IF (ALLOCATED(SrcParamData%AFIndx)) THEN
+  i1_l = LBOUND(SrcParamData%AFIndx,1)
+  i1_u = UBOUND(SrcParamData%AFIndx,1)
+  i2_l = LBOUND(SrcParamData%AFIndx,2)
+  i2_u = UBOUND(SrcParamData%AFIndx,2)
+  IF (.NOT. ALLOCATED(DstParamData%AFIndx)) THEN 
+    ALLOCATE(DstParamData%AFIndx(i1_l:i1_u,i2_l:i2_u),STAT=ErrStat2)
+    IF (ErrStat2 /= 0) THEN 
+      CALL SetErrStat(ErrID_Fatal, 'Error allocating DstParamData%AFIndx.', ErrStat, ErrMsg,RoutineName)
+      RETURN
+    END IF
+  END IF
+    DstParamData%AFIndx = SrcParamData%AFIndx
+ENDIF
     DstParamData%NumOuts = SrcParamData%NumOuts
     DstParamData%OutSwtch = SrcParamData%OutSwtch
     DstParamData%OutFmt = SrcParamData%OutFmt
@@ -4615,6 +4695,9 @@ ENDIF
   ErrMsg  = ""
 IF (ALLOCATED(ParamData%c)) THEN
   DEALLOCATE(ParamData%c)
+ENDIF
+IF (ALLOCATED(ParamData%AFIndx)) THEN
+  DEALLOCATE(ParamData%AFIndx)
 ENDIF
  END SUBROUTINE UA_DestroyParam
 
@@ -4666,6 +4749,11 @@ ENDIF
       Int_BufSz  = Int_BufSz  + 1*LEN(InData%UA_ML_LibName)  ! UA_ML_LibName
       Int_BufSz  = Int_BufSz  + 1  ! Flookup
       Re_BufSz   = Re_BufSz   + 1  ! a_s
+  Int_BufSz   = Int_BufSz   + 1     ! AFIndx allocated yes/no
+  IF ( ALLOCATED(InData%AFIndx) ) THEN
+    Int_BufSz   = Int_BufSz   + 2*2  ! AFIndx upper/lower bounds for each dimension
+      Int_BufSz  = Int_BufSz  + SIZE(InData%AFIndx)  ! AFIndx
+  END IF
       Int_BufSz  = Int_BufSz  + 1  ! NumOuts
       Int_BufSz  = Int_BufSz  + 1  ! OutSwtch
       Int_BufSz  = Int_BufSz  + 1*LEN(InData%OutFmt)  ! OutFmt
@@ -4733,6 +4821,22 @@ ENDIF
       Int_Xferred   = Int_Xferred   + 1
       ReKiBuf ( Re_Xferred:Re_Xferred+(1)-1 ) = InData%a_s
       Re_Xferred   = Re_Xferred   + 1
+  IF ( .NOT. ALLOCATED(InData%AFIndx) ) THEN
+    IntKiBuf( Int_Xferred ) = 0
+    Int_Xferred = Int_Xferred + 1
+  ELSE
+    IntKiBuf( Int_Xferred ) = 1
+    Int_Xferred = Int_Xferred + 1
+    IntKiBuf( Int_Xferred    ) = LBOUND(InData%AFIndx,1)
+    IntKiBuf( Int_Xferred + 1) = UBOUND(InData%AFIndx,1)
+    Int_Xferred = Int_Xferred + 2
+    IntKiBuf( Int_Xferred    ) = LBOUND(InData%AFIndx,2)
+    IntKiBuf( Int_Xferred + 1) = UBOUND(InData%AFIndx,2)
+    Int_Xferred = Int_Xferred + 2
+
+      IF (SIZE(InData%AFIndx)>0) IntKiBuf ( Int_Xferred:Int_Xferred+(SIZE(InData%AFIndx))-1 ) = PACK(InData%AFIndx,.TRUE.)
+      Int_Xferred   = Int_Xferred   + SIZE(InData%AFIndx)
+  END IF
       IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%NumOuts
       Int_Xferred   = Int_Xferred   + 1
       IntKiBuf ( Int_Xferred:Int_Xferred+(1)-1 ) = InData%OutSwtch
@@ -4831,6 +4935,32 @@ ENDIF
       Int_Xferred   = Int_Xferred + 1
       OutData%a_s = ReKiBuf( Re_Xferred )
       Re_Xferred   = Re_Xferred + 1
+  IF ( IntKiBuf( Int_Xferred ) == 0 ) THEN  ! AFIndx not allocated
+    Int_Xferred = Int_Xferred + 1
+  ELSE
+    Int_Xferred = Int_Xferred + 1
+    i1_l = IntKiBuf( Int_Xferred    )
+    i1_u = IntKiBuf( Int_Xferred + 1)
+    Int_Xferred = Int_Xferred + 2
+    i2_l = IntKiBuf( Int_Xferred    )
+    i2_u = IntKiBuf( Int_Xferred + 1)
+    Int_Xferred = Int_Xferred + 2
+    IF (ALLOCATED(OutData%AFIndx)) DEALLOCATE(OutData%AFIndx)
+    ALLOCATE(OutData%AFIndx(i1_l:i1_u,i2_l:i2_u),STAT=ErrStat2)
+    IF (ErrStat2 /= 0) THEN 
+       CALL SetErrStat(ErrID_Fatal, 'Error allocating OutData%AFIndx.', ErrStat, ErrMsg,RoutineName)
+       RETURN
+    END IF
+    ALLOCATE(mask2(i1_l:i1_u,i2_l:i2_u),STAT=ErrStat2)
+    IF (ErrStat2 /= 0) THEN 
+       CALL SetErrStat(ErrID_Fatal, 'Error allocating mask2.', ErrStat, ErrMsg,RoutineName)
+       RETURN
+    END IF
+    mask2 = .TRUE. 
+      IF (SIZE(OutData%AFIndx)>0) OutData%AFIndx = UNPACK( IntKiBuf ( Int_Xferred:Int_Xferred+(SIZE(OutData%AFIndx))-1 ), mask2, 0_IntKi )
+      Int_Xferred   = Int_Xferred   + SIZE(OutData%AFIndx)
+    DEALLOCATE(mask2)
+  END IF
       OutData%NumOuts = IntKiBuf( Int_Xferred ) 
       Int_Xferred   = Int_Xferred + 1
       OutData%OutSwtch = IntKiBuf( Int_Xferred ) 

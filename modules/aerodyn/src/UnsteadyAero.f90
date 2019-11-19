@@ -18,8 +18,50 @@
 ! limitations under the License.
 !
 !**********************************************************************************************************************************
-module UnsteadyAero
 
+module UAeroML
+  use iso_c_binding
+  interface
+    integer(c_int) &
+    function  UAeroML_initialize_c(num_blades, num_nodes_per_blade, &
+    node_to_airfoil_id_map, yaml_filename) &
+    bind(C,name="UAeroML_initialize")
+      import c_int, c_char
+      integer(c_int), value, intent(in) :: num_blades
+      integer(c_int), value, intent(in) :: num_nodes_per_blade
+      integer(c_int), dimension(*), intent(in) :: node_to_airfoil_id_map
+      character(kind=c_char), dimension(*), intent(in) :: yaml_filename
+    end function UAeroML_initialize_c
+ 
+    integer(c_int) &
+    function UAeroML_finalize_c() &
+    bind(C, name="UAeroML_finalize")
+      import c_int
+    end function UAeroML_finalize_c
+
+    integer(c_int) &
+    function  UAeroML_compute_coefficients( &
+    blade_id, node_id, &
+    alpha, alpha_dot, alpha_ddot, reynolds_num, &
+    delta_cl, delta_cd, delta_cm) &
+    bind(C,name="UAeroML_initialize")
+      import c_int, c_double
+      integer(c_int), value, intent(in) :: blade_id
+      integer(c_int), value, intent(in) :: node_id
+      real(c_double), value, intent(in) :: alpha
+      real(c_double), value, intent(in) :: alpha_dot
+      real(c_double), value, intent(in) :: alpha_ddot
+      real(c_double), value, intent(in) :: reynolds_num
+      real(c_double), intent(out)   :: delta_cl
+      real(c_double), intent(out)   :: delta_cd
+      real(c_double), intent(out)   :: delta_cm
+    end function UAeroML_compute_coefficients
+   
+ end interface
+end module UAeroML
+
+module UnsteadyAero
+  
    ! This module uses equations defined in the document "The Unsteady Aerodynamics Module for FAST 8" by Rick Damiani and Greg Hayman, 28-Feb-2017
 
 use NWTC_Library   
@@ -660,6 +702,7 @@ subroutine UA_SetParameters( dt, InitInp, p, ErrStat, ErrMsg )
    character(*),                           intent(  out)  :: ErrMsg      ! error message if ErrStat /= ErrID_None
 
    integer(IntKi)            :: ErrStat2
+   character(ErrMsgLen)      :: ErrMsg2   
    character(*), parameter   :: RoutineName = 'UA_SetParameters'
    
    
@@ -675,8 +718,12 @@ subroutine UA_SetParameters( dt, InitInp, p, ErrStat, ErrMsg )
       ! Set errmessage and return
       return
    end if
+
+   call AllocAry(p%AFindx,InitInp%nNodesPerBlade,InitInp%numBlades,'AFindx',ErrStat2,ErrMsg2)
+   call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)   
    
    p%c          = InitInp%c         ! this can't be 0
+   p%AfIndx     = InitInp%AFIndx
    p%numBlades  = InitInp%numBlades
    p%nNodesPerBlade  = InitInp%nNodesPerBlade
    p%UAMod      = InitInp%UAMod
@@ -847,7 +894,8 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
 ! Called by : DRIVER
 ! Calls  to : NWTC_Init, UA_SetParameters, UA_InitStates
 !..............................................................................
-
+   use iso_c_binding
+   use UAeroML
    type(UA_InitInputType),       intent(inout)  :: InitInp     ! Input data for initialization routine, needs to be inout because there is a copy of some data in InitInp in BEMT_SetParameters()
    type(UA_InputType),           intent(in   )  :: u           ! An initial guess for the input; input mesh must be defined
    type(UA_ParameterType),       intent(  out)  :: p           ! Parameters
@@ -875,7 +923,13 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
 #ifdef UA_OUTS   
    integer(IntKi)                               :: i,j, iNode, iOffset
    character(64)                                :: chanPrefix
-#endif   
+#endif
+
+   integer(c_int) :: num_blades, num_nodes_per_blade
+   integer(c_int), allocatable :: node_to_airfoil_id_map(:)
+   integer(c_int)              :: ierr
+   integer(IntKi)              :: i,j
+   character(kind=c_char), allocatable :: yaml_filename(:)
    
       ! Initialize variables for this routine
    ErrStat = ErrID_None
@@ -1015,6 +1069,20 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
    else
 
       !CALL THE Init function of the ML model through a dynamic library call
+
+      num_blades = p%numBlades
+      num_nodes_per_blade = p%nNodesPerBlade
+      allocate(yaml_filename(1024))
+      yaml_filename = transfer(trim('UAeroML.yaml')//c_null_char, yaml_filename)
+      allocate(node_to_airfoil_id_map(num_blades * num_nodes_per_blade))
+      do i=1,num_blades
+         do j=1,num_nodes_per_blade
+            node_to_airfoil_id_map((i-1)*num_nodes_per_blade+j) = p%AFIndx(i,j)
+         end do
+      end do
+      
+      ierr = UAeroML_initialize_c(num_blades, num_nodes_per_blade, &
+           node_to_airfoil_id_map, yaml_filename)
       
    end if
    
@@ -1278,7 +1346,7 @@ end subroutine UA_UpdateStates
 subroutine UA_CalcOutput( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, ErrMsg )   
 ! Routine for computing outputs, used in both loose and tight coupling.
 !..............................................................................
-   
+   use iso_c_binding
    type(UA_InputType),           intent(in   )  :: u           ! Inputs at Time
    type(UA_ParameterType),       intent(in   )  :: p           ! Parameters
    type(UA_DiscreteStateType),   intent(in   )  :: xd          ! Discrete states at Time
@@ -1574,7 +1642,8 @@ end subroutine UA_CalcOutput
 subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, ErrMsg )   
 ! Routine for computing outputs, used in loose coupling only.
 !..............................................................................
-   
+   use iso_c_binding
+   use UAeroML  
    type(UA_InputType),           intent(in   )  :: u           ! Inputs at Time
    type(UA_ParameterType),       intent(in   )  :: p           ! Parameters
    type(UA_DiscreteStateType),   intent(in   )  :: xd          ! Discrete states at Time
@@ -1595,7 +1664,10 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    real(reki)                      :: Alpha
    integer                         :: s1
    real(reki)                      :: Cl, Cd, Cm
-
+   integer(c_int)                  :: iBlade, iNode
+   real(c_double)                  :: uaml_alpha, uaml_alpha_dot, uaml_alpha_ddot, uaml_re
+   real(c_double)                  :: uaml_delta_cl, uaml_delta_cd, uaml_delta_cm
+   integer(c_int)                  :: ierr
 
    !Calculate steady state airfoil coefs first
    s1 = size(AFInfo%Table(1)%Coefs,2)
@@ -1627,10 +1699,20 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
        - misc%alpha_minus3(misc%iBlade, misc%iBladeNode)) / ( p%dt * p%dt )
 
    !Call UA model some how for this blade/node combo and update Cl, Cd and Cm with deltas
+
+   iBlade = misc%iBlade
+   iNode = misc%iBladeNode
+   uaml_alpha = u%Alpha
+   uaml_alpha_dot = misc%alpha_dot(misc%iBlade, misc%iBladeNode)
+   uaml_alpha_ddot = misc%alpha_d_dot(misc%iBlade, misc%iBladeNode)
+   uaml_re = u%Re
+
+   ierr = UAeroML_compute_coefficients(iBlade, iNode, uaml_alpha, uaml_alpha_dot, &
+        uaml_alpha_ddot, uaml_re, uaml_delta_cl, uaml_delta_cd, uaml_delta_cm)
    
-   y%Cl = Cl
-   y%Cd = Cd
-   y%Cm = Cm
+   y%Cl = Cl + uaml_delta_cl
+   y%Cd = Cd + uaml_delta_cd
+   y%Cm = Cm + uaml_delta_cm
 
    !Reset all the previous AoA's
    misc%alpha_minus3(misc%iBlade, misc%iBladeNode) = misc%alpha_minus2(misc%iBlade, misc%iBladeNode)

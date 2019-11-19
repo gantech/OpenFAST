@@ -100,8 +100,13 @@ subroutine BEMT_Set_UA_InitData( InitInp, interval, Init_UA_Data, errStat, errMs
 
    integer                                        :: i,j
    integer(intKi)                                 :: ErrStat2           ! temporary Error status
+   character(ErrMsgLen)                           :: ErrMsg2
+   character(*), parameter                        :: RoutineName = 'BEMT_Set_UA_InitData'
    
       ! Set up initialization data
+
+   call AllocAry(Init_UA_Data%AFindx,InitInp%numBladeNodes,InitInp%numBlades,'AFindx',ErrStat2,ErrMsg2)
+   call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
    
    Allocate(Init_UA_Data%c(InitInp%numBladeNodes,InitInp%numBlades), STAT = errStat2)
    if (ErrStat2 /= 0) then
@@ -116,6 +121,7 @@ subroutine BEMT_Set_UA_InitData( InitInp, interval, Init_UA_Data, errStat, errMs
    do j = 1,InitInp%numBlades
       do i = 1,InitInp%numBladeNodes
          Init_UA_Data%c(i,j)      = InitInp%chord(i,j)
+         Init_UA_Data%AFIndx(i,j) = InitInp%AFindx(i,j)
       end do
    end do
    
