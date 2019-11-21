@@ -13,7 +13,8 @@ module UA_Dvr_Subs
       logical         :: Echo            
       real(ReKi)      :: SpdSound        
       character(1024) :: OutRootName
-      real(ReKi)      :: InflowVel       
+      real(ReKi)      :: InflowVel
+      integer         :: AFAeroMod
       integer         :: UAMod           
       logical         :: Flookup        
       logical         :: UseCm         
@@ -219,6 +220,16 @@ module UA_Dvr_Subs
             return
          end if
          
+         ! AFAeroMod
+         
+      call ReadVar ( UnIn, FileName, InitInp%AFAeroMod, 'AFAeroMod', &
+           'Unsteady Aero Model choice', errStat2, errMsg2, UnEchoLocal )
+      call SetErrStat(errStat2, errMsg2, ErrStat, ErrMsg, RoutineName )
+      if (ErrStat >= AbortErrLev) then
+         call Cleanup()
+         return
+      end if
+      
          ! UAMod 
       call ReadVar ( UnIn, FileName, InitInp%UAMod, 'UAMod', &
                                        'Unsteady Aero Model Switch', errStat2, errMsg2, UnEchoLocal )

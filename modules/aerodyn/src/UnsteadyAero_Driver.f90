@@ -136,7 +136,8 @@ program UnsteadyAero_Driver
          end if
       InitInData%a_s          = dvrInitInp%SpdSound
       InitInData%c(1,1)       = dvrInitInp%Chord
-      InitInData%UAMod        = dvrInitInp%UAMod 
+      InitInData%AFAeroMod    = dvrInitInp%AFAeroMod
+      InitInData%UAMod        = dvrInitInp%UAMod
       InitInData%Flookup      = dvrInitInp%Flookup
    
    else
@@ -184,6 +185,15 @@ program UnsteadyAero_Driver
       ! All nodes/blades are using the same 2D airfoil
    afNames(1)  = dvrInitInp%AirFoil1
    AFIndx(1,1) = 1
+
+   allocate(InitInData%AFIndx(InitInData%nNodesPerBlade,InitInData%numBlades), STAT = ErrStat)
+   if ( ErrStat /= 0 ) then
+      call SetErrStat( ErrID_Fatal, 'Error trying to allocate InitInData%AFIndx.', ErrStat, ErrMsg, 'UnsteadyAeroTest')  
+      call Cleanup()
+      stop       
+   end if
+
+   InitInData%AFIndx(1,1) = 1
    
       ! Initialize the Airfoil Info Params
    call Init_AFI( NumAFfiles, afNames, InitInData%Flookup, dvrInitInp%UseCm, AFI_Params, errStat2, errMsg2 )
