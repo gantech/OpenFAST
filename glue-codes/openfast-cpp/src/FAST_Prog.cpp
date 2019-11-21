@@ -74,8 +74,8 @@ void readTurbineData(int iTurb, fast::fastInputs & fi, YAML::Node turbNode) {
 
   if (simType == "ext-loads") {
 
-      get_if_present(turbNode, "az_blend_mean", fi.globTurbineData[iTurb].azBlendMean, 15.5*360.0*M_PI/180.0); //15.5 revs
-      get_if_present(turbNode, "az_blend_delta", fi.globTurbineData[iTurb].azBlendDelta, 360.0*M_PI/180.0);  // 1 rev
+      get_if_present(turbNode, "az_blend_mean", fi.globTurbineData[iTurb].azBlendMean, 20*360.0*M_PI/180.0); //20 revs
+      get_if_present(turbNode, "az_blend_delta", fi.globTurbineData[iTurb].azBlendDelta, 3.0*360.0*M_PI/180.0);  // 3 rev
       get_required(turbNode, "vel_mean", fi.globTurbineData[iTurb].velMean);
       get_required(turbNode, "wind_dir", fi.globTurbineData[iTurb].windDir);
       get_required(turbNode, "z_ref", fi.globTurbineData[iTurb].zRef);
@@ -212,7 +212,6 @@ int main() {
 
   if( !FAST.isDryRun() ) {
     for (int nt = ntStart; nt < ntEnd; nt++) {
-        std::cout << "nt = " << nt << std::endl ;
         if (couplingMode == 0) {
             // If running with a CFD solver, sample velocities at the actuator/velocity nodes here
             if (setExpLawWind)
