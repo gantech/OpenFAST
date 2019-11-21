@@ -584,6 +584,8 @@ void fast::OpenFAST::init() {
                 nt_global = ntStart;
                 allocateMemory_postInit(iTurb);
 
+                get_ref_positions_from_openfast(iTurb);
+                
                 readRestartFile(iTurb, nt_global);
 
             }
