@@ -40,11 +40,11 @@ module UAeroML
     end function UAeroML_finalize_c
 
     integer(c_int) &
-    function  UAeroML_compute_coefficients( &
+    function  UAeroML_compute_coefficients_c( &
     blade_id, node_id, &
     alpha, alpha_dot, alpha_ddot, reynolds_num, &
     delta_cl, delta_cd, delta_cm) &
-    bind(C,name="UAeroML_initialize")
+    bind(C,name="UAeroML_compute_coefficients")
       import c_int, c_double
       integer(c_int), value, intent(in) :: blade_id
       integer(c_int), value, intent(in) :: node_id
@@ -55,7 +55,7 @@ module UAeroML
       real(c_double), intent(out)   :: delta_cl
       real(c_double), intent(out)   :: delta_cd
       real(c_double), intent(out)   :: delta_cm
-    end function UAeroML_compute_coefficients
+    end function UAeroML_compute_coefficients_c
    
  end interface
 end module UAeroML
@@ -1080,10 +1080,13 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
             node_to_airfoil_id_map((i-1)*num_nodes_per_blade+j) = p%AFIndx(i,j)
          end do
       end do
+
+      write(*,*) 'Calling UAeroML_initialize '
       
       ierr = UAeroML_initialize_c(num_blades, num_nodes_per_blade, &
            node_to_airfoil_id_map, yaml_filename)
-      
+
+      write(*,*) "Finished calling UAeroML_initalize - Error status = ", ierr
    end if
    
 end subroutine UA_Init
@@ -1330,14 +1333,16 @@ subroutine UA_UpdateStates( i, j, u, p, xd, OtherState, AFInfo, m, ErrStat, ErrM
       RETURN
    END IF
    
-   
+   if (p%AFAeroMod == 1) then
       ! Update discrete states:
 #ifdef DEBUG_v14
    call UA_UpdateDiscOtherState2( i, j, u, p, xd, OtherState, AFInfo, m, ErrStat2, ErrMsg2 )
 #else
    call UA_UpdateDiscOtherState( i, j, u, p, xd, OtherState, AFInfo, m, ErrStat2, ErrMsg2 )
 #endif
-   call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)   
+   call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
+   
+   end if
 
 end subroutine UA_UpdateStates
 !==============================================================================   
@@ -1669,6 +1674,7 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    real(c_double)                  :: uaml_delta_cl, uaml_delta_cd, uaml_delta_cm
    integer(c_int)                  :: ierr
 
+   write(*,*) 'Entering Unsteady Aero CalcOut_ML'
    !Calculate steady state airfoil coefs first
    s1 = size(AFInfo%Table(1)%Coefs,2)
    Alpha = u%alpha
@@ -1707,8 +1713,12 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    uaml_alpha_ddot = misc%alpha_d_dot(misc%iBlade, misc%iBladeNode)
    uaml_re = u%Re
 
-   ierr = UAeroML_compute_coefficients(iBlade, iNode, uaml_alpha, uaml_alpha_dot, &
+   write(*,*) 'Finished computing inputs to ML model'
+
+   ierr = UAeroML_compute_coefficients_c(iBlade, iNode, uaml_alpha, uaml_alpha_dot, &
         uaml_alpha_ddot, uaml_re, uaml_delta_cl, uaml_delta_cd, uaml_delta_cm)
+
+   write(*,*) 'Finished computing coefficients, ierr = ', ierr
    
    y%Cl = Cl + uaml_delta_cl
    y%Cd = Cd + uaml_delta_cd
