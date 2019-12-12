@@ -1077,7 +1077,8 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
       allocate(node_to_airfoil_id_map(num_blades * num_nodes_per_blade))
       do i=1,num_blades
          do j=1,num_nodes_per_blade
-            node_to_airfoil_id_map((i-1)*num_nodes_per_blade+j) = p%AFIndx(i,j)
+            write(*,*) 'iBlade = ', i, ', iNode = ', j, ' af_id = ', p%AFIndx(j,i)
+            node_to_airfoil_id_map((i-1)*num_nodes_per_blade+j) = p%AFIndx(j,i)
          end do
       end do
 
@@ -1674,7 +1675,6 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    real(c_double)                  :: uaml_delta_cl, uaml_delta_cd, uaml_delta_cm
    integer(c_int)                  :: ierr
 
-   write(*,*) 'Entering Unsteady Aero CalcOut_ML'
    !Calculate steady state airfoil coefs first
    s1 = size(AFInfo%Table(1)%Coefs,2)
    Alpha = u%alpha
@@ -1694,40 +1694,40 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
 
 
    !Calculate angle of attack derivatives using backward differencing
-   misc%alpha_dot(misc%iBlade, misc%iBladeNode) = \
+   misc%alpha_dot(misc%iBladeNode, misc%iBlade) = \
        (3.0 * Alpha \
-       - 4.0 * misc%alpha_minus1(misc%iBlade, misc%iBladeNode) \
-       + misc%alpha_minus2(misc%iBlade, misc%iBladeNode) ) * 0.5 / p%dt
-   misc%alpha_d_dot(misc%iBlade, misc%iBladeNode) = \
+       - 4.0 * misc%alpha_minus1(misc%iBladeNode, misc%iBlade) \
+       + misc%alpha_minus2(misc%iBladeNode, misc%iBlade) ) * 0.5 / p%dt
+   misc%alpha_d_dot(misc%iBladeNode, misc%iBlade) = \
        (2.0 * Alpha \
-       - 5.0 * misc%alpha_minus1(misc%iBlade, misc%iBladeNode) \
-       + 4.0*misc%alpha_minus2(misc%iBlade, misc%iBladeNode) \
-       - misc%alpha_minus3(misc%iBlade, misc%iBladeNode)) / ( p%dt * p%dt )
+       - 5.0 * misc%alpha_minus1(misc%iBladeNode, misc%iBlade) \
+       + 4.0*misc%alpha_minus2(misc%iBladeNode, misc%iBlade) \
+       - misc%alpha_minus3(misc%iBladeNode, misc%iBlade)) / ( p%dt * p%dt )
 
    !Call UA model some how for this blade/node combo and update Cl, Cd and Cm with deltas
 
    iBlade = misc%iBlade
    iNode = misc%iBladeNode
    uaml_alpha = u%Alpha
-   uaml_alpha_dot = misc%alpha_dot(misc%iBlade, misc%iBladeNode)
-   uaml_alpha_ddot = misc%alpha_d_dot(misc%iBlade, misc%iBladeNode)
+   uaml_alpha_dot = misc%alpha_dot(misc%iBladeNode, misc%iBlade)
+   uaml_alpha_ddot = misc%alpha_d_dot(misc%iBladeNode, misc%iBlade)
    uaml_re = u%Re
 
-   write(*,*) 'Finished computing inputs to ML model'
+   !write(*,*) 'Finished computing inputs to ML model'
 
    ierr = UAeroML_compute_coefficients_c(iBlade, iNode, uaml_alpha, uaml_alpha_dot, &
         uaml_alpha_ddot, uaml_re, uaml_delta_cl, uaml_delta_cd, uaml_delta_cm)
 
-   write(*,*) 'Finished computing coefficients, ierr = ', ierr
+   !write(*,*) 'Finished computing coefficients, iBlade = ', iBlade, ', iNode = ', iNode, ', ierr = ', ierr
    
    y%Cl = Cl + uaml_delta_cl
    y%Cd = Cd + uaml_delta_cd
    y%Cm = Cm + uaml_delta_cm
 
    !Reset all the previous AoA's
-   misc%alpha_minus3(misc%iBlade, misc%iBladeNode) = misc%alpha_minus2(misc%iBlade, misc%iBladeNode)
-   misc%alpha_minus2(misc%iBlade, misc%iBladeNode) = misc%alpha_minus1(misc%iBlade, misc%iBladeNode)
-   misc%alpha_minus1(misc%iBlade, misc%iBladeNode) = Alpha
+   misc%alpha_minus3(misc%iBladeNode, misc%iBlade) = misc%alpha_minus2(misc%iBladeNode, misc%iBlade)
+   misc%alpha_minus2(misc%iBladeNode, misc%iBlade) = misc%alpha_minus1(misc%iBladeNode, misc%iBlade)
+   misc%alpha_minus1(misc%iBladeNode, misc%iBlade) = Alpha
 
    
 end subroutine UA_CalcOutput_ML
