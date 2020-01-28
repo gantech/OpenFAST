@@ -743,7 +743,7 @@ subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
    integer(intKi)                               :: j                 ! counter for nodes
    integer(intKi)                               :: jTot              ! counter for nodes
    integer(intKi)                               :: k                 ! counter for blades
-   real(ReKi)                                   :: tmp_az            ! temporary variable for azimuth
+   real(ReKi)                                   :: tmp_az, delta_az  ! temporary variable for azimuth
    
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
@@ -756,10 +756,14 @@ subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
 
    tmp_az = m%az
    call Zero2TwoPi(tmp_az)
-   
-   m%az = m%az + (u%az - tmp_az)
-   m%phi_cfd = 0.5 * ( tanh( (m%az - p%az_blend_mean)/p%az_blend_delta ) + 1.0 ) 
-   
+   delta_az = u%az - tmp_az
+   if ( delta_az .lt. -1.0 )  then
+      m%az = m%az + delta_az + PI
+   else
+      m%az = m%az + delta_az
+   end if
+   m%phi_cfd = 0.5 * ( tanh( (m%az - p%az_blend_mean)/p%az_blend_delta ) + 1.0 )
+
    if (p%TwrAero) then
       do j=1,p%NumTwrNds
          y%TowerLoad%Force(:,j) = m%phi_cfd * y%DX_y%twrLd((j-1)*6+1:(j-1)*6+3) + (1.0 - m%phi_cfd) * y%TowerLoadAD%Force(:,j)
