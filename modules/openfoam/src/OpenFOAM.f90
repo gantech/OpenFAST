@@ -166,7 +166,7 @@ SUBROUTINE Init_OpFM( InitInp, p_FAST, AirDens, u_AD14, u_AD, initOut_AD, y_AD, 
    end if
 
       ! initialize the arrays:
-   call OpFM_CreateActForceBladeTowerNodes(OpFM%p, ErrStat2, ErrMsg2) !Creates the blade and tower nodes in radial and tower height co-ordinates
+   call OpFM_CreateActForceBladeTowerNodes(OpFM%p, initOut_AD, ErrStat2, ErrMsg2) !Creates the blade and tower nodes in radial and tower height co-ordinates
    call OpFM_InterpolateForceNodesChord(initOut_AD, OpFM%p, OpFM%u, ErrStat2, ErrMsg2) !Interpolates the chord distribution to the force nodes 
    call OpFM_CreateActForceMotionsMesh( p_FAST, y_ED, InitInp, OpFM, ErrStat2, ErrMsg2)
 
@@ -1092,14 +1092,23 @@ SUBROUTINE CalcForceActuatorPositionsTower(InitIn_OpFM, p_OpFM, structPositions,
 
 END SUBROUTINE CalcForceActuatorPositionsTower
 
-SUBROUTINE OpFM_CreateActForceBladeTowerNodes(p_OpFM, ErrStat, ErrMsg) 
+SUBROUTINE OpFM_CreateActForceBladeTowerNodes(p_OpFM, InitOut_AD, ErrStat, ErrMsg) 
 !Creates the blade and tower nodes in radial and tower height co-ordinates
 
   TYPE(OpFM_ParameterType), INTENT(INOUT)  :: p_OpFM        ! data for the OpenFOAM integration module
+  TYPE(AD_InitOutputType),  INTENT(IN   )  :: InitOut_AD ! InitOut  data for the OpenFOAM integration module
   INTEGER(IntKi)                         :: ErrStat    ! temporary Error status of the operation
   CHARACTER(ErrMsgLen)                   :: ErrMsg     ! temporary Error message if ErrStat /= ErrID_None
 
   !Local variables
+  real(reki), allocatable                :: cNonUniform(:)
+  real(reki), allocatable                :: pNonUniform(:)
+  real(reki), allocatable                :: sNonUniform(:)
+  real(reki), allocatable                :: cByS(:)
+  real(reki), allocatable                :: e(:)
+  real(reki)                             :: eSum, eTol
+  real(reki)                             :: bladeRoot, bladeTip, rInterp
+  integer(intki)                         :: nAct, counter
   REAL(ReKi)                             :: dRforceNodes ! Uniform distance between two consecutive force nodes
   INTEGER(IntKI)                         :: i            ! Loop variables
   INTEGER(IntKi)                         :: ErrStat2    ! temporary Error status of the operation
@@ -1108,14 +1117,42 @@ SUBROUTINE OpFM_CreateActForceBladeTowerNodes(p_OpFM, ErrStat, ErrMsg)
 
   ! Line2 to Line2 mapping expects the destination mesh to be smaller than the source mesh for deformation mapping and larger than the source mesh for load mapping. This forces me to create nodes at the very ends of the blade.
 
+  bladeTip = p_OpFM%BladeLength
+  bladeRoot = 0.0
+  nAct = p_OpFM%NnodesForceBlade
   !Do the blade first
-  allocate(p_OpFM%forceBldRnodes(p_OpFM%NnodesForceBlade), stat=errStat2)
-  dRforceNodes = p_OpFM%BladeLength/(p_OpFM%NnodesForceBlade-1)
-  do i=1,p_OpFM%NnodesForceBlade-1
-     p_OpFM%forceBldRnodes(i) = (i-1)*dRforceNodes 
+  allocate(p_OpFM%forceBldRnodes(nAct), stat=errStat2)
+  allocate(cNonUniform(nAct),stat=errStat2)
+  allocate(sNonUniform(nAct),stat=errStat2)
+  allocate(pNonUniform(nAct),stat=errStat2)
+  allocate(cByS(nAct),stat=errStat2)
+  allocate(e(nAct-1),stat=errStat2)
+  allocate(sNonUniform(nAct),stat=errStat2)  
+  
+  dRforceNodes = bladeTip/(nAct-1)
+  do i=1,nAct-1
+     pNonUniform(i) = (i-1)*dRforceNodes 
   end do
-  p_OpFM%forceBldRnodes(p_OpFM%NnodesForceBlade) = p_OpFM%BladeLength
-
+  pNonUniform(nAct) = bladeTip
+  call OpFM_InterpolateChord(pNonUniform, cNonUniform, InitOut_AD%BladeProps(1)%BlSpn, InitOut_AD%BladeProps(1)%BlChord)
+  counter = 0
+  e(:)= 1.0e6
+  eTol = 1.0e-6
+  eSum = sqrt(sum(e(:) * e(:)))
+  do while ((eSum .gt. eTol) .and. (counter < 15))
+     sNonUniform(:) = (bladeTip - bladeRoot)*cNonUniform(:)/(sum(cNonUniform(2:nAct-1)) + 0.5*(cNonUniform(1)+cNonUniform(nAct)) )
+     do i = 2, nAct
+        pNonUniform(i) = pNonUniform(i-1) + 0.5*(sNonUniform(i-1) + sNonUniform(i))
+     end do
+     call OpFM_InterpolateChord(pNonUniform, cNonUniform, InitOut_AD%BladeProps(1)%BlSpn, InitOut_AD%BladeProps(1)%BlChord)
+     cByS(:) = cNonUniform(:)/sNonUniform(:)
+     e(:) = cByS(2:nAct) - cByS(1:nAct-1)
+     eSum = sqrt(sum(e(:) * e(:)))
+     counter = counter + 1
+  end do
+  p_OpFM%forceBldRnodes(:) = pNonUniform(:)
+  p_OpFM%forceBldRnodes(nAct) = bladeTip
+  
 
   if (p_OpFM%NMappings .gt. p_OpFM%NumBl) then
      !Do the tower now
@@ -1130,6 +1167,35 @@ SUBROUTINE OpFM_CreateActForceBladeTowerNodes(p_OpFM, ErrStat, ErrMsg)
   return
 
 END SUBROUTINE OpFM_CreateActForceBladeTowerNodes
+
+SUBROUTINE OpFM_InterpolateChord(x, c, rAD, cAD)
+
+  real(reki), intent(in)  :: x(:)
+  real(reki), intent(out) :: c(:)
+  real(reki), intent(in)  :: rAD(:)
+  real(reki), intent(in)  :: cAD(:)
+
+  integer(intki) :: i,j,k,jLower,nAD, nX
+  real(reki)     :: rInterp
+
+  ! Calculate the chord at the force nodes based on interpolation
+  nAD = size(rAD)
+  nX = size(x)
+  do i=1,nX
+     do jLower = 1, nAD-1
+        if ( (rAD(jLower) - x(i))*(rAD(jLower+1) - x(i)) .le. 0 ) then
+           exit
+        endif
+     end do
+     if (jLower .lt. nAD) then
+        rInterp =  (x(i) - rAD(jLower))/(rAD(jLower+1)-rAD(jLower)) ! The location of this force node in (0,1) co-ordinates between the jLower and jLower+1 nodes
+        c(i) = cAD(jLower) + rInterp * (cAD(jLower+1) - cAD(jLower))
+     else
+        c(i) = cAD(nAD)
+     end if
+  end do
+
+END SUBROUTINE OpFM_InterpolateChord
 
 SUBROUTINE OpFM_InterpolateForceNodesChord(InitOut_AD, p_OpFM, u_OpFM, ErrStat, ErrMsg) 
 
