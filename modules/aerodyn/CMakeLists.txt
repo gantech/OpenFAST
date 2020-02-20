@@ -25,7 +25,7 @@ endif()
 
 find_package(UAeroML REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(torch REQUIRED)
+find_package(Torch REQUIRED)
 
 # AeroDyn lib
 set(AD_LIBS_SOURCES
@@ -46,6 +46,7 @@ set(AD_LIBS_SOURCES
 )
 
 add_library(aerodynlib ${AD_LIBS_SOURCES})
+target_include_directories(aerodynlib PUBLIC ${TORCH_INCLUDE_DIRS})      
 target_link_libraries(aerodynlib nwtclibs UAeroML::uaero_ml yaml-cpp ${TORCH_LIBRARIES})
 
 # AeroDyn driver
@@ -56,6 +57,7 @@ set(AD_DRIVER_SOURCES
 )
 
 add_executable(aerodyn_driver ${AD_DRIVER_SOURCES})
+target_include_directories(aerodyn_driver PUBLIC ${TORCH_INCLUDE_DIRS})
 target_link_libraries(aerodyn_driver aerodynlib nwtclibs versioninfolib ${CMAKE_DL_LIBS} UAeroML::uaero_ml yaml-cpp ${TORCH_LIBRARIES})
 
 # UnsteadyAero driver
@@ -64,6 +66,7 @@ set(UA_DRIVER_SOURCES
   src/UA_Dvr_Subs.f90
 )
 add_executable(unsteadyaero_driver ${UA_DRIVER_SOURCES})
+target_include_directories(unsteadyaero_driver PUBLIC ${TORCH_INCLUDE_DIRS})
 target_link_libraries(unsteadyaero_driver aerodynlib nwtclibs versioninfolib ${CMAKE_DL_LIBS} UAeroML::uaero_ml yaml-cpp ${TORCH_LIBRARIES})
 
 install(TARGETS unsteadyaero_driver aerodyn_driver aerodynlib

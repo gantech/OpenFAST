@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-cmake_minimum_required(VERSION 2.8.12)
-project(OpenFAST CXX C Fortran)
+cmake_minimum_required(VERSION 3.13)
+project(OpenFAST CXX C Fortran CUDA)
 
 include(${CMAKE_SOURCE_DIR}/cmake/OpenfastCmakeUtils.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/OpenfastFortranOptions.cmake)
@@ -58,8 +58,12 @@ if (MKL_FOUND)
   set(CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES "ifport;ifcore;imf;svml;m;ipgo;intlc;c;irc_s;dl;c")
 else()
   find_package(BLAS REQUIRED)
-  find_package(LAPACK REQUIRED)
+  find_package(LAPACK REQUIRED)  
 endif()
+
+find_package(UAeroML REQUIRED)
+find_package(Torch REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 ########################################################################
 # Test option configuration
