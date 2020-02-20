@@ -795,13 +795,6 @@ subroutine UA_InitStates_Misc( p, xd, OtherState, m, ErrStat, ErrMsg )
    call AllocAry(OtherState%sigma1   ,p%nNodesPerBlade,p%numBlades,'OtherState%sigma1',ErrStat2,ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
    call AllocAry(OtherState%sigma3   ,p%nNodesPerBlade,p%numBlades,'OtherState%sigma3',ErrStat2,ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
 
-#ifdef UA_OUTS
-   call AllocAry(m%TESF     ,p%nNodesPerBlade,p%numBlades,'m%TESF',ErrStat2,ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
-   call AllocAry(m%LESF     ,p%nNodesPerBlade,p%numBlades,'m%LESF',ErrStat2,ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
-   call AllocAry(m%VRTX     ,p%nNodesPerBlade,p%numBlades,'m%VRTX',ErrStat2,ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
-   call AllocAry(m%T_Sh     ,p%nNodesPerBlade,p%numBlades,'m%T_Sh',ErrStat2,ErrMsg2); call SetErrStat(ErrStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)   
-#endif  
-   
    if (ErrStat >= AbortErrLev) return
 
    else
@@ -833,14 +826,6 @@ subroutine UA_ReInit( p, xd, OtherState, m )
    OtherState%sigma1    = 1.0_ReKi
    OtherState%sigma3    = 1.0_ReKi
    
-#ifdef UA_OUTS
-   m%TESF      = .FALSE.  
-   m%LESF      = .FALSE.   
-   m%VRTX      = .FALSE. 
-   m%T_sh      = 0.0_ReKi 
-#endif   
-
-
    OtherState%FirstPass = .true.
    
    
@@ -920,15 +905,12 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
    integer(IntKi)                               :: errStat2    ! temporary Error status of the operation
    character(*), parameter                      :: RoutineName = 'UA_Init'
    
-#ifdef UA_OUTS   
    integer(IntKi)                               :: i,j, iNode, iOffset
    character(64)                                :: chanPrefix
-#endif
 
    integer(c_int) :: num_blades, num_nodes_per_blade
    integer(c_int), allocatable :: node_to_airfoil_id_map(:)
    integer(c_int)              :: ierr
-   integer(IntKi)              :: i,j
    character(kind=c_char), allocatable :: yaml_filename(:)
    
       ! Initialize variables for this routine
@@ -954,117 +936,7 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
 
    if (p%AFAeroMod == 1) then
       
-#ifdef UA_OUTS   
-
-      ! Allocate and set the InitOut data
-   p%NumOuts = 42
-      
-   allocate(InitOut%WriteOutputHdr(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
-      if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating WriteOutputHdr.',ErrStat,ErrMsg,RoutineName)
-   allocate(InitOut%WriteOutputUnt(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
-      if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating WriteOutputUnt.',ErrStat,ErrMsg,RoutineName)
-   allocate(y%WriteOutput(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
-      if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating y%WriteOutput.',ErrStat,ErrMsg,RoutineName)
-   if (ErrStat >= AbortErrLev) return
-         
-   iNode = 0
-   do j = 1,p%numBlades
-      do i = 1,p%nNodesPerBlade
-         
-         iOffset = (i-1)*p%NumOuts + (j-1)*p%nNodesPerBlade*p%NumOuts 
-                  
-         chanPrefix = "B"//trim(num2lstr(j))//"N"//trim(num2lstr(i))  
-         InitOut%WriteOutputHdr(iOffset+ 1)  = 'ALPHA_filt'//chanPrefix      
-         InitOut%WriteOutputHdr(iOffset+ 2)  = 'VREL'//chanPrefix  
-         InitOut%WriteOutputHdr(iOffset+ 3)  = 'Cn'//chanPrefix      
-         InitOut%WriteOutputHdr(iOffset+ 4)  = 'Cc'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+ 5)  = 'Cl'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+ 6)  = 'Cd'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+ 7)  = 'Cm'//chanPrefix     
-         InitOut%WriteOutputHdr(iOffset+ 8)  = 'Cn_aq_circ'//chanPrefix    
-         InitOut%WriteOutputHdr(iOffset+ 9)  = 'Cn_aq_nc'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+10)  = 'Cn_pot'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+11)  = 'Dp'//chanPrefix       
-         InitOut%WriteOutputHdr(iOffset+12)  = 'Cn_prime'//chanPrefix        
-         InitOut%WriteOutputHdr(iOffset+13)  = 'fprime'//chanPrefix       
-         InitOut%WriteOutputHdr(iOffset+14)  = 'Df'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+15)  = 'Cn_v'//chanPrefix         
-         InitOut%WriteOutputHdr(iOffset+16)  = 'Tau_V'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+17)  = 'LESF'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+18)  = 'TESF'//chanPrefix 
-         InitOut%WriteOutputHdr(iOffset+19)  = 'VRTX'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+20)  = 'C_v'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+21)  = 'Cm_a_nc'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+22)  = 'Cm_q_nc'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+23)  = 'Cm_v'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+24)  = 'alpha_p_f'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+25)  = 'Dalphaf'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+26)  = 'PMC'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+27)  = 'T_f'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+28)  = 'T_V'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+29)  = 'dS'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+30)  = 'T_alpha'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+31)  = 'T_q'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+32)  = 'k_alpha'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+33)  = 'k_q'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+34)  = 'alpha_e'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+35)  = 'X1'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+36)  = 'X2'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+37)  = 'cn_q_nc'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+38)  = 'alpha_f'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+39)  = 'fprimeprime'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+40)  = 'sigma1'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+41)  = 'sigma3'//chanPrefix
-         InitOut%WriteOutputHdr(iOffset+42)  = 'T_sh'//chanPrefix                  
-                           
-         
-         InitOut%WriteOutputUnt(iOffset+1)  ='(deg)'                                                
-         InitOut%WriteOutputUnt(iOffset+2)  ='(m/s)'                                                  
-         InitOut%WriteOutputUnt(iOffset+3)  ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+4)  ='(-)'                                                   
-         InitOut%WriteOutputUnt(iOffset+5)  ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+6)  ='(-)'                                                   
-         InitOut%WriteOutputUnt(iOffset+7)  ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+8)  ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+9)  ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+10) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+11) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+12) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+13) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+14) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+15) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+16) ='(-)'                                                    
-         InitOut%WriteOutputUnt(iOffset+17) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+18) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+19) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+20) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+21) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+22) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+23) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+24) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+25) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+26) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+27) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+28) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+29) ='(-)'
-         InitOut%WriteOutputUnt(iOffset+30) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+31) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+32) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+33) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+34) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+35) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+36) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+37) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+38) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+39) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+40) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+41) ='(-)' 
-         InitOut%WriteOutputUnt(iOffset+42) ='(-)' 
-      end do
-   end do
-#else
-   p%NumOuts = 0
-#endif   
+      p%NumOuts = 0
 
    else
 
@@ -1088,6 +960,35 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
            node_to_airfoil_id_map, yaml_filename)
 
       write(*,*) "Finished calling UAeroML_initalize - Error status = ", ierr
+
+      ! Allocate and set the InitOut data
+      p%NumOuts = 3
+      
+      allocate(InitOut%WriteOutputHdr(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
+      if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating WriteOutputHdr.',ErrStat,ErrMsg,RoutineName)
+      allocate(InitOut%WriteOutputUnt(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
+      if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating WriteOutputUnt.',ErrStat,ErrMsg,RoutineName)
+      allocate(y%WriteOutput(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
+      if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating y%WriteOutput.',ErrStat,ErrMsg,RoutineName)
+      if (ErrStat >= AbortErrLev) return
+         
+      iNode = 0
+      do j = 1,p%numBlades
+         do i = 1,p%nNodesPerBlade
+         
+            iOffset = (i-1)*p%NumOuts + (j-1)*p%nNodesPerBlade*p%NumOuts 
+            
+            chanPrefix = "B"//trim(num2lstr(j))//"N"//trim(num2lstr(i))  
+            InitOut%WriteOutputHdr(iOffset+ 1)  = 'Cl'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 2)  = 'Cd'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 3)  = 'Cm'//chanPrefix     
+                           
+            InitOut%WriteOutputUnt(iOffset+1)  ='(-)'                                                    
+            InitOut%WriteOutputUnt(iOffset+2)  ='(-)'                                                   
+            InitOut%WriteOutputUnt(iOffset+3)  ='(-)'                                                    
+         end do
+      end do
+      
    end if
    
 end subroutine UA_Init
@@ -1278,15 +1179,6 @@ subroutine UA_UpdateDiscOtherState( i, j, u, p, xd, OtherState, AFInfo, m, ErrSt
       if ( xd%tau_V(i,j) > 0.0 .or. LESF ) then                !! TODO:  Verify this condition 2/20/2015 GJH
          xd%tau_V(i,j)          = xd%tau_V(i,j) + 2.0_ReKi*p%dt*u%U / p%c(i,j)     ! Eqn 1.51
       end if
-   
-      
-#ifdef UA_OUTS
-   m%TESF(i,j) = TESF  
-   m%LESF(i,j) = LESF   
-   m%VRTX(i,j) = VRTX 
-   m%T_sh(i,j) = T_sh
-#endif
-      
       
 end subroutine UA_UpdateDiscOtherState
 !==============================================================================   
@@ -1670,6 +1562,7 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    real(reki)                      :: Alpha
    integer                         :: s1
    real(reki)                      :: Cl, Cd, Cm
+   integer                         :: iOffset
    integer(c_int)                  :: iBlade, iNode
    real(c_double)                  :: uaml_alpha, uaml_alpha_dot, uaml_alpha_ddot, uaml_re
    real(c_double)                  :: uaml_delta_cl, uaml_delta_cd, uaml_delta_cm
@@ -1724,6 +1617,14 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    y%Cd = Cd + uaml_delta_cd
    y%Cm = Cm + uaml_delta_cm
 
+   iOffset = (misc%iBladeNode-1)*p%NumOuts + (misc%iBlade-1)*p%nNodesPerBlade*p%NumOuts
+
+   if (allocated(y%WriteOutput)) then  !bjj: because BEMT uses local variables for UA output, y%WriteOutput is not necessarially allocated. Need to figure out a better solution.
+      y%WriteOutput(iOffset+ 1)    = y%Cl                                                                
+      y%WriteOutput(iOffset+ 2)    = y%Cd                                                                
+      y%WriteOutput(iOffset+ 3)    = y%Cm                                                                
+   end if
+   
    !Reset all the previous AoA's
    misc%alpha_minus3(misc%iBladeNode, misc%iBlade) = misc%alpha_minus2(misc%iBladeNode, misc%iBlade)
    misc%alpha_minus2(misc%iBladeNode, misc%iBlade) = misc%alpha_minus1(misc%iBladeNode, misc%iBlade)
