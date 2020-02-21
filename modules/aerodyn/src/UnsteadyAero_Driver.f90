@@ -253,7 +253,6 @@ program UnsteadyAero_Driver
    u(1)%U  = dvrInitInp%InflowVel  ! m/s
    u(1)%Re = dvrInitInp%Re  ! not used at the moment
 
-   write(*,*) 'Entering time marching loop'
       ! time marching loop
    do n = 1, nSimSteps
       if ( dvrInitInp%SimMod == 1 ) then
@@ -288,7 +287,6 @@ program UnsteadyAero_Driver
                   stop
                end if
             
-            write(*,*) "Finished calling UA_CalcOut_ML, calling update states"
                ! Prepare states for next time step
             call UA_UpdateStates(i,j,u(1), p, xd, OtherState, AFI_Params%AFInfo(AFIndx(i,j)), m, errStat2, errMsg2 )
                call SetErrStat(errStat2, errMsg2, ErrStat, ErrMsg, RoutineName )

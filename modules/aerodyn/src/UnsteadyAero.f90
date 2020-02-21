@@ -962,7 +962,7 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
       write(*,*) "Finished calling UAeroML_initalize - Error status = ", ierr
 
       ! Allocate and set the InitOut data
-      p%NumOuts = 3
+      p%NumOuts = 4
       
       allocate(InitOut%WriteOutputHdr(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
       if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating WriteOutputHdr.',ErrStat,ErrMsg,RoutineName)
@@ -980,12 +980,14 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
             
             chanPrefix = "B"//trim(num2lstr(j))//"N"//trim(num2lstr(i))  
             InitOut%WriteOutputHdr(iOffset+ 1)  = 'Cl'//chanPrefix
-            InitOut%WriteOutputHdr(iOffset+ 2)  = 'Cd'//chanPrefix
-            InitOut%WriteOutputHdr(iOffset+ 3)  = 'Cm'//chanPrefix     
+            InitOut%WriteOutputHdr(iOffset+ 2)  = 'Cl'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 3)  = 'Cd'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 4)  = 'Cm'//chanPrefix     
                            
-            InitOut%WriteOutputUnt(iOffset+1)  ='(-)'                                                    
-            InitOut%WriteOutputUnt(iOffset+2)  ='(-)'                                                   
-            InitOut%WriteOutputUnt(iOffset+3)  ='(-)'                                                    
+            InitOut%WriteOutputUnt(iOffset+1)  ='(Degrees)'                                                    
+            InitOut%WriteOutputUnt(iOffset+2)  ='(-)'                                                    
+            InitOut%WriteOutputUnt(iOffset+3)  ='(-)'                                                   
+            InitOut%WriteOutputUnt(iOffset+4)  ='(-)'                                                    
          end do
       end do
       
@@ -1601,9 +1603,9 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
 
    iBlade = misc%iBlade
    iNode = misc%iBladeNode
-   uaml_alpha = u%Alpha
-   uaml_alpha_dot = misc%alpha_dot(misc%iBladeNode, misc%iBlade)
-   uaml_alpha_ddot = misc%alpha_d_dot(misc%iBladeNode, misc%iBlade)
+   uaml_alpha = u%Alpha * R2D_D
+   uaml_alpha_dot = misc%alpha_dot(misc%iBladeNode, misc%iBlade) * R2D_D
+   uaml_alpha_ddot = misc%alpha_d_dot(misc%iBladeNode, misc%iBlade) * R2D_D
    uaml_re = u%Re
 
    !write(*,*) 'Finished computing inputs to ML model'
@@ -1620,9 +1622,10 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    iOffset = (misc%iBladeNode-1)*p%NumOuts + (misc%iBlade-1)*p%nNodesPerBlade*p%NumOuts
 
    if (allocated(y%WriteOutput)) then  !bjj: because BEMT uses local variables for UA output, y%WriteOutput is not necessarially allocated. Need to figure out a better solution.
-      y%WriteOutput(iOffset+ 1)    = y%Cl                                                                
-      y%WriteOutput(iOffset+ 2)    = y%Cd                                                                
-      y%WriteOutput(iOffset+ 3)    = y%Cm                                                                
+      y%WriteOutput(iOffset+ 1)    = uaml_alpha
+      y%WriteOutput(iOffset+ 2)    = y%Cl                                                                
+      y%WriteOutput(iOffset+ 3)    = y%Cd                                                                
+      y%WriteOutput(iOffset+ 4)    = y%Cm                                                                
    end if
    
    !Reset all the previous AoA's
