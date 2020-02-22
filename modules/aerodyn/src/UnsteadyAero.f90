@@ -962,7 +962,7 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
       write(*,*) "Finished calling UAeroML_initalize - Error status = ", ierr
 
       ! Allocate and set the InitOut data
-      p%NumOuts = 4
+      p%NumOuts = 7
       
       allocate(InitOut%WriteOutputHdr(p%NumOuts*p%numBlades*p%nNodesPerBlade),STAT=ErrStat2)
       if (ErrStat2 /= 0) call SetErrStat(ErrID_Fatal,'Error allocating WriteOutputHdr.',ErrStat,ErrMsg,RoutineName)
@@ -979,15 +979,21 @@ subroutine UA_Init( InitInp, u, p, xd, OtherState, y,  m, Interval, &
             iOffset = (i-1)*p%NumOuts + (j-1)*p%nNodesPerBlade*p%NumOuts 
             
             chanPrefix = "B"//trim(num2lstr(j))//"N"//trim(num2lstr(i))  
-            InitOut%WriteOutputHdr(iOffset+ 1)  = 'Cl'//chanPrefix
-            InitOut%WriteOutputHdr(iOffset+ 2)  = 'Cl'//chanPrefix
-            InitOut%WriteOutputHdr(iOffset+ 3)  = 'Cd'//chanPrefix
-            InitOut%WriteOutputHdr(iOffset+ 4)  = 'Cm'//chanPrefix     
+            InitOut%WriteOutputHdr(iOffset+ 1)  = 'Alpha'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 2)  = 'AlphaDot'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 3)  = 'AlphaDDot'//chanPrefix            
+            InitOut%WriteOutputHdr(iOffset+ 4)  = 'Re'//chanPrefix            
+            InitOut%WriteOutputHdr(iOffset+ 5)  = 'Cl'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 6)  = 'Cd'//chanPrefix
+            InitOut%WriteOutputHdr(iOffset+ 7)  = 'Cm'//chanPrefix     
                            
             InitOut%WriteOutputUnt(iOffset+1)  ='(Degrees)'                                                    
-            InitOut%WriteOutputUnt(iOffset+2)  ='(-)'                                                    
-            InitOut%WriteOutputUnt(iOffset+3)  ='(-)'                                                   
+            InitOut%WriteOutputUnt(iOffset+2)  ='(Degrees/sec)'                                                    
+            InitOut%WriteOutputUnt(iOffset+3)  ='(Degrees/sec/sec)'
             InitOut%WriteOutputUnt(iOffset+4)  ='(-)'                                                    
+            InitOut%WriteOutputUnt(iOffset+5)  ='(-)'                                                    
+            InitOut%WriteOutputUnt(iOffset+6)  ='(-)'                                                   
+            InitOut%WriteOutputUnt(iOffset+7)  ='(-)'                                                    
          end do
       end do
       
@@ -1623,9 +1629,12 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
 
    if (allocated(y%WriteOutput)) then  !bjj: because BEMT uses local variables for UA output, y%WriteOutput is not necessarially allocated. Need to figure out a better solution.
       y%WriteOutput(iOffset+ 1)    = uaml_alpha
-      y%WriteOutput(iOffset+ 2)    = y%Cl                                                                
-      y%WriteOutput(iOffset+ 3)    = y%Cd                                                                
-      y%WriteOutput(iOffset+ 4)    = y%Cm                                                                
+      y%WriteOutput(iOffset+ 2)    = uaml_alpha_dot
+      y%WriteOutput(iOffset+ 3)    = uaml_alpha_ddot
+      y%WriteOutput(iOffset+ 4)    = u%Re      
+      y%WriteOutput(iOffset+ 5)    = y%Cl                                                                
+      y%WriteOutput(iOffset+ 6)    = y%Cd                                                                
+      y%WriteOutput(iOffset+ 7)    = y%Cm                                                                
    end if
    
    !Reset all the previous AoA's
