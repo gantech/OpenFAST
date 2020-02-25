@@ -1612,13 +1612,13 @@ subroutine UA_CalcOutput_ML( u, p, xd, OtherState, AFInfo, y, misc, ErrStat, Err
    uaml_alpha = u%Alpha * R2D_D
    uaml_alpha_dot = misc%alpha_dot(misc%iBladeNode, misc%iBlade) * R2D_D
    uaml_alpha_ddot = misc%alpha_d_dot(misc%iBladeNode, misc%iBlade) * R2D_D
-   uaml_re = u%Re
+   uaml_re = u%Re / 1e6
 
    !write(*,*) 'Finished computing inputs to ML model'
 
    ierr = UAeroML_compute_coefficients_c(iBlade, iNode, uaml_alpha, uaml_alpha_dot, &
         uaml_alpha_ddot, uaml_re, uaml_delta_cl, uaml_delta_cd, uaml_delta_cm)
-
+   
    !write(*,*) 'Finished computing coefficients, iBlade = ', iBlade, ', iNode = ', iNode, ', ierr = ', ierr
    
    y%Cl = Cl + uaml_delta_cl
