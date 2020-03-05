@@ -251,7 +251,7 @@ program UnsteadyAero_Driver
    
       ! Set inputs which do not vary with node or time
    u(1)%U  = dvrInitInp%InflowVel  ! m/s
-   u(1)%Re = dvrInitInp%Re  ! not used at the moment
+   u(1)%Re = dvrInitInp%Re * 1e6  ! not used at the moment
 
       ! time marching loop
    do n = 1, nSimSteps
