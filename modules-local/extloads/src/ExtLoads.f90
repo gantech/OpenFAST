@@ -664,7 +664,10 @@ subroutine ExtLd_ConvertInpDataForExtProg(u, p, errStat, errMsg )
    integer(intKi)                               :: j                 ! counter for nodes
    integer(intKi)                               :: jTot              ! counter for nodes
    integer(intKi)                               :: k                 ! counter for blades
-
+   real(reki)                                   :: cref(3)
+   real(reki)                                   :: xloc(3)
+   real(reki)                                   :: yloc(3)
+   real(reki)                                   :: zloc(3)
    
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
@@ -700,7 +703,28 @@ subroutine ExtLd_ConvertInpDataForExtProg(u, p, errStat, errMsg )
          jTot = jTot+1
       end do
    end do
-
+      
+   open(53, file = 'bld_orient.csv', status='old')
+   write(53,*) 'x, y, z, n11, n12, n13, n21, n22, n23, n31, n32, n33, w11, w12, w13, w21, w22, w23, w31, w32, w33'
+   do k=1,p%NumBlds
+      do j=1,p%NumBldNds(k)
+         call BD_CrvExtractCrv(u%BladeMotion(k)%Orientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
+         cref(1) = 1.0
+         cref(2) = 0.0
+         cref(3) = 0.0
+         call apply_wm(wm_crv, cref, xloc, -1.0)
+         cref(1) = 0.0
+         cref(2) = 1.0
+         cref(3) = 0.0
+         call apply_wm(wm_crv, cref, yloc, -1.0)
+         cref(1) = 0.0
+         cref(2) = 0.0
+         cref(3) = 1.0
+         call apply_wm(wm_crv, cref, zloc, -1.0)
+         write(53,*) u%BladeMotion(k)%Position(1,j) +  u%BladeMotion(k)%TranslationDisp(1,j), ', ', u%BladeMotion(k)%Position(2,j) +  u%BladeMotion(k)%TranslationDisp(2,j), ', ', u%BladeMotion(k)%Position(3,j) +  u%BladeMotion(k)%TranslationDisp(3,j), ', ', u%BladeMotion(k)%Orientation(1,1,j), ', ', u%BladeMotion(k)%Orientation(1,2,j), ', ', u%BladeMotion(k)%Orientation(1,3,j), ', ', u%BladeMotion(k)%Orientation(2,1,j), ', ', u%BladeMotion(k)%Orientation(2,2,j), ', ', u%BladeMotion(k)%Orientation(2,3,j), ', ', u%BladeMotion(k)%Orientation(3,1,j), ', ', u%BladeMotion(k)%Orientation(3,2,j), ', ', u%BladeMotion(k)%Orientation(3,3,j), ', ', xloc(1), ', ', xloc(2), ', ', xloc(3), ', ', yloc(1), ', ', yloc(2), ', ', yloc(3), ', ', zloc(1), ', ', zloc(2), ', ', zloc(3)
+      end do
+   end do
+   close(53)
 
    call BD_CrvExtractCrv(u%HubMotion%Orientation(:,:,1), wm_crv, ErrStat2, ErrMsg2)
    call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
@@ -762,7 +786,11 @@ subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
    else
       m%az = m%az + delta_az
    end if
-   m%phi_cfd = 0.5 * ( tanh( (m%az - p%az_blend_mean)/p%az_blend_delta ) + 1.0 )
+   if (m%az  > (p%az_blend_mean  - 0.5 * p%az_blend_delta)) then
+      m%phi_cfd = 0.5 * ( tanh( (m%az - p%az_blend_mean)/p%az_blend_delta ) + 1.0 )
+   else
+      m%phi_cfd = 0.0
+   end if
 
    if (p%TwrAero) then
       do j=1,p%NumTwrNds
@@ -887,5 +915,37 @@ subroutine ExtLd_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMs
    ErrMsg  = ""
 
  end subroutine ExtLd_CalcOutput
+
+ subroutine apply_wm(c, v, vrot, transpose)
+
+   real(reki), intent(in)    :: c(:) ! The Wiener-Milenkovic parameter
+   real(reki), intent(in)    :: v(:) ! The vector to be rotated
+   real(reki), intent(inout) :: vrot(:) !Hold the rotated vector
+   real(reki), intent(in)    :: transpose !Whether to transpose the rotation
+
+   real(reki) :: magC, c0, nu, cosPhiO2
+   real(reki) :: cCrossV(3)
+   real(reki) :: cCrosscCrossV(3)
+   
+   magC = c(1)*c(1) + c(2)*c(2) + c(3)*c(3)
+   c0 = 2.0-0.125*magC
+   nu = 2.0/(4.0-c0)    
+   cosPhiO2 = 0.5*c0*nu    
+   cCrossV(1) = c(2)*v(3) - c(3)*v(2)
+   cCrossV(2) = c(3)*v(1) - c(1)*v(3)
+   cCrossV(3) = c(1)*v(2) - c(2)*v(1)
+
+   !write(*,*) ' c = ', c(1), ', ', c(2), ', ', c(3)
+   !write(*,*) ' cCrossV = ', cCrossV(1), ', ', cCrossV(2), ', ', cCrossV(3)
+
+   cCrosscCrossV(1) = c(2)*cCrossV(3) - c(3)*cCrossV(2)
+   cCrosscCrossV(2) = c(3)*cCrossV(1) - c(1)*cCrossV(3)
+   cCrosscCrossV(3) = c(1)*cCrossV(2) - c(2)*cCrossV(1)   
+
+   vrot(1) = v(1) + transpose * nu * cosPhiO2 * cCrossV(1) + 0.5 * nu * nu * cCrosscCrossV(1)
+   vrot(2) = v(2) + transpose * nu * cosPhiO2 * cCrossV(2) + 0.5 * nu * nu * cCrosscCrossV(2)
+   vrot(3) = v(3) + transpose * nu * cosPhiO2 * cCrossV(3) + 0.5 * nu * nu * cCrosscCrossV(3) 
+   
+ end subroutine apply_wm
  
 END MODULE ExtLoads

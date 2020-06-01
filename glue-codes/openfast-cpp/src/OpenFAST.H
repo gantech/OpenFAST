@@ -442,6 +442,7 @@ class OpenFAST {
   ActuatorNodeType getVelNodeType(int iTurbGlob, int iNode);
   //! Get the coordinates of velocity node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  void getRelativeVelForceNode(std::vector<double> & vel, int iNode, int iTurbGlob);
   //! Set the velocity at velocity node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   void setVelocity(std::vector<double> & velocity, int iNode, int iTurbGlob);
   //! Set the velocity at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
@@ -549,6 +550,8 @@ private:
 
   //! Preprare the C+++ output file for a new OpenFAST simulation
   void prepareOutputFile(int iTurbLoc);
+  //! Find the C++ output file for a restarted simulation 
+  void findOutputFile(int iTurbLoc);
   //! Write output data to file
   void writeOutputFile(int iTurbLoc, int n_t_global);
     
