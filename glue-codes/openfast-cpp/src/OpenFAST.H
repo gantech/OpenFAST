@@ -373,7 +373,7 @@ class OpenFAST {
   //! Extrapolate velocity and force node data to time step 'n+1' using data at 'n', 'n-1' and 'n-2'. Safe to call on all MPI ranks.
   void predict_states();
   //! Advance all turbines by 1 OpenFAST timestep. Safe to call on all MPI ranks.
-  void step(bool writeFiles=true);
+  void step();
   //! Step function to be used with sub-stepping fast between time steps of the driver program. Safe to call on all MPI ranks.
   void step(double ss_time);
   //! Call FAST->end for all turbines. Safe to call on all MPI ranks.
@@ -399,33 +399,33 @@ class OpenFAST {
   double get_timestep() { return dtFAST; }
 
   //! Get the approximate hub position for turbine number 'iTurbGlob'. This is the value specified in the input to OpenFAST. Must be called only from the processor containing the turbine.
-  void getApproxHubPos(std::vector<double> & currentCoords, int iTurbGlob, int nSize=3);
+  void getApproxHubPos(double* currentCoords, int iTurbGlob, int nSize=3);
   //! Get the exact hub position for turbine number 'iTurbGlob'. This is avaiable only after OpenFAST has been initialized for a given turbine. Must be called only from the processor containing the turbine.
 
-  void getHubPos(std::vector<double> & currentCoords, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getHubPos(double* currentCoords, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
   //! Get a vector pointing downstream along the hub for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getHubShftDir(double* hubShftVec, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
 
   //! Get the node type (HUB, BLADE, TOWER) of velocity node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   ActuatorNodeType getVelNodeType(int iTurbGlob, int iNode);
   //! Get the coordinates of velocity node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getVelNodeCoordinates(double* currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
   //! Set the velocity at velocity node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void setVelocity(std::vector<double> & velocity, int iNode, int iTurbGlob, int nSize=3);
+  void setVelocity(double* velocity, int iNode, int iTurbGlob, int nSize=3);
   //! Set the velocity at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void setVelocityForceNode(std::vector<double> & velocity, int iNode, int iTurbGlob, int nSize=3);
+  void setVelocityForceNode(double* velocity, int iNode, int iTurbGlob, int nSize=3);
   //! Map the velocity from the force nodes to the velocity nodes using linear interpolation along each blade and the tower. Safe to call from every MPI rank.
   void interpolateVel_ForceToVelNodes();
   //! Get the node type (HUB, BLADE, TOWER) of force node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   ActuatorNodeType getForceNodeType(int iTurbGlob, int iNode);
   //! Get the coordinates of force node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getForceNodeCoordinates(double* currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
   //! Get the tensor orientation of force node number 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getForceNodeOrientation(double* currentOrientation, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
   //! Get the actuator force at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
-  void getForce(std::vector<double> & force, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getForce(double* force, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
 
-  void getRelativeVelForceNode(std::vector<double> & vel, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
+  void getRelativeVelForceNode(double* vel, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=3);
 
   //! Get the chord at force node 'iNode' for turbine number 'iTurbGlob'. Must be called only from the processor containing the turbine.
   double getChord(int iNode, int iTurbGlob);
@@ -434,26 +434,26 @@ class OpenFAST {
   int getProc(int iTurbGlob) {return turbineMapGlobToProc[iTurbGlob];}
 
   //! Get the blade reference positions array 'bldRefPos' of turbine number 'iTurbGlob'
-  void getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob);
+  void getBladeRefPositions(double* bldRefPos, int iTurbGlob, int nSize=6);
   //! Get the blade deflections array 'bldDefl' of turbine number 'iTurbGlob' at time step 't'
-    void getBladeDisplacements(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+    void getBladeDisplacements(double* bldDefl, double* bldVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=6);
   //! Get the tower reference positions array 'twrRefPos' of turbine number 'iTurbGlob'
-  void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob);
+  void getTowerRefPositions(double* twrRefPos, int iTurbGlob, int nSize);
   //! Get the tower deflections array 'twrDefl' of turbine number 'iTurbGlob' at time step 't'
-  void getTowerDisplacements(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  void getTowerDisplacements(double* twrDefl, double* twrVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=6);
   //! Get the hub reference position array 'hubRefPos' of turbine number 'iTurbGlob'
-  void getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob);
+  void getHubRefPosition(double* hubRefPos, int iTurbGlob, int nSize=6);
   //! Get the hub deflections array 'hubDefl' of turbine number 'iTurbGlob' at time step 't'
-  void getHubDisplacement(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  void getHubDisplacement(double* hubDefl, double* hubVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=6);
   //! Get the nacelle reference position array 'nacRefPos' of turbine number 'iTurbGlob'
-  void getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob);
+  void getNacelleRefPosition(double* nacRefPos, int iTurbGlob, int nSize=6);
   //! Get the nacelle deflections array 'nacDefl' of turbine number 'iTurbGlob' at time step 't'
-  void getNacelleDisplacement(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  void getNacelleDisplacement(double* nacDefl, double* nacVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=6);
 
   //! Set the blade forces array 'bldForce' for blade 'iBlade' of turbine number 'iTurbGlob' at time step 't'
-  void setBladeForces(std::vector<double> & bldForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  void setBladeForces(double* bldForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=6);
   //! Set the tower force array 'twrForce' of turbine number 'iTurbGlob' at time step 't'
-  void setTowerForces(std::vector<double> & twrForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1);
+  void setTowerForces(double* twrForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1, int nSize=6);
 
 
   //! Get all turbine parametric data
@@ -498,58 +498,114 @@ class OpenFAST {
   int get_numForcePts(int iTurbGlob) { return get_numForcePtsLoc(get_localTurbNo(iTurbGlob)); }
 
   //! Compute the torque and thrust for turbine number 'iTurbGlob'. Must be called only from processor containing the turbine.
-  void computeTorqueThrust(int iTurGlob, std::vector<double> &  torque, std::vector<double> &  thrust);
+  void computeTorqueThrust(int iTurGlob, double*  torque, double*  thrust, int nSize);
 
-  // inline
-  // void getApproxHubPos(std::vector<double>& currentCoords, int iTurbGlob) {
-  //     getApproxHubPos(currentCoords, iTurbGlob, currentCoords.size());
-  // }
+  inline
+  void getApproxHubPos(std::vector<double>& currentCoords, int iTurbGlob) {
+      getApproxHubPos(currentCoords.data(), iTurbGlob, currentCoords.size());
+  }
 
-  // inline
-  // void getHubPos(std::vector<double>& currentCoords, int iTurbGlob, fast::timeStep t) {
-  //     getHubPos(currentCoords, iTurbGlob, t, currentCoords.size());
-  // }
+  inline
+  void getHubPos(std::vector<double>& currentCoords, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getHubPos(currentCoords.data(), iTurbGlob, t, currentCoords.size());
+  }
 
 
-  // inline
-  // void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t) {
-  //     getHubShftDir(hubShftVec, iTurbGlob,  t, hubShftVec.size());
-  // }
+  inline
+  void getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getHubShftDir(hubShftVec.data(), iTurbGlob,  t, hubShftVec.size());
+  }
 
-  // inline
-  // void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     getVelNodeCoordinates(currentCoords, iNode, iTurbGlob, t, currentCoords.size());
-  // }
+  inline
+  void getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getVelNodeCoordinates(currentCoords.data(), iNode, iTurbGlob, t, currentCoords.size());
+  }
 
-  // inline
-  // void setVelocity(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     setVelocity(currentVelocity, iNode, iTurbGlob,  t, currentVelocity.size());
-  // }
+  inline
+  void setVelocity(std::vector<double> & currentVelocity, int iNode, int iTurbGlob) {
+      setVelocity(currentVelocity.data(), iNode, iTurbGlob, currentVelocity.size());
+  }
 
-  // inline
-  // void setVelocityForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     setVelocityForceNode(currentVelocity, iNode, iTurbGlob,  t, currentVelocity.size());
-  // }
+  inline
+  void setVelocityForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob) {
+      setVelocityForceNode(currentVelocity.data(), iNode, iTurbGlob, currentVelocity.size());
+  }
 
-  // inline
-  // void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     getForceNodeCoordinates(currentCoords, iNode, iTurbGlob,  t, currentCoords.size());
-  // }
+  inline
+  void getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getForceNodeCoordinates(currentCoords.data(), iNode, iTurbGlob,  t, currentCoords.size());
+  }
 
-  // inline
-  // void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     getForceNodeOrientation(currentOrientation, iNode, iTurbGlob,  t, currentOrientation.size());
-  // }
+  inline
+  void getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getForceNodeOrientation(currentOrientation.data(), iNode, iTurbGlob,  t, currentOrientation.size());
+  }
 
-  // inline
-  // void getForce(std::vector<double> & currentForce, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     getForce(currentForce, iNode, iTurbGlob,  t, currentForce.size());
-  // }
+  inline
+  void getForce(std::vector<double> & currentForce, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getForce(currentForce.data(), iNode, iTurbGlob,  t, currentForce.size());
+  }
 
-  // inline
-  // void getRelativeVelForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, fast::timeStep t) {
-  //     getRelativeVelForceNode(currentVelocity, iNode, iTurbGlob,  t, currentVelocity.size());
-  // }
+  inline
+  void getRelativeVelForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, fast::timeStep t = fast::STATE_NP1) {
+      getRelativeVelForceNode(currentVelocity.data(), iNode, iTurbGlob,  t, currentVelocity.size());
+  }
+
+ inline
+ void getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob){
+    getBladeRefPositions(bldRefPos.data(), nTurbinesGlob);
+ }
+ inline
+ void getBladeDisplacements(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1)
+ {
+   getBladeDisplacements(bldDefl.data(), bldVel.data(), iTurbGlob, t, bldDefl.size());
+ }
+ inline
+ void getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob)
+ {
+   getTowerRefPositions(twrRefPos.data(), iTurbGlob, twrRefPos.size());
+ }
+ inline
+ void getTowerDisplacements(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1)
+ {
+   getTowerDisplacements(twrDefl.data(), twrVel.data(), iTurbGlob, t, twrDefl.size());
+ }
+ inline
+ void getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob)
+ {
+   getHubRefPosition(hubRefPos.data(), iTurbGlob, hubRefPos.size());
+ }
+ inline
+ void getHubDisplacement(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1)
+ {
+   getHubDisplacement(hubDefl.data(), hubVel.data(), iTurbGlob, t, hubDefl.size());
+ }
+ inline
+ void getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob)
+ {
+   getNacelleRefPosition(nacRefPos.data(), iTurbGlob, nacRefPos.size());
+ }
+ inline
+ void getNacelleDisplacement(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t = fast::STATE_NP1)
+ {
+   getNacelleDisplacement(nacDefl.data(), nacVel.data(), iTurbGlob, t, nacDefl.size());
+ }
+
+ inline
+ void setBladeForces(std::vector<double> & bldForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1)
+ {
+   setBladeForces(bldForce.data(), iTurbGlob, t, bldForce.size());
+ }
+ inline
+ void setTowerForces(std::vector<double> & twrForce, int iTurbGlob, fast::timeStep t = fast::STATE_NP1)
+ {
+   setTowerForces(twrForce.data(), iTurbGlob, t, twrForce.size());
+ }
+ inline
+ void computeTorqueThrust(int iTurbGlob, std::vector<double> & torque, std::vector<double> & thrust)
+ {
+   computeTorqueThrust(iTurbGlob, torque.data(), thrust.data(), torque.size());
+ }
 
   //! An example function to set velocities at the Aerodyn nodes using a power law wind profile using an exponent of 0.2 and a reference wind speed of 10 m/s at 90 meters. Safe to call from every MPI rank.
     void setExpLawWindSpeed(double t) ; // An example to set velocities at the Aerodyn nodes

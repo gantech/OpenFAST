@@ -759,7 +759,7 @@ void fast::OpenFAST::step(double ss_time) {
 
 }
 
-void fast::OpenFAST::step(bool writeFiles) {
+void fast::OpenFAST::step() {
 
     /* ******************************
        set inputs from this code and call FAST:
@@ -773,17 +773,15 @@ void fast::OpenFAST::step(bool writeFiles) {
         if (turbineData[iTurb].inflowType == 2)
             writeVelocityData(turbineData[iTurb].velNodeDataFile, iTurb, nt_global, 0);
 
-        if (writeFiles) {
-            if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
+        if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
 
-                std::ofstream fastcpp_velocity_file;
-                fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-                fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
-                for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
-                    fastcpp_velocity_file << extinfw_i_f_FAST[iTurb].pxVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzVel[iNode] << ", " << extinfw_o_t_FAST[iTurb].u[iNode] << ", " << extinfw_o_t_FAST[iTurb].v[iNode] << ", " << extinfw_o_t_FAST[iTurb].w[iNode] << " " << std::endl ;
-                }
-                fastcpp_velocity_file.close() ;
+            std::ofstream fastcpp_velocity_file;
+            fastcpp_velocity_file.open("fastcpp_velocity." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
+            fastcpp_velocity_file << "# x, y, z, Vx, Vy, Vz" << std::endl ;
+            for (int iNode=0; iNode < get_numVelPtsLoc(iTurb); iNode++) {
+                fastcpp_velocity_file << extinfw_i_f_FAST[iTurb].pxVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyVel[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzVel[iNode] << ", " << extinfw_o_t_FAST[iTurb].u[iNode] << ", " << extinfw_o_t_FAST[iTurb].v[iNode] << ", " << extinfw_o_t_FAST[iTurb].w[iNode] << " " << std::endl ;
             }
+            fastcpp_velocity_file.close() ;
         }
 
         FAST_CFD_Prework(&iTurb, &ErrStat, ErrMsg);
@@ -815,16 +813,14 @@ void fast::OpenFAST::step(bool writeFiles) {
 
         }
 
-        if (writeFiles) {
-            if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
-                std::ofstream actuatorForcesFile;
-                actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
-                actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
-                for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
-                    actuatorForcesFile << extinfw_i_f_FAST[iTurb].pxForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].fx[iNode] << ", " << extinfw_i_f_FAST[iTurb].fy[iNode] << ", " << extinfw_i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;
-                }
-                actuatorForcesFile.close() ;
+        if ( isDebug() && (turbineData[iTurb].inflowType == 2) ) {
+            std::ofstream actuatorForcesFile;
+            actuatorForcesFile.open("actuator_forces." + std::to_string(turbineMapProcToGlob[iTurb]) + ".csv") ;
+            actuatorForcesFile << "# x, y, z, fx, fy, fz" << std::endl ;
+            for (int iNode=0; iNode < get_numForcePtsLoc(iTurb); iNode++) {
+                actuatorForcesFile << extinfw_i_f_FAST[iTurb].pxForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pyForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].pzForce[iNode] << ", " << extinfw_i_f_FAST[iTurb].fx[iNode] << ", " << extinfw_i_f_FAST[iTurb].fy[iNode] << ", " << extinfw_i_f_FAST[iTurb].fz[iNode] << " " << std::endl ;
             }
+            actuatorForcesFile.close() ;
         }
 
     }
@@ -1013,15 +1009,15 @@ void fast::OpenFAST::setExpLawWindSpeed(double t){
     }
 }
 
-void fast::OpenFAST::getApproxHubPos(std::vector<double> & currentCoords, int iTurbGlob, int nSize) {
-    assert(nSize==3);
-    // Get hub position of Turbine 'iTurbGlob'
-    for(int i =0; i<nSize; ++i){
-        currentCoords[i] = globTurbineData[iTurbGlob].TurbineHubPos[i];
-    }
+void fast::OpenFAST::getApproxHubPos(double* currentCoords, int iTurbGlob, int nSize) {
+  assert(nSize==3);
+  // Get hub position of Turbine 'iTurbGlob'
+  for(int i =0; i<nSize; ++i){
+    currentCoords[i] = globTurbineData[iTurbGlob].TurbineHubPos[i];
+  }
 }
 
-void fast::OpenFAST::getHubPos(std::vector<double> & currentCoords, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getHubPos(double* currentCoords, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==3);
     // Get hub position of Turbine 'iTurbGlob'
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1029,7 +1025,7 @@ void fast::OpenFAST::getHubPos(std::vector<double> & currentCoords, int iTurbGlo
         currentCoords[i] = velForceNodeData[iTurbLoc][t].x_force[i] + turbineData[iTurbLoc].TurbineBasePos[i] ;
 }
 
-void fast::OpenFAST::getHubShftDir(std::vector<double> & hubShftVec, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getHubShftDir(double* hubShftVec, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==3);
     // Get hub shaft direction of current turbine - pointing downwind
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1038,7 +1034,7 @@ void fast::OpenFAST::getHubShftDir(std::vector<double> & hubShftVec, int iTurbGl
 }
 
 
-void fast::OpenFAST::getVelNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getVelNodeCoordinates(double* currentCoords, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==3);
     // Set coordinates at current node of current turbine
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1048,7 +1044,7 @@ void fast::OpenFAST::getVelNodeCoordinates(std::vector<double> & currentCoords, 
 
 }
 
-void fast::OpenFAST::getForceNodeCoordinates(std::vector<double> & currentCoords, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getForceNodeCoordinates(double* currentCoords, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==3);
     // Set coordinates at current node of current turbine
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1057,7 +1053,7 @@ void fast::OpenFAST::getForceNodeCoordinates(std::vector<double> & currentCoords
 
 }
 
-void fast::OpenFAST::getForceNodeOrientation(std::vector<double> & currentOrientation, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getForceNodeOrientation(double* currentOrientation, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==9);
     // Set orientation at current node of current turbine
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1066,7 +1062,7 @@ void fast::OpenFAST::getForceNodeOrientation(std::vector<double> & currentOrient
         currentOrientation[i] = velForceNodeData[iTurbLoc][t].orient_force[iNode*9+i] ;
 }
 
-void fast::OpenFAST::getRelativeVelForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getRelativeVelForceNode(double* currentVelocity, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==3);
     // Get relative velocity at current node of current turbine
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1076,7 +1072,7 @@ void fast::OpenFAST::getRelativeVelForceNode(std::vector<double> & currentVeloci
     currentVelocity[2] = velForceNodeData[iTurbLoc][t].vel_force[iNode*3+2] - velForceNodeData[iTurbLoc][t].xdot_force[iNode*3+2];
 }
 
-void fast::OpenFAST::getForce(std::vector<double> & currentForce, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
+void fast::OpenFAST::getForce(double* currentForce, int iNode, int iTurbGlob, fast::timeStep t, int nSize) {
     assert(nSize==3);
     // Set forces at current node of current turbine
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1093,7 +1089,7 @@ double fast::OpenFAST::getChord(int iNode, int iTurbGlob) {
 
 }
 
-void fast::OpenFAST::setVelocity(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, int nSize) {
+void fast::OpenFAST::setVelocity(double* currentVelocity, int iNode, int iTurbGlob, int nSize) {
     assert(nSize==3);
     // Set velocity at current node of current turbine -
     int iTurbLoc = get_localTurbNo(iTurbGlob);
@@ -1109,12 +1105,12 @@ void fast::OpenFAST::setVelocity(std::vector<double> & currentVelocity, int iNod
     extinfw_o_t_FAST[iTurbLoc].w[iNode] = currentVelocity[2];
 }
 
-void fast::OpenFAST::setVelocityForceNode(std::vector<double> & currentVelocity, int iNode, int iTurbGlob, int nSize) {
+void fast::OpenFAST::setVelocityForceNode(double* currentVelocity, int iNode, int iTurbGlob, int nSize) {
     assert(nSize==3);
     // Set velocity at current node of current turbine -
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     for(int j=0; j < iTurbLoc; j++) iNode = iNode - get_numForcePtsLoc(iTurbLoc);
-    for(int k=0; k < 3; k++) {
+    for(int k=0; k < nSize; k++) {
         velForceNodeData[iTurbLoc][fast::STATE_NP1].vel_force_resid += (velForceNodeData[iTurbLoc][fast::STATE_NP1].vel_force[iNode*3+k] - currentVelocity[k])*(velForceNodeData[iTurbLoc][fast::STATE_NP1].vel_force[iNode*3+k] - currentVelocity[k]);
         velForceNodeData[iTurbLoc][fast::STATE_NP1].vel_force[iNode*3+k] = currentVelocity[k];
     }
@@ -1227,8 +1223,8 @@ void fast::OpenFAST::interpolateVel_ForceToVelNodes() {
 
 }
 
-void fast::OpenFAST::computeTorqueThrust(int iTurbGlob, std::vector<double> & torque, std::vector<double> & thrust) {
-
+void fast::OpenFAST::computeTorqueThrust(int iTurbGlob, double* torque, double* thrust, int nSize) {
+    assert(nSize==3);
     //Compute the torque and thrust based on the forces at the actuator nodes
     std::vector<double> relLoc(3,0.0);
     std::vector<double> rPerpShft(3);
@@ -2218,15 +2214,16 @@ void fast::OpenFAST::get_ref_positions_from_openfast(int iTurb) {
 
 }
 
-void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int iTurbGlob) {
+void fast::OpenFAST::getBladeRefPositions(double* bldRefPos, int iTurbGlob, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
     int iRunTot = 0;
     for (int i=0; i < nBlades; i++) {
         int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
         for(int j=0; j<nPtsBlade; j++) {
-            for (int k=0; k < 6; k++) {
+            for (int k=0; k < nSize; k++) {
                 bldRefPos[iRunTot*6+k] = brFSIData[iTurbLoc][fast::STATE_NP1].bld_ref_pos[iRunTot*6+k];
             }
             iRunTot++;
@@ -2235,8 +2232,9 @@ void fast::OpenFAST::getBladeRefPositions(std::vector<double> & bldRefPos, int i
 
 }
 
-void fast::OpenFAST::getBladeDisplacements(std::vector<double> & bldDefl, std::vector<double> & bldVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getBladeDisplacements(double* bldDefl, double* bldVel, int iTurbGlob, fast::timeStep t, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
     int iRunTot = 0;
@@ -2244,7 +2242,7 @@ void fast::OpenFAST::getBladeDisplacements(std::vector<double> & bldDefl, std::v
         int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
         for(int j=0; j<nPtsBlade; j++) {
 
-            for (int k=0; k < 6; k++) {
+            for (int k=0; k < nSize; k++) {
                 bldDefl[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_def[iRunTot*6+k];
                 bldVel[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+k];
             }
@@ -2254,20 +2252,22 @@ void fast::OpenFAST::getBladeDisplacements(std::vector<double> & bldDefl, std::v
 
 }
 
-void fast::OpenFAST::getTowerRefPositions(std::vector<double> & twrRefPos, int iTurbGlob) {
+void fast::OpenFAST::getTowerRefPositions(double* twrRefPos, int iTurbGlob, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
     for (int i=0; i < nPtsTwr; i++) {
-        for (int j=0; j < 6; j++) {
+        for (int j=0; j < nSize; j++) {
             twrRefPos[i*6+j] = brFSIData[iTurbLoc][fast::STATE_NP1].twr_ref_pos[i*6+j];
         }
     }
 
 }
 
-void fast::OpenFAST::getTowerDisplacements(std::vector<double> & twrDefl, std::vector<double> & twrVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getTowerDisplacements(double* twrDefl, double* twrVel, int iTurbGlob, fast::timeStep t, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
     for (int i=0; i < nPtsTwr; i++) {
@@ -2279,8 +2279,9 @@ void fast::OpenFAST::getTowerDisplacements(std::vector<double> & twrDefl, std::v
 
 }
 
-void fast::OpenFAST::getHubRefPosition(std::vector<double> & hubRefPos, int iTurbGlob) {
+void fast::OpenFAST::getHubRefPosition(double* hubRefPos, int iTurbGlob, int nSize) {
 
+    assert(nSize==6); // shouldn't this be 3?
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     std::cout << "Hey.. I'm in getHubRefPosition" << std::endl ;
     for (int j=0; j < 6; j++)
@@ -2288,44 +2289,47 @@ void fast::OpenFAST::getHubRefPosition(std::vector<double> & hubRefPos, int iTur
 
 }
 
-void fast::OpenFAST::getHubDisplacement(std::vector<double> & hubDefl, std::vector<double> & hubVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getHubDisplacement(double* hubDefl, double* hubVel, int iTurbGlob, fast::timeStep t, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
-    for (int j=0; j < 6; j++) {
+    for (int j=0; j < nSize; j++) {
         hubDefl[j] = brFSIData[iTurbLoc][t].hub_def[j];
         hubVel[j] = brFSIData[iTurbLoc][t].hub_vel[j];
     }
 
 }
 
-void fast::OpenFAST::getNacelleRefPosition(std::vector<double> & nacRefPos, int iTurbGlob) {
+void fast::OpenFAST::getNacelleRefPosition(double* nacRefPos, int iTurbGlob, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
-    for (int j=0; j < 6; j++)
+    for (int j=0; j < nSize; j++)
         nacRefPos[j] = brFSIData[iTurbLoc][fast::STATE_NP1].nac_ref_pos[j];
 
 }
 
 
-void fast::OpenFAST::getNacelleDisplacement(std::vector<double> & nacDefl, std::vector<double> & nacVel, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::getNacelleDisplacement(double* nacDefl, double* nacVel, int iTurbGlob, fast::timeStep t, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
-    for (int j=0; j < 6; j++) {
+    for (int j=0; j < nSize; j++) {
         nacDefl[j] = brFSIData[iTurbLoc][t].nac_def[j];
         nacVel[j] = brFSIData[iTurbLoc][t].nac_vel[j];
     }
 
 }
 
-void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iTurbGlob, fast::timeStep t) {
-
+void fast::OpenFAST::setBladeForces(double* bldForces, int iTurbGlob, fast::timeStep t, int nSize) {
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nBlades = get_numBladesLoc(iTurbLoc);
     int iRunTot = 0;
     for (int i=0; i < nBlades; i++) {
         int nPtsBlade = turbineData[iTurbLoc].nBRfsiPtsBlade[i];
         for(int j=0; j < nPtsBlade; j++) {
-            for(int k=0; k < 6; k++) {
+            for(int k=0; k < nSize; k++) {
                 brFSIData[iTurbLoc][t].bld_ld[6*iRunTot+k] = bldForces[6*iRunTot+k];
             }
             iRunTot++;
@@ -2335,12 +2339,13 @@ void fast::OpenFAST::setBladeForces(std::vector<double> & bldForces, int iTurbGl
     //TODO: May be calculate the residual as well.
 }
 
-void fast::OpenFAST::setTowerForces(std::vector<double> & twrForces, int iTurbGlob, fast::timeStep t) {
+void fast::OpenFAST::setTowerForces(double* twrForces, int iTurbGlob, fast::timeStep t, int nSize) {
 
+    assert(nSize==6);
     int iTurbLoc = get_localTurbNo(iTurbGlob);
     int nPtsTwr = turbineData[iTurbLoc].nBRfsiPtsTwr;
     for (int i=0; i < nPtsTwr; i++)
-        for (int j=0; j < 6; j++)
+        for (int j=0; j < nSize; j++)
             brFSIData[iTurbLoc][t].twr_ld[i*6+j] = twrForces[i*6+j];
     //TODO: May be calculate the residual as well.
 
