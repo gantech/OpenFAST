@@ -2158,6 +2158,7 @@ END SUBROUTINE CheckR16Var
 
       ! local variable
    INTEGER(IntKi)         :: I         ! generic loop/index
+   CHARACTER(11)          :: Date      ! date, determined from the FPP __DATE__ variable
    CHARACTER(4)           :: Year      ! the year, determined from the FPP __DATE__ variable
    CHARACTER(MaxWrScrLen) :: Stars     ! a line of '*******' characters
 
@@ -2165,7 +2166,13 @@ END SUBROUTINE CheckR16Var
       Stars(I:I)='*'
    END DO
 
-   Year = __DATE__(8:11)
+   ! Get compilation date from preprocessor 
+   Date = __DATE__
+   if (len_trim(date) > 10) then
+      Year = Date(8:11)       ! (MMM DD YYYY)
+   else
+      Year = '20'//Date(7:8)  ! (mm/dd/yy) Y2K
+   end if
 
    CALL WrScr('')
    CALL WrScr(Stars)

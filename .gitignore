@@ -49,3 +49,5 @@ vs-build/
 *.aux
 *.nlo
 *.log
+
+/spack*

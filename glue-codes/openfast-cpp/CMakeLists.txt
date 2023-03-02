@@ -21,14 +21,15 @@ endif()
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(MPI REQUIRED)
+find_package(MPI REQUIRED COMPONENTS CXX)
 find_package(LibXml2 REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(HDF5 REQUIRED)
 find_package(NetCDF REQUIRED COMPONENTS C)
 find_package(yaml-cpp REQUIRED)
 
 include_directories(${YAML_INCLUDES})
-include_directories(${NetCDF_INCLUDE_DIRS})
+include_directories(${NETCDF_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDES})
 include_directories(${LIBXML2_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/modules/openfast-library/src/)
@@ -42,6 +43,7 @@ add_library(openfastcpplib
 set_property(TARGET openfastcpplib PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(openfastcpplib
   openfastlib
+  ${HDF5_LIBRARIES}
   ${NETCDF_LIBRARIES}
   ${ZLIB_LIBRARIES}
   ${LIBXML2_LIBRARIES}
