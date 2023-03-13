@@ -1055,6 +1055,13 @@ void fast::OpenFAST::predict_states() {
                     }
                 }
 
+                for (int k=0; k < 3; k++) {
+                    brFSIData[iTurb][fast::STATE_NP1].hub_def[k] = brFSIData[iTurb][fast::STATE_NM2].hub_def[k] + 3.0*(brFSIData[iTurb][fast::STATE_N].hub_def[k] - brFSIData[iTurb][fast::STATE_NM1].hub_def[k]);
+                    extrapRotation(&brFSIData[iTurb][fast::STATE_NM2].hub_def[3], &brFSIData[iTurb][fast::STATE_NM1].hub_def[3], &brFSIData[iTurb][fast::STATE_N].hub_def[3], &brFSIData[iTurb][fast::STATE_NP1].hub_def[3]);
+                    brFSIData[iTurb][fast::STATE_NP1].nac_def[k] = brFSIData[iTurb][fast::STATE_NM2].nac_def[k] + 3.0*(brFSIData[iTurb][fast::STATE_N].nac_def[k] - brFSIData[iTurb][fast::STATE_NM1].nac_def[k]);
+                    extrapRotation(&brFSIData[iTurb][fast::STATE_NM2].nac_def[3], &brFSIData[iTurb][fast::STATE_NM1].nac_def[3], &brFSIData[iTurb][fast::STATE_N].nac_def[3], &brFSIData[iTurb][fast::STATE_NP1].nac_def[3]);
+                }
+                
                 int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
                 for (int j=0; j < nPtsTwr; j++) {
                     extrapRotation(&brFSIData[iTurb][fast::STATE_NM2].twr_def[j*6+3],&brFSIData[iTurb][fast::STATE_NM1].twr_def[j*6+3],&brFSIData[iTurb][fast::STATE_N].twr_def[j*6+3], &brFSIData[iTurb][fast::STATE_NP1].twr_def[j*6+3]);
