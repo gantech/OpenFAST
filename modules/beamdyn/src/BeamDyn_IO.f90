@@ -1127,7 +1127,7 @@ SUBROUTINE BD_ReadBladeFile(BldFile,BladeInputFileData,UnEc,ErrStat,ErrMsg)
          return
       end if
       BladeInputFileData%stiff0(:,:,i) = temp66
-
+      CALL ReadCom(UnIn,BldFile,'blank',ErrStat2,ErrMsg2,UnEc)
       DO j=1,6
          CALL ReadAry(UnIn,BldFile,temp66(j,:),6,'mass_matrix','Blade C/S mass matrix',ErrStat2,ErrMsg2,UnEc)
             CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
@@ -1137,6 +1137,7 @@ SUBROUTINE BD_ReadBladeFile(BldFile,BladeInputFileData,UnEc,ErrStat,ErrMsg)
          return
       end if
       BladeInputFileData%mass0(:,:,i) = temp66
+      CALL ReadCom(UnIn,BldFile,'blank',ErrStat2,ErrMsg2,UnEc)
 
    ENDDO
 

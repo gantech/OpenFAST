@@ -28,6 +28,7 @@ find_package(HDF5 REQUIRED)
 find_package(NetCDF REQUIRED COMPONENTS C)
 find_package(yaml-cpp REQUIRED)
 
+include_directories(${HDF5_INCLUDE_DIRS})
 include_directories(${YAML_INCLUDES})
 include_directories(${NETCDF_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDES})
@@ -38,8 +39,7 @@ include_directories(${CMAKE_BINARY_DIR}/modules/extloads/)
 include_directories(${CMAKE_BINARY_DIR}/modules/supercontroller/)
 include_directories(${MPI_INCLUDE_PATH})
 
-add_library(openfastcpplib
-  src/OpenFAST.cpp src/SC.cpp)
+add_library(openfastcpplib src/OpenFAST.cpp src/SC.cpp)
 set_property(TARGET openfastcpplib PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(openfastcpplib
   openfastlib
@@ -51,13 +51,7 @@ target_link_libraries(openfastcpplib
   ${CMAKE_DL_LIBS})
 
 add_executable(openfastcpp src/FAST_Prog.cpp)
-target_link_libraries(openfastcpp openfastcpplib openfastlib
-  ${MPI_LIBRARIES}
-  ${YAML_CPP_LIBRARIES}
-  ${NETCDF_LIBRARIES}
-  ${ZLIB_LIBRARIES}
-  ${LIBXML2_LIBRARIES}
-  ${CMAKE_DL_LIBS})
+target_link_libraries(openfastcpp openfastcpplib openfastlib ${YAML_CPP_LIBRARIES})
 
 if(MPI_COMPILE_FLAGS)
   set_target_properties(openfastcpp PROPERTIES

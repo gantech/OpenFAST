@@ -43,8 +43,9 @@ macro(set_fast_fortran)
   # Abort if we do not have gfortran or Intel Fortran Compiler.
   if (NOT (${CMAKE_Fortran_COMPILER_ID} STREQUAL "GNU" OR
         ${CMAKE_Fortran_COMPILER_ID} MATCHES "^Intel" OR
-        ${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray"))
-    message(FATAL_ERROR "OpenFAST requires GFortran, Intel Fortran, or Cray Compiler. Compiler detected by CMake: ${FCNAME}.")
+        ${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray" OR
+        ${CMAKE_Fortran_COMPILER_ID} STREQUAL "Flang"))
+    message(FATAL_ERROR "OpenFAST requires GFortran, Intel, Cray, or Flang Compiler. Compiler detected by CMake: ${FCNAME}.")
   endif()
 
   # Verify proper compiler versions are available
@@ -73,6 +74,8 @@ macro(set_fast_fortran)
     set_fast_intel_fortran()
   elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Cray")
     set_fast_cray_fortran()
+  elseif(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Flang")
+    set_fast_flang()
   endif()
 endmacro(set_fast_fortran)
 
@@ -83,8 +86,7 @@ macro(check_f2008_features)
   include(CheckFortranSourceCompiles)
   check_fortran_source_compiles(
     "program test
-     use iso_fortran_env, only: compiler_version, real32, real64, real128
-     integer, parameter :: quki = real128
+     use iso_fortran_env, only: compiler_version, real32, real64
      integer, parameter :: dbki = real64
      integer, parameter :: reki = real32
 
@@ -118,7 +120,7 @@ macro(set_fast_gfortran)
   # Deal with Double/Single precision
   if (DOUBLE_PRECISION)
     add_definitions(-DOPENFAST_DOUBLE_PRECISION)
-    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8")
   endif (DOUBLE_PRECISION)
 
   # debug flags
@@ -162,9 +164,9 @@ macro(set_fast_intel_fortran_posix)
   if (DOUBLE_PRECISION)
     add_definitions(-DOPENFAST_DOUBLE_PRECISION)
     if("${CMAKE_Fortran_COMPILER_VERSION}" VERSION_GREATER "19")
-      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -r8 -double-size 128")
+      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -r8 -double-size 64")
     else()
-      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -r8 -double_size 128")
+      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -r8 -double_size 64")
     endif()
   endif (DOUBLE_PRECISION)
 
@@ -212,9 +214,9 @@ macro(set_fast_intel_fortran_windows)
   if (DOUBLE_PRECISION)
     add_definitions(-DOPENFAST_DOUBLE_PRECISION)
     if("${CMAKE_Fortran_COMPILER_VERSION}" VERSION_GREATER "19")
-      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} /real-size:64 /double-size:128")
+      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} /real-size:64 /double-size:64")
     else()
-      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} /real_size:64 /double_size:128")
+      set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} /real_size:64 /double_size:64")
     endif()
   endif (DOUBLE_PRECISION)
 
@@ -256,3 +258,24 @@ macro(set_fast_cray_fortran)
 
   check_f2008_features()
 endmacro()
+
+#
+# set_fast_flang - Customizations for GNU Fortran compiler
+#
+macro(set_fast_flang)
+
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fno-backslash -cpp")
+
+  # Deal with Double/Single precision
+  if (DOUBLE_PRECISION)
+    add_definitions(-DOPENFAST_DOUBLE_PRECISION)
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fdefault-real-8")
+  endif (DOUBLE_PRECISION)
+
+  # OPENMP
+  if (OPENMP)
+     set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
+  endif()
+
+  check_f2008_features()
+endmacro(set_fast_flang)

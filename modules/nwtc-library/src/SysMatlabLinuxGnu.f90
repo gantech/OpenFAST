@@ -134,18 +134,6 @@ FUNCTION NWTC_ERFR8( x )
 
 END FUNCTION NWTC_ERFR8
 !=======================================================================
-FUNCTION NWTC_ERFR16( x )
-
-   ! Returns the ERF value of its argument. The result has a value equal  
-   ! to the error function: 2/pi * integral_from_0_to_x of e^(-t^2) dt. 
-
-   REAL(QuKi), INTENT(IN)     :: x             ! input 
-   REAL(QuKi)                 :: NWTC_ERFR16   ! result
-   
-   NWTC_ERFR16 = ERF( x )
-
-END FUNCTION NWTC_ERFR16
-!=======================================================================
 FUNCTION NWTC_GammaR4( x )
 
    ! Returns the gamma value of its argument. The result has a value equal  
@@ -169,18 +157,6 @@ FUNCTION NWTC_GammaR8( x )
    NWTC_GammaR8 = gamma( x )
 
 END FUNCTION NWTC_GammaR8
-!=======================================================================
-FUNCTION NWTC_GammaR16( x )
-
-   ! Returns the gamma value of its argument. The result has a value equal  
-   ! to a processor-dependent approximation to the gamma function of x. 
-
-   REAL(QuKi), INTENT(IN)     :: x             ! input 
-   REAL(QuKi)                 :: NWTC_GammaR16  ! result
-   
-   NWTC_GammaR16 = gamma( x )
-
-END FUNCTION NWTC_GammaR16
 !=======================================================================
 SUBROUTINE FlushOut ( Unit )
 
