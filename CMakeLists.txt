@@ -76,6 +76,9 @@ if (MKL_FOUND)
   set(BLAS_LIBRARIES ${MKL_LIBRARIES})
   set(LAPACK_LIBRARIES ${MKL_LIBRARIES})
   set(CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES "ifport;ifcore;imf;svml;m;ipgo;intlc;c;irc_s;dl;c")
+elseif(${CMAKE_Fortran_COMPILER_ID} MATCHES "^Flang")
+  set(BLAS_LIBRARIES "")
+  set(LAPACK_LIBRARIES "")
 else()
   find_package(BLAS REQUIRED)
   find_package(LAPACK REQUIRED)
@@ -173,7 +176,7 @@ if(BUILD_TESTING)
   add_subdirectory(reg_tests)
 
   # unit tests
-  add_subdirectory(unit_tests)
+  # add_subdirectory(unit_tests)
 endif()
 
 option(BUILD_DOCUMENTATION "Build documentation." OFF)

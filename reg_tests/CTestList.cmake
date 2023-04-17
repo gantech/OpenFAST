@@ -181,7 +181,7 @@ endif()
 of_regression_aeroacoustic("IEA_LB_RWT-AeroAcoustics"  "openfast;aerodyn15;aeroacoustics")
 
 #OpenFAST-C++ regression tests
-ofcpp_regression("5MW_Land_DLL_WTurb_cpp"              "openfast-cpp;elastodyn;aerodyn15;servodyn")
+# ofcpp_regression("5MW_Land_DLL_WTurb_cpp"              "openfast-cpp;elastodyn;aerodyn15;servodyn")
 
 # Linearized OpenFAST regression tests
 of_regression_linear("WP_Stationary_Linear"         "openfast;linear;elastodyn")

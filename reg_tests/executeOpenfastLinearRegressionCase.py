@@ -99,6 +99,7 @@ systemName_map = {
 }
 compilerId_map = {
     "gnu": "gnu",
+    "flang": "gnu",
     "intel": "intel"
 }
 # Build the target output directory name or choose the default
