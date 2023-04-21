@@ -60,13 +60,11 @@ MODULE SysSubs
    INTERFACE NWTC_gamma ! Returns the gamma value of its argument
       MODULE PROCEDURE NWTC_gammaR4
       MODULE PROCEDURE NWTC_gammaR8
-      MODULE PROCEDURE NWTC_gammaR16
    END INTERFACE
    
    INTERFACE NWTC_ERF ! Returns the ERF value of its argument
       MODULE PROCEDURE NWTC_ERFR4
       MODULE PROCEDURE NWTC_ERFR8
-      MODULE PROCEDURE NWTC_ERFR16
    END INTERFACE
    
    

@@ -1304,7 +1304,7 @@ CONTAINS
          v(3) = -DCM(2,1) + DCM(1,2) !-skewSym(2,1)
  
          indx_max = maxloc( abs(v), 1 )  ! find component with largest magnitude
-         if ( .not. EqualRealNos( sign(1.0_ReKi,v(indx_max)), sign(1.0_ReKi,logMap(indx_max)) )) logMap = -logMap
+         if ( .not. EqualRealNos( sign(1.0_ReKi,v(indx_max)), sign(1.0_ReKi,real(logMap(indx_max),ReKi)) )) logMap = -logMap
          
       ELSE
          
