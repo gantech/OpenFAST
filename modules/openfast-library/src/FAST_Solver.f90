@@ -739,8 +739,8 @@ SUBROUTINE AD_InputSolve_IfW_ExtLoads( p_FAST, u_AD, p_ExtLd, ErrStat, ErrMsg )
         !Get position first
         z = u_AD%rotors(1)%BladeMotion(k)%Position(3,j) + u_AD%rotors(1)%BladeMotion(k)%TranslationDisp(3,j)
         mean_vel = p_ExtLd%vel_mean * ( (z/p_ExtLd%z_ref) ** p_ExtLd%shear_exp)
-        u_AD%rotors(1)%InflowOnBlade(1,j,k) = -mean_vel * sin(p_ExtLd%wind_dir * pi / 180.0)
-        u_AD%rotors(1)%InflowOnBlade(2,j,k) = -mean_vel * cos(p_ExtLd%wind_dir * pi / 180.0)
+        u_AD%rotors(1)%InflowOnBlade(1,j,k) = mean_vel * sin(-p_ExtLd%wind_dir * pi / 180.0)
+        u_AD%rotors(1)%InflowOnBlade(2,j,k) = mean_vel * cos(-p_ExtLd%wind_dir * pi / 180.0)
         u_AD%rotors(1)%InflowOnBlade(3,j,k) = 0.0
      end do
   end do
@@ -751,8 +751,8 @@ SUBROUTINE AD_InputSolve_IfW_ExtLoads( p_FAST, u_AD, p_ExtLd, ErrStat, ErrMsg )
         !Get position first
         z = u_AD%rotors(1)%TowerMotion%Position(3,j) + u_AD%rotors(1)%TowerMotion%TranslationDisp(3,j)
         mean_vel = p_ExtLd%vel_mean * ( (z/p_ExtLd%z_ref) ** p_ExtLd%shear_exp)
-        u_AD%rotors(1)%InflowOnTower(1,j) = -mean_vel * sin(p_ExtLd%wind_dir * pi / 180.0)
-        u_AD%rotors(1)%InflowOnTower(2,j) = -mean_vel * cos(p_ExtLd%wind_dir * pi / 180.0)
+        u_AD%rotors(1)%InflowOnTower(1,j) = mean_vel * sin(-p_ExtLd%wind_dir * pi / 180.0)
+        u_AD%rotors(1)%InflowOnTower(2,j) = mean_vel * cos(-p_ExtLd%wind_dir * pi / 180.0)
         u_AD%rotors(1)%InflowOnTower(3,j) = 0.0
      end do
   end if
