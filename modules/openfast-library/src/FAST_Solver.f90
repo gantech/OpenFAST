@@ -281,7 +281,7 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, u_AD, y_ExtL
       ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
          DO K = 1,SIZE(u_ED%BladePtLoads,1) ! Loop through all blades (p_ED%NumBl)
-            CALL Transfer_Line2_to_Point( y_AD%rotors(1)%BladeLoad(k), y_ExtLd%BladeLoad(k), MeshMapData%AD_L_2_ExtLd_B(k), ErrStat2, ErrMsg2, u_AD%rotors(1)%BladeMotion(k), u_ExtLd%BladeMotion(k) )
+            CALL Transfer_Line2_to_Point( y_AD%rotors(1)%BladeLoad(k), y_ExtLd%BladeLoadAD(k), MeshMapData%AD_L_2_ExtLd_B(k), ErrStat2, ErrMsg2, u_AD%rotors(1)%BladeMotion(k), u_ExtLd%BladeMotion(k) )
             CALL SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
          END DO
 
@@ -337,7 +337,7 @@ SUBROUTINE ED_InputSolve( p_FAST, u_ED, y_ED, p_AD14, y_AD14, y_AD, u_AD, y_ExtL
    ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
       IF ( y_ExtLd%TowerLoad%Committed ) THEN ! NOTE - not only is TowerLn2Mesh not a Sbiling of TowerPtLoads, it is a line 2 mesh with different number of nodes
-         call Transfer_Line2_to_point( y_AD%rotors(1)%TowerLoad, y_ExtLd%TowerLoad, MeshMapData%AD_L_2_ExtLd_T, ErrStat2, ErrMsg2, u_AD%rotors(1)%TowerMotion, u_ExtLd%TowerMotion )
+         call Transfer_Line2_to_point( y_AD%rotors(1)%TowerLoad, y_ExtLd%TowerLoadAD, MeshMapData%AD_L_2_ExtLd_T, ErrStat2, ErrMsg2, u_AD%rotors(1)%TowerMotion, u_ExtLd%TowerMotion )
             call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
 
          call ExtLd_ConvertOpDataForOpenFAST(y_ExtLd, u_ExtLd, m_ExtLd, p_ExtLd, ErrStat2, ErrMsg2)
@@ -624,6 +624,7 @@ SUBROUTINE AD_InputSolve_IfW( p_FAST, u_AD, y_IfW, y_ExtInfw, ErrStat, ErrMsg )
       do k=1,NumBl
          do j=1,Nnodes
             u_AD%rotors(1)%InflowOnBlade(:,j,k) = y_IfW%VelocityUVW(:,node)
+            !write(*,*) 'Blade, Node = ', j, ' ', k, ' velocity = ', y_IfW%VelocityUVW(1,node), ' ', y_IfW%VelocityUVW(2,node)
             node = node + 1
          end do
       end do
@@ -742,6 +743,7 @@ SUBROUTINE AD_InputSolve_IfW_ExtLoads( p_FAST, u_AD, p_ExtLd, ErrStat, ErrMsg )
         u_AD%rotors(1)%InflowOnBlade(1,j,k) = -mean_vel * sin(p_ExtLd%wind_dir * pi / 180.0)
         u_AD%rotors(1)%InflowOnBlade(2,j,k) = -mean_vel * cos(p_ExtLd%wind_dir * pi / 180.0)
         u_AD%rotors(1)%InflowOnBlade(3,j,k) = 0.0
+        !write(*,*) 'Blade, Node = ', j, ' ', k, ' velocity = ', -mean_vel * sin(p_ExtLd%wind_dir * pi / 180.0), ' ', -mean_vel * cos(p_ExtLd%wind_dir * pi / 180.0)
      end do
   end do
 
@@ -1117,7 +1119,7 @@ END SUBROUTINE ExtLd_InputSolve_NoIfW
 
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine sets the inputs required for ServoDyn
-SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, y_BD, y_SD, MeshMapData, ErrStat, ErrMsg )
+SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, p_ExtLd, y_BD, y_SD, MeshMapData, ErrStat, ErrMsg )
 !..................................................................................................................................
 
    TYPE(FAST_ParameterType),         INTENT(IN)     :: p_FAST       !< Glue-code simulation parameters
@@ -1125,7 +1127,8 @@ SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, y_BD
    TYPE(SrvD_InputType),             INTENT(INOUT)  :: u_SrvD       !< ServoDyn Inputs at t
    TYPE(ED_OutputType),TARGET,       INTENT(IN)     :: y_ED         !< ElastoDyn outputs
    TYPE(InflowWind_OutputType),      INTENT(IN)     :: y_IfW        !< InflowWind outputs
-   TYPE(ExtInfw_OutputType),         INTENT(IN)     :: y_ExtInfw       !< InflowWind outputs
+   TYPE(ExtInfw_OutputType),         INTENT(IN)     :: y_ExtInfw    !< InflowWind outputs
+   TYPE(ExtLd_ParameterType),        INTENT(in)     :: p_ExtLd      !< Parameters of ExtLoads
    TYPE(BD_OutputType),              INTENT(IN)     :: y_BD(:)      !< BD Outputs
    TYPE(SD_OutputType),              INTENT(IN)     :: y_SD         !< SD Outputs
    TYPE(FAST_ModuleMapType),         INTENT(INOUT)  :: MeshMapData  !< Data for mapping between modules
@@ -1136,6 +1139,11 @@ SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, y_BD
    INTEGER(IntKi)                                   :: k            ! blade loop counter
    INTEGER(IntKi)                                   :: j            ! StC instance counter
    TYPE(MeshType), POINTER                          :: PlatformMotion
+   real(ReKi)                             :: z          !< Local 'z' coordinate
+   real(ReKi)                             :: u          !< Local u velocity
+   real(ReKi)                             :: v          !< Local v velocity
+   real(ReKi)                             :: mean_vel   !< Local mean velocity
+   real(ReKi)                             :: pi         !< Our favorite number
 
    INTEGER(IntKi)                                   :: ErrStat2                 ! temporary Error status of the operation
    CHARACTER(ErrMsgLen)                             :: ErrMsg2                  ! temporary Error message if ErrStat /= ErrID_None
@@ -1145,7 +1153,7 @@ SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, y_BD
 
    ErrStat = ErrID_None
    ErrMsg  = ""
-
+   
       ! Calculate horizontal hub-height wind direction (positive about zi-axis); these are
       !   zero if there is no wind input when InflowWind is not used:
 
@@ -1158,7 +1166,17 @@ SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, y_BD
 
       u_SrvD%WindDir  = ATAN2( y_ExtInfw%v(1), y_ExtInfw%u(1) )
       u_SrvD%HorWindV = SQRT( y_ExtInfw%u(1)**2 + y_ExtInfw%v(1)**2 )
+      
+   ELSE IF (p_FAST%CompAero == Module_ExtLd ) THEN
 
+      pi = acos(-1.0)
+      z = y_ED%HubPtMotion%Position(3,1)
+      mean_vel = p_ExtLd%vel_mean * ( (z/p_ExtLd%z_ref) ** p_ExtLd%shear_exp)
+      u = -mean_vel * sin(p_ExtLd%wind_dir * pi / 180.0)
+      v = -mean_vel * cos(p_ExtLd%wind_dir * pi / 180.0)
+      u_SrvD%HorWindV = mean_vel
+      u_SrvD%WindDir = atan2( v, u)
+      
    ELSE  ! No wind inflow
 
       u_SrvD%WindDir  = 0.0
@@ -1166,10 +1184,7 @@ SUBROUTINE SrvD_InputSolve( p_FAST, m_FAST, u_SrvD, y_ED, y_IfW, y_ExtInfw, y_BD
 
    ENDIF
 
-
-
-
-
+   !write(*,*) 'HorWindV = ', u_SrvD%HorWindV, ', Direction = ', u_SrvD%WindDir
 
       ! ServoDyn inputs from combination of InflowWind and ElastoDyn
 
@@ -5459,7 +5474,7 @@ SUBROUTINE CalcOutputs_And_SolveForInputs( n_t_global, this_time, this_state, ca
 
 
    IF ( p_FAST%CompServo == Module_SrvD  ) THEN
-      CALL SrvD_InputSolve( p_FAST, m_FAST, SrvD%Input(1), ED%y, IfW%y, ExtInfw%y, BD%y, SD%y, MeshmapData, ErrStat2, ErrMsg2 )
+      CALL SrvD_InputSolve( p_FAST, m_FAST, SrvD%Input(1), ED%y, IfW%y, ExtInfw%y, ExtLd%p, BD%y, SD%y, MeshmapData, ErrStat2, ErrMsg2 )
       CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    END IF
 
@@ -5891,7 +5906,7 @@ SUBROUTINE SolveOption2c_Inp2AD_SrvD(this_time, this_state, p_FAST, m_FAST, ED, 
 
    IF ( p_FAST%CompServo == Module_SrvD  ) THEN
 
-      CALL SrvD_InputSolve( p_FAST, m_FAST, SrvD%Input(1), ED%y, IfW%y, ExtInfw%y, BD%y, SD%y, MeshMapData, ErrStat2, ErrMsg2 )
+      CALL SrvD_InputSolve( p_FAST, m_FAST, SrvD%Input(1), ED%y, IfW%y, ExtInfw%y, ExtLd%p, BD%y, SD%y, MeshMapData, ErrStat2, ErrMsg2 )
 
          CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    END IF
