@@ -1171,7 +1171,7 @@ SUBROUTINE CalcForceActuatorPositionsBlade(p_ExtInfw, nBldEtaNodes, sBldEtaNodes
 
   TYPE(ExtInfw_ParameterType), INTENT(IN )  :: p_ExtInfw        ! data for the ExternalInflow integration module
   INTEGER(IntKi),        INTENT(IN)      :: nBldEtaNodes  ! Number of structural model nodes
-  REAL(ReKi),            INTENT(IN)      :: sBldEtaNodes(:) ! The non-dimensional co-ordinates at which the structural model positions are defined.
+  REAL(R8Ki),            INTENT(IN)      :: sBldEtaNodes(:) ! The non-dimensional co-ordinates at which the structural model positions are defined.
   REAL(ReKi),   POINTER, INTENT(IN)      :: structPositions(:,:)     ! structural model positions
   REAL(ReKi),            INTENT(INOUT)   :: forceNodePositions(:,:)  ! Array to store the newly created positions
   INTEGER(IntKi)                         :: ErrStat2    ! temporary Error status of the operation
@@ -1207,7 +1207,7 @@ SUBROUTINE CalcForceActuatorPositionsTower(p_ExtInfw, nTwrEtaNodes, sTwrEtaNodes
 
   TYPE(ExtInfw_ParameterType), INTENT(IN )  :: p_ExtInfw        ! data for the ExternalInflow integration module
   INTEGER(IntKi),           INTENT(IN)   :: nTwrEtaNodes  ! Number of tower structural model nodes
-  REAL(ReKi), POINTER,      INTENT(IN)   :: sTwrEtaNodes(:) ! Location of tower structural model nodes in [0-1] coordinates
+  REAL(R8Ki), POINTER,      INTENT(IN)   :: sTwrEtaNodes(:) ! Location of tower structural model nodes in [0-1] coordinates
   REAL(ReKi),   POINTER                  :: structPositions(:,:)     ! structural model positions
   REAL(ReKi),             INTENT(INOUT)  :: forceNodePositions(:,:)  ! Array to store the newly created positions
   INTEGER(IntKi)                         :: ErrStat2    ! temporary Error status of the operation

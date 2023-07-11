@@ -68,26 +68,26 @@ MODULE SysSubs
 CONTAINS
 
 !=======================================================================
-FUNCTION FileSize( Unit )
+! FUNCTION FileSize( Unit )
 
-   ! This function calls the portability routine, FSTAT, to obtain the file size
-   ! in bytes corresponding to a file unit number or returns -1 on error.
+!    ! This function calls the portability routine, FSTAT, to obtain the file size
+!    ! in bytes corresponding to a file unit number or returns -1 on error.
 
-   INTEGER(B8Ki)                             :: FileSize                      ! The size of the file in bytes to be returned.
-   INTEGER, INTENT(IN)                       :: Unit                          ! The I/O unit number of the pre-opened file.
-   INTEGER(4)                                :: StatArray(13)                 ! An array returned by FSTAT that includes the file size.
-   INTEGER(4)                                :: Status                        ! The status returned by
+!    INTEGER(B8Ki)                             :: FileSize                      ! The size of the file in bytes to be returned.
+!    INTEGER, INTENT(IN)                       :: Unit                          ! The I/O unit number of the pre-opened file.
+!    INTEGER(4)                                :: StatArray(13)                 ! An array returned by FSTAT that includes the file size.
+!    INTEGER(4)                                :: Status                        ! The status returned by
 
-   Status = FSTAT( INT( Unit, B4Ki ), StatArray )
+!    Status = FSTAT( INT( Unit, B4Ki ), StatArray )
 
-   IF ( Status /= 0 ) THEN
-      FileSize = -1
-   ELSE
-      FileSize = StatArray(8)
-   END IF
+!    IF ( Status /= 0 ) THEN
+!       FileSize = -1
+!    ELSE
+!       FileSize = StatArray(8)
+!    END IF
 
-   RETURN
-END FUNCTION FileSize ! ( Unit )
+!    RETURN
+! END FUNCTION FileSize ! ( Unit )
 !=======================================================================
 FUNCTION Is_NaN( DblNum )
 
@@ -152,6 +152,7 @@ FUNCTION NWTC_GammaR8( x )
    NWTC_GammaR8 = gamma( x )
 
 END FUNCTION NWTC_GammaR8
+
 !=======================================================================
 SUBROUTINE FlushOut ( Unit )
 
@@ -167,17 +168,11 @@ END SUBROUTINE FlushOut ! ( Unit )
 !=======================================================================
 !bjj note: this subroutine is not tested for this compiler
 SUBROUTINE Get_CWD ( DirName, Status )
-
-   ! This routine retrieves the path of the current working directory.
-
-   IMPLICIT NONE
-
+   CHARACTER(1024)              :: pwd
+   INTEGER                      :: length
    CHARACTER(*), INTENT(OUT)    :: DirName                                         ! A CHARACTER string containing the path of the current working directory.
    INTEGER,      INTENT(OUT)    :: Status                                          ! Status returned by the call to a portability routine.
-
-   Status = GETCWD ( DirName )
-
-   RETURN
+   call get_environment_variable('PWD', DirName, length, Status)
 END SUBROUTINE Get_CWD
 !=======================================================================
 SUBROUTINE MKDIR ( new_directory_path )
@@ -250,15 +245,6 @@ SUBROUTINE ProgExit ( StatCode )
    INTEGER, INTENT(IN)          :: StatCode                                      ! The status code to pass to the OS.
 
    CALL EXIT ( StatCode )
-
-   ! IF ( StatCode == 0 ) THEN
-   !    STOP 0
-   ! ELSE
-   !    IF ( StatCode < 0 ) THEN
-   !       CALL WrScr( 'Invalid STOP code.' )
-   !    END IF
-   !    STOP 1
-   ! END IF
 
 END SUBROUTINE ProgExit ! ( StatCode )
 !=======================================================================
