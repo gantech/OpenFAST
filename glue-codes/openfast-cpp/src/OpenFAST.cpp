@@ -160,7 +160,7 @@ void fast::OpenFAST::prepareRestartFile(int iTurbLoc) {
         const std::vector<int> twrDefLoadsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_twr_data"]};
         const std::vector<int> bldDefLoadsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_bld_data"]};
         const std::vector<int> bldRootDefsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_bld_root_data"]};
-        const std::vector<int> bldPitchDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_bld_pitch_data"]};        
+        const std::vector<int> bldPitchDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_bld_pitch_data"]};
         const std::vector<int> ptDefLoadsDims{ncRstDimIDs_["n_tsteps"], ncRstDimIDs_["n_states"], ncRstDimIDs_["n_pt_data"],};
 
         ierr = nc_def_var(ncid, "twr_def", NC_DOUBLE, 3, twrDefLoadsDims.data(), &tmpVarID);
@@ -186,7 +186,7 @@ void fast::OpenFAST::prepareRestartFile(int iTurbLoc) {
         ierr = nc_def_var(ncid, "bld_root_def", NC_DOUBLE, 3, bldRootDefsDims.data(), &tmpVarID);
         ncRstVarIDs_["bld_root_def"] = tmpVarID;
         ierr = nc_def_var(ncid, "bld_pitch", NC_DOUBLE, 3, bldPitchDims.data(), &tmpVarID);
-        ncRstVarIDs_["bld_pitch"] = tmpVarID;                
+        ncRstVarIDs_["bld_pitch"] = tmpVarID;
 
     } else if (turbineData[iTurbLoc].sType == EXTINFLOW) {
 
@@ -614,6 +614,17 @@ void fast::OpenFAST::prepareOutputFile(int iTurbLoc) {
                                           param_count_dim.data(), tmpArray.data());
             }
         }
+
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["nac_ref_pos"],
+                                 &brFSIData[iTurbLoc][3].nac_ref_pos[0]);
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["nac_ref_orient"],
+                                 &brFSIData[iTurbLoc][3].nac_ref_pos[3]);
+
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["hub_ref_pos"],
+                                 &brFSIData[iTurbLoc][3].hub_ref_pos[0]);
+        ierr = nc_put_var_double(ncid, ncOutVarIDs_["hub_ref_orient"],
+                                 &brFSIData[iTurbLoc][3].hub_ref_pos[3]);
+
     }
 
     ierr = nc_close(ncid);
@@ -1053,7 +1064,7 @@ void fast::OpenFAST::predict_states() {
                     for (int k=0; k < 3; k++) {
                         brFSIData[iTurb][fast::STATE_NP1].bld_root_def[j*6+k] = brFSIData[iTurb][fast::STATE_NM2].bld_root_def[j*6+k] + 3.0*(brFSIData[iTurb][fast::STATE_N].bld_root_def[j*6+k] - brFSIData[iTurb][fast::STATE_NM1].bld_root_def[j*6+k]);
                     }
-                } 
+                }
 
                 for (int k=0; k < 3; k++) {
                     brFSIData[iTurb][fast::STATE_NP1].hub_def[k] = brFSIData[iTurb][fast::STATE_NM2].hub_def[k] + 3.0*(brFSIData[iTurb][fast::STATE_N].hub_def[k] - brFSIData[iTurb][fast::STATE_NM1].hub_def[k]);
@@ -1065,7 +1076,7 @@ void fast::OpenFAST::predict_states() {
                     brFSIData[iTurb][fast::STATE_NP1].nac_vel[k] = brFSIData[iTurb][fast::STATE_NM2].nac_vel[k] + 3.0*(brFSIData[iTurb][fast::STATE_N].nac_vel[k] - brFSIData[iTurb][fast::STATE_NM1].nac_vel[k]);
                     brFSIData[iTurb][fast::STATE_NP1].nac_vel[k+3] = brFSIData[iTurb][fast::STATE_NM2].nac_vel[k+3] + 3.0*(brFSIData[iTurb][fast::STATE_N].nac_vel[k+3] - brFSIData[iTurb][fast::STATE_NM1].nac_vel[k+3]);
                 }
-                
+
                 int nPtsTwr = turbineData[iTurb].nBRfsiPtsTwr;
                 for (int j=0; j < nPtsTwr; j++) {
                     extrapRotation(&brFSIData[iTurb][fast::STATE_NM2].twr_def[j*6+3],&brFSIData[iTurb][fast::STATE_NM1].twr_def[j*6+3],&brFSIData[iTurb][fast::STATE_N].twr_def[j*6+3], &brFSIData[iTurb][fast::STATE_NP1].twr_def[j*6+3]);
@@ -1827,7 +1838,7 @@ void fast::OpenFAST::computeTorqueThrust(int iTurbGlob, double* torque, double* 
 
     std::vector<double> hubShftVec(3);
     getHubShftDir(hubShftVec, iTurbGlob, fast::STATE_NP1);
-    
+
     int nfpts = get_numForcePtsBlade(iTurbLoc);
     for (int k=0; k < get_numBladesLoc(iTurbLoc); k++) {
         for (int j=0; j < nfpts; j++) {
@@ -2418,7 +2429,7 @@ void fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
         const std::vector<size_t> twrDataDims{1, 1, static_cast<size_t>(6*nBRfsiPtsTwr)};
         const std::vector<size_t> bldDataDims{1, 1, static_cast<size_t>(6*nTotBRfsiPtsBlade)};
         const std::vector<size_t> bldRootDataDims{1, 1, static_cast<size_t>(6*nBlades)};
-        const std::vector<size_t> bldPitchDataDims{1, 1, static_cast<size_t>(nBlades)};        
+        const std::vector<size_t> bldPitchDataDims{1, 1, static_cast<size_t>(nBlades)};
         const std::vector<size_t> ptDataDims{1, 1, 6};
 
         for (size_t j=0; j < 4; j++) {  // Loop over states - NM2, STATE_NM1, N, NP1
@@ -2444,7 +2455,7 @@ void fast::OpenFAST::readRestartFile(int iTurbLoc, int n_t_global) {
 
         }
 
-        
+
 
     }
 
@@ -2840,7 +2851,7 @@ void fast::OpenFAST::writeRestartFile(int iTurbLoc, int n_t_global) {
         const std::vector<size_t> twrDataDims{1, 1, static_cast<size_t>(6*nPtsTwr)};
         const std::vector<size_t> bldDataDims{1, 1, static_cast<size_t>(6*nTotBldPts)};
         const std::vector<size_t> bldRootDataDims{1, 1, static_cast<size_t>(6*nBlades)};
-        const std::vector<size_t> bldPitchDataDims{1, 1, static_cast<size_t>(nBlades)};                
+        const std::vector<size_t> bldPitchDataDims{1, 1, static_cast<size_t>(nBlades)};
         const std::vector<size_t> ptDataDims{1, 1, 6};
 
         for (size_t j=0; j < 4; j++) { // Loop over states - STATE_NM2, STATE_NM1, STATE_N, STATE_NP1
@@ -2881,6 +2892,8 @@ void fast::OpenFAST::get_ref_positions_from_openfast(int iTurb) {
         for (int i=0; i < 3; i++) {
             brFSIData[iTurb][fast::STATE_NP1].hub_ref_pos[i] = extld_i_f_FAST[iTurb].hubRefPos[i] + turbineData[iTurb].TurbineBasePos[i];
             brFSIData[iTurb][fast::STATE_NP1].nac_ref_pos[i] = extld_i_f_FAST[iTurb].nacRefPos[i] + turbineData[iTurb].TurbineBasePos[i];
+            brFSIData[iTurb][fast::STATE_NP1].hub_ref_pos[i+3] = extld_i_f_FAST[iTurb].hubRefPos[i+3];
+            brFSIData[iTurb][fast::STATE_NP1].nac_ref_pos[i+3] = extld_i_f_FAST[iTurb].nacRefPos[i+3];
         }
 
         int nBlades = turbineData[iTurb].numBlades;
@@ -3010,7 +3023,7 @@ void fast::OpenFAST::getBladeDisplacements(double* bldDefl, double* bldVel, int 
                         << brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+3] << ","
                         << brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+4] << ","
                         << brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+5] << std::endl;
-            
+
             for (int k=0; k < nSize; k++) {
                 bldDefl[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_def[iRunTot*6+k];
                 bldVel[iRunTot*6+k] = brFSIData[iTurbLoc][t].bld_vel[iRunTot*6+k];
@@ -3154,7 +3167,7 @@ void fast::OpenFAST::setUniformXBladeForces(double loadX) {
             int nBldPts = turbineData[iTurb].nBRfsiPtsBlade[iBlade];
             dr[iNode] = 0.5*(brFSIData[iTurb][3].bld_rloc[iNode+1] - brFSIData[iTurb][3].bld_rloc[iNode]);
             iNode++;
-            
+
             for(int i=1; i < nBldPts-1; i++) {
                 dr[iNode] = 0.5*(brFSIData[iTurb][3].bld_rloc[iNode+1] - brFSIData[iTurb][3].bld_rloc[iNode-1]);
                 iNode++;
