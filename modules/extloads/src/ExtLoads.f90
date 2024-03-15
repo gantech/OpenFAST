@@ -26,7 +26,7 @@ module ExtLoads
 
    use NWTC_Library
    use ExtLoads_Types
-   
+
    implicit none
 
    private
@@ -40,11 +40,11 @@ module ExtLoads
    public :: ExtLd_CalcOutput                     ! Routine for computing outputs
    public :: ExtLd_ConvertOpDataForOpenFAST        ! Routine to convert Output data for OpenFAST
    public :: ExtLd_ConvertInpDataForExtProg        ! Routine to convert Input data for external programs
-  
-contains    
-!----------------------------------------------------------------------------------------------------------------------------------   
+
+contains
+!----------------------------------------------------------------------------------------------------------------------------------
 !> This subroutine sets the initialization output data structure, which contains data to be returned to the calling program (e.g.,
-!! FAST)   
+!! FAST)
 subroutine ExtLd_SetInitOut(p, InitOut, errStat, errMsg)
 
    type(ExtLd_InitOutputType),       intent(  out)  :: InitOut          ! output data
@@ -57,23 +57,23 @@ subroutine ExtLd_SetInitOut(p, InitOut, errStat, errMsg)
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
    character(*), parameter                      :: RoutineName = 'ExtLd_SetInitOut'
-   
-   
-   
+
+
+
    integer(IntKi)                               :: i, j, k, f
    integer(IntKi)                               :: NumCoords
 #ifdef DBG_OUTS
    integer(IntKi)                               :: m
    character(5)                                 ::chanPrefix
-#endif   
+#endif
       ! Initialize variables for this routine
 
    errStat = ErrID_None
    errMsg  = ""
-   
+
 end subroutine ExtLd_SetInitOut
 
-!----------------------------------------------------------------------------------------------------------------------------------   
+!----------------------------------------------------------------------------------------------------------------------------------
 !> This routine is called at the start of the simulation to perform initialization steps.
 !! The parameters are set here and not changed during the simulation.
 !! The initial states and initial guess for the input are defined.
@@ -96,17 +96,17 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
    type(ExtLd_InitOutputType),      intent(  out) :: InitOut       !< Output for initialization routine
    integer(IntKi),               intent(  out) :: errStat       !< Error status of the operation
    character(*),                 intent(  out) :: errMsg        !< Error message if ErrStat /= ErrID_None
-   
+
 
       ! Local variables
    integer(IntKi)                              :: i             ! loop counter
-   
+
    integer(IntKi)                              :: errStat2      ! temporary error status of the operation
-   character(ErrMsgLen)                        :: errMsg2       ! temporary error message 
-      
+   character(ErrMsgLen)                        :: errMsg2       ! temporary error message
+
    character(*), parameter                     :: RoutineName = 'ExtLd_Init'
-   
-   
+
+
       ! Initialize variables for this routine
 
    errStat = ErrID_None
@@ -117,7 +117,7 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
       ! Set parameters here
    p%NumBlds = InitInp%NumBlades
    call AllocAry(p%NumBldNds, p%NumBlds, 'NumBldNds', ErrStat2,ErrMsg2)
-   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
      if (ErrStat >= AbortErrLev) then
         call Cleanup()
         return
@@ -133,15 +133,15 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
    p%wind_dir = InitInp%wind_dir
    p%z_ref = InitInp%z_ref
    p%shear_exp = InitInp%shear_exp
-   
+
       !............................................................................................
-      ! Define and initialize inputs here 
+      ! Define and initialize inputs here
       !............................................................................................
 
    write(*,*) 'Initializing U '
-   
-   call Init_u( u, p, InitInp, errStat2, errMsg2 ) 
-      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+
+   call Init_u( u, p, InitInp, errStat2, errMsg2 )
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       if (ErrStat >= AbortErrLev) then
          call Cleanup()
          return
@@ -149,38 +149,38 @@ subroutine ExtLd_Init( InitInp, u, xd, p, y, m, interval, InitOut, ErrStat, ErrM
 
 
   ! Initialize discrete states
-   m%az = 0.0 
+   m%az = 0.0
    m%phi_cfd = 0.0
 
    write(*,*) 'Initializing y '
-      ! 
+      !
       !............................................................................................
       ! Define outputs here
       !............................................................................................
    call Init_y(y, u, m, p, errStat2, errMsg2) ! do this after input meshes have been initialized
-      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       if (ErrStat >= AbortErrLev) then
          call Cleanup()
          return
       end if
-   
+
       write(*,*) 'Initializing InitOut '
-      
+
       !............................................................................................
       ! Define initialization output here
       !............................................................................................
    call ExtLd_SetInitOut(p, InitOut, errStat2, errMsg2)
-      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
-   
-   call Cleanup() 
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
+   call Cleanup()
 
 contains
    subroutine Cleanup()
-     
+
    end subroutine Cleanup
-   
+
 end subroutine ExtLd_Init
-!----------------------------------------------------------------------------------------------------------------------------------   
+!----------------------------------------------------------------------------------------------------------------------------------
 !> This routine initializes ExtLoads meshes and output array variables for use during the simulation.
 subroutine Init_y(y, u, m, p, errStat, errMsg)
    type(ExtLd_OutputType),           intent(  out)  :: y               !< Module outputs
@@ -213,8 +213,8 @@ subroutine Init_y(y, u, m, p, errStat, errMsg)
            , ErrStat  = ErrStat2         &
            , ErrMess  = ErrMsg2          )
 
-      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
-      if (ErrStat >= AbortErrLev) RETURN         
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+      if (ErrStat >= AbortErrLev) RETURN
 
       call MeshCopy ( SrcMesh  = u%TowerMotion    &
            , DestMesh = y%TowerLoadAD      &
@@ -225,12 +225,12 @@ subroutine Init_y(y, u, m, p, errStat, errMsg)
            , ErrStat  = ErrStat2         &
            , ErrMess  = ErrMsg2          )
 
-      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName ) 
+      call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
       if (ErrStat >= AbortErrLev) RETURN
 
       !call MeshCommit(y%TowerLoadAD, errStat2, errMsg2 )
       !call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-      
+
       !y%TowerLoad%force = 0.0_ReKi  ! shouldn't have to initialize this
       !y%TowerLoad%moment= 0.0_ReKi  ! shouldn't have to initialize this
    else
@@ -240,16 +240,16 @@ subroutine Init_y(y, u, m, p, errStat, errMsg)
 
    allocate( y%BladeLoad(p%NumBlds), stat=ErrStat2 )
    if (errStat2 /= 0) then
-      call SetErrStat( ErrID_Fatal, 'Error allocating y%BladeLoad.', ErrStat, ErrMsg, RoutineName )      
+      call SetErrStat( ErrID_Fatal, 'Error allocating y%BladeLoad.', ErrStat, ErrMsg, RoutineName )
       return
    end if
 
    allocate( y%BladeLoadAD(p%NumBlds), stat=ErrStat2 )
    if (errStat2 /= 0) then
-      call SetErrStat( ErrID_Fatal, 'Error allocating y%BladeLoad.', ErrStat, ErrMsg, RoutineName )      
+      call SetErrStat( ErrID_Fatal, 'Error allocating y%BladeLoad.', ErrStat, ErrMsg, RoutineName )
       return
    end if
-   
+
    do k = 1, p%NumBlds
 
       call MeshCopy ( SrcMesh  = u%BladeMotion(k) &
@@ -276,7 +276,7 @@ subroutine Init_y(y, u, m, p, errStat, errMsg)
 
       !call MeshCommit(y%BladeLoadAD(k), errStat2, errMsg2 )
       !call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-      
+
 
    end do
 
@@ -287,9 +287,9 @@ subroutine Init_y(y, u, m, p, errStat, errMsg)
    y%DX_y%c_obj%twrLd_Len = p%NumTwrNds*6; y%DX_y%c_obj%twrLd = C_LOC( y%DX_y%twrLd(1) )
    y%DX_y%c_obj%bldLd_Len = p%nTotBldNds*6; y%DX_y%c_obj%bldLd = C_LOC( y%DX_y%bldLd(1) )
 
-   call ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, ErrStat2, ErrMsg2 )
-   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )   
-   
+   call ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, 0.0, ErrStat2, ErrMsg2 )
+   call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
+
 end subroutine Init_y
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine initializes ExtLoads meshes and input array variables for use during the simulation.
@@ -297,7 +297,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
 !..................................................................................................................................
 
   USE BeamDyn_IO, ONLY: BD_CrvExtractCrv
-  
+
    type(ExtLd_InputType),           intent(  out)  :: u                 !< Input data
    type(ExtLd_ParameterType),       intent(inout)  :: p                 !< Parameters (inout so can update DX_p)
    type(ExtLd_InitInputType),       intent(in   )  :: InitInp           !< Input data for ExtLd initialization routine
@@ -311,7 +311,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    real(R8Ki)                                   :: theta(3)          ! Euler angles
    real(R8Ki)                                   :: orientation(3,3)  ! node reference orientation
    real(R8Ki)                                   :: orientationL(3,3) ! node local orientation
-   
+
    real(R8Ki)                                   :: wm_crv(3)         ! Wiener-Milenkovic parameters
    integer(IntKi)                               :: j                 ! counter for nodes
    integer(IntKi)                               :: jTot              ! counter for blade nodes
@@ -333,7 +333,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
          ! tower
          !................
    if (p%NumTwrNds > 0) then
-      
+
       call MeshCreate ( BlankMesh = u%TowerMotion   &
                        ,IOS       = COMPONENT_INPUT &
                        ,Nnodes    = p%NumTwrNds     &
@@ -347,39 +347,39 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
       if (errStat >= AbortErrLev) return
-            
+
          ! set node initial position/orientation
       position = 0.0_ReKi
-      do j=1,p%NumTwrNds         
+      do j=1,p%NumTwrNds
          position(:) = InitInp%TwrPos(:,j)
-         
+
          call MeshPositionNode(u%TowerMotion, j, position, errStat2, errMsg2)  ! orientation is identity by default
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
       end do !j
-         
+
          ! create point elements
       do j=1,p%NumTwrNds
          call MeshConstructElement( u%TowerMotion, ELEMENT_POINT, errStat2, errMsg2, p1=j )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
       end do !j
-            
+
       call MeshCommit(u%TowerMotion, errStat2, errMsg2 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-            
+
       if (errStat >= AbortErrLev) return
 
-      
+
       u%TowerMotion%Orientation     = u%TowerMotion%RefOrientation
       u%TowerMotion%TranslationDisp = 0.0_R8Ki
       u%TowerMotion%TranslationVel  = 0.0_ReKi
       u%TowerMotion%RotationVel = 0.0_ReKi
-      
+
    end if ! we compute tower loads
-   
+
          !................
          ! hub
          !................
-   
+
       call MeshCreate ( BlankMesh = u%HubMotion     &
                        ,IOS       = COMPONENT_INPUT &
                        ,Nnodes    = 1               &
@@ -393,28 +393,28 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
       if (errStat >= AbortErrLev) return
-                     
+
       call MeshPositionNode(u%HubMotion, 1, InitInp%HubPos, errStat2, errMsg2, InitInp%HubOrient)
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-         
+
       call MeshConstructElement( u%HubMotion, ELEMENT_POINT, errStat2, errMsg2, p1=1 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-            
+
       call MeshCommit(u%HubMotion, errStat2, errMsg2 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-            
+
       if (errStat >= AbortErrLev) return
 
-         
+
       u%HubMotion%Orientation     = u%HubMotion%RefOrientation
       u%HubMotion%TranslationDisp = 0.0_R8Ki
       u%HubMotion%TranslationVel = 0.0_R8Ki
-      u%HubMotion%RotationVel     = 0.0_R8Ki   
+      u%HubMotion%RotationVel     = 0.0_R8Ki
 
          !................
          ! nacelle
          !................
-   
+
       call MeshCreate ( BlankMesh = u%NacelleMotion     &
                        ,IOS       = COMPONENT_INPUT &
                        ,Nnodes    = 1               &
@@ -428,24 +428,24 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
       if (errStat >= AbortErrLev) return
-                     
+
       call MeshPositionNode(u%NacelleMotion, 1, InitInp%NacellePos, errStat2, errMsg2, InitInp%NacelleOrient)
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-         
+
       call MeshConstructElement( u%NacelleMotion, ELEMENT_POINT, errStat2, errMsg2, p1=1 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-            
+
       call MeshCommit(u%NacelleMotion, errStat2, errMsg2 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-            
+
       if (errStat >= AbortErrLev) return
 
-         
+
       u%NacelleMotion%Orientation     = u%NacelleMotion%RefOrientation
       u%NacelleMotion%TranslationDisp = 0.0_R8Ki
       u%NacelleMotion%TranslationVel = 0.0_R8Ki
-      u%NacelleMotion%RotationVel     = 0.0_R8Ki   
-      
+      u%NacelleMotion%RotationVel     = 0.0_R8Ki
+
          !................
          ! blades
          !................
@@ -455,7 +455,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
          call SetErrStat( ErrID_Fatal, 'Error allocating u%BladeRootMotion array.', ErrStat, ErrMsg, RoutineName )
          return
       end if
-      
+
       allocate( u%BladeMotion(p%NumBlds), STAT = ErrStat2 )
       if (ErrStat2 /= 0) then
          call SetErrStat( ErrID_Fatal, 'Error allocating u%BladeMotion array.', ErrStat, ErrMsg, RoutineName )
@@ -475,25 +475,25 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
               ,RotationVel     = .true.    &
               )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-         
+
          if (errStat >= AbortErrLev) return
-         
+
          call MeshPositionNode(u%BladeRootMotion(k), 1, InitInp%BldRootPos(:,k), errStat2, errMsg2, InitInp%BldRootOrient(:,:,k))
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-         
+
          call MeshConstructElement( u%BladeRootMotion(k), ELEMENT_POINT, errStat2, errMsg2, p1=1 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-         
+
          call MeshCommit(u%BladeRootMotion(k), errStat2, errMsg2 )
          call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-         
+
          if (errStat >= AbortErrLev) return
-         
+
          u%BladeRootMotion(k)%Orientation     = u%BladeRootMotion(k)%RefOrientation
          u%BladeRootMotion(k)%TranslationDisp = 0.0_R8Ki
          u%BladeRootMotion(k)%TranslationVel  = 0.0_R8Ki
-         u%BladeRootMotion(k)%RotationVel     = 0.0_R8Ki   
-         
+         u%BladeRootMotion(k)%RotationVel     = 0.0_R8Ki
+
          call MeshCreate ( BlankMesh = u%BladeMotion(k)                     &
                           ,IOS       = COMPONENT_INPUT                      &
                           ,Nnodes    = InitInp%NumBldNodes(k) &
@@ -507,38 +507,38 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
                call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
          if (errStat >= AbortErrLev) return
-            
-                        
+
+
          do j=1,InitInp%NumBldNodes(k)
 
                ! reference position of the jth node in the kth blade:
             position(:) = InitInp%BldPos(:,j,k)
-                                 
+
                ! reference orientation of the jth node in the kth blade
             orientation(:,:) = InitInp%BldOrient(:,:,j,k)
 
-            
+
             call MeshPositionNode(u%BladeMotion(k), j, position, errStat2, errMsg2, orientation)
                call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-               
+
          end do ! j=blade nodes
-         
+
             ! create point elements
          do j=1,InitInp%NumBldNodes(k)
             call MeshConstructElement( u%BladeMotion(k), ELEMENT_POINT, errStat2, errMsg2, p1=j )
                call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
          end do !j
-            
+
          call MeshCommit(u%BladeMotion(k), errStat2, errMsg2 )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-            
+
          if (errStat >= AbortErrLev) return
-      
+
          u%BladeMotion(k)%Orientation     = u%BladeMotion(k)%RefOrientation
          u%BladeMotion(k)%TranslationDisp = 0.0_R8Ki
          u%BladeMotion(k)%TranslationVel  = 0.0_R8Ki
          u%BladeMotion(k)%RotationVel = 0.0_R8Ki
-   
+
    end do !k=numBlades
 
    ! Set the parameters first
@@ -565,7 +565,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    p%DX_p%c_obj%hubRefPos_Len = 6; p%DX_p%c_obj%hubRefPos = C_LOC( p%DX_p%hubRefPos(1) )
    p%DX_p%c_obj%nacRefPos_Len = 6; p%DX_p%c_obj%nacRefPos = C_LOC( p%DX_p%nacRefPos(1) )
    p%DX_p%c_obj%bldRootRefPos_Len = p%NumBlds*6; p%DX_p%c_obj%bldRootRefPos = C_LOC( p%DX_p%bldRootRefPos(1) )
-   
+
    if (p%TwrAero) then
       do j=1,p%NumTwrNds
          call BD_CrvExtractCrv(u%TowerMotion%RefOrientation(:,:,j), wm_crv, ErrStat2, ErrMsg2)
@@ -603,7 +603,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       p%DX_p%bldRootRefPos((k-1)*6+1:(k-1)*6+3) = u%BladeRootMotion(k)%Position(:,1)
       p%DX_p%bldRootRefPos((k-1)*6+4:(k-1)*6+6) = wm_crv
    end do
-      
+
 
    ! Now the displacements
    CALL AllocPAry( u%DX_u%twrDef, p%NumTwrNds*12, 'twrDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
@@ -611,7 +611,7 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
    CALL AllocPAry( u%DX_u%hubDef, 12, 'hubDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( u%DX_u%nacDef, 12, 'nacDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
    CALL AllocPAry( u%DX_u%bldRootDef, p%NumBlds*12, 'bldRootDef', ErrStat2, ErrMsg2 ); CALL SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName )
-   
+
    ! make sure the C versions are synced with these arrays
    u%DX_u%c_obj%twrDef_Len = p%NumTwrNds*12; u%DX_u%c_obj%twrDef = C_LOC( u%DX_u%twrDef(1) )
    u%DX_u%c_obj%bldDef_Len = p%nTotBldNds*12; u%DX_u%c_obj%bldDef = C_LOC( u%DX_u%bldDef(1) )
@@ -647,14 +647,14 @@ subroutine Init_u( u, p, InitInp, errStat, errMsg )
       p%DX_p%twrDia(j) = InitInp%twrDia(j)
       p%DX_p%twrHloc(j) = InitInp%twrHloc(j)
    end do
-   
+
 end subroutine Init_u
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine converts the displacement data in the meshes in the input into a simple array format that can be accessed by external programs
 subroutine ExtLd_ConvertInpDataForExtProg(u, p, errStat, errMsg )
 !..................................................................................................................................
   USE BeamDyn_IO, ONLY: BD_CrvExtractCrv
-  
+
    type(ExtLd_InputType),           intent(inout)  :: u                 !< Input data
    type(ExtLd_ParameterType),       intent(in   )  :: p                 !< Parameters
    integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
@@ -670,7 +670,7 @@ subroutine ExtLd_ConvertInpDataForExtProg(u, p, errStat, errMsg )
    real(reki)                                   :: xloc(3)
    real(reki)                                   :: yloc(3)
    real(reki)                                   :: zloc(3)
-   
+
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
    character(*), parameter                      :: RoutineName = 'ExtLd_ConvertInpDataForExtProg'
@@ -705,7 +705,7 @@ subroutine ExtLd_ConvertInpDataForExtProg(u, p, errStat, errMsg )
          jTot = jTot+1
       end do
    end do
-      
+
    call BD_CrvExtractCrv(u%HubMotion%Orientation(:,:,1), wm_crv, ErrStat2, ErrMsg2)
    call SetErrStat( ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
    u%DX_u%hubDef(1:3) = u%HubMotion%TranslationDisp(:,1)
@@ -728,17 +728,18 @@ subroutine ExtLd_ConvertInpDataForExtProg(u, p, errStat, errMsg )
       u%DX_u%bldRootDef( (k-1)*12+7:(k-1)*12+9 ) = wm_crv
       u%DX_u%bldRootDef( (k-1)*12+10:(k-1)*12+12 ) = u%BladeRootMotion(k)%RotationVel(:,1)
    end do
-   
+
 end subroutine ExtLd_ConvertInpDataForExtProg
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine converts the data in the simple array format in the output data type into OpenFAST mesh format
-subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
+subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, sim_time, errStat, errMsg )
 !..................................................................................................................................
-  
+
    type(ExtLd_OutputType),          intent(inout)  :: y                 !< Ouput data
    type(ExtLd_InputType),           intent(in   )  :: u                 !< Input data
    type(ExtLd_MiscVarType),         intent(inout)  :: m                 !< Misc var
    type(ExtLd_ParameterType),       intent(in   )  :: p                 !< Parameters
+   real(ReKi),                      intent(in   )  :: sim_time          !< Simulation time
    integer(IntKi),               intent(  out)  :: errStat           !< Error status of the operation
    character(*),                 intent(  out)  :: errMsg            !< Error message if ErrStat /= ErrID_None
 
@@ -747,8 +748,8 @@ subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
    integer(intKi)                               :: j                 ! counter for nodes
    integer(intKi)                               :: jTot              ! counter for nodes
    integer(intKi)                               :: k                 ! counter for blades
-   real(ReKi)                                   :: tmp_az, delta_az  ! temporary variable for azimuth
-   
+   real(DbKi)                                   :: tmp_az, delta_az  ! temporary variable for azimuth
+
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
    character(*), parameter                      :: RoutineName = 'ExtLd_ConvertInpDataForExtProg'
@@ -758,16 +759,22 @@ subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
    ErrStat = ErrID_None
    ErrMsg  = ""
 
-   tmp_az = m%az
-   call Zero2TwoPi(tmp_az)
-   delta_az = u%az - tmp_az
-   if ( delta_az .lt. -1.0 )  then
-      m%az = m%az + delta_az + PI
-   else
-      m%az = m%az + delta_az
-   end if
-   if (m%az  > (p%az_blend_mean  - 0.5 * p%az_blend_delta)) then
-      m%phi_cfd = 0.5 * ( tanh( (m%az - p%az_blend_mean)/p%az_blend_delta ) + 1.0 )
+   ! tmp_az = m%az
+   ! call Zero2TwoPi(tmp_az)
+   ! delta_az = u%az - tmp_az
+   ! if ( delta_az .lt. -1.0 )  then
+   !    m%az = m%az + delta_az + PI
+   ! else
+   !    m%az = m%az + delta_az
+   ! end if
+   ! if (m%az  > (p%az_blend_mean  - 0.5 * p%az_blend_delta)) then
+   !    m%phi_cfd = 0.5 * ( tanh( (m%az - p%az_blend_mean)/p%az_blend_delta ) + 1.0 )
+   ! else
+   !    m%phi_cfd = 0.0
+   ! end if
+
+   if (sim_time > 9.0) then
+      m%phi_cfd = 0.5 * ( tanh(  (sim_time - 10.0)/0.5) + 1.0 )
    else
       m%phi_cfd = 0.0
    end if
@@ -787,8 +794,8 @@ subroutine ExtLd_ConvertOpDataForOpenFAST(y, u, m, p, errStat, errMsg )
          jTot = jTot+1
       end do
    end do
-   
-   
+
+
 end subroutine ExtLd_ConvertOpDataForOpenFAST
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine is called at the end of the simulation.
@@ -852,11 +859,11 @@ subroutine ExtLd_UpdateStates( t, n, u, utimes, p, x, xd, z, OtherState, m, errS
    integer(intKi)                               :: ErrStat2          ! temporary Error status
    character(ErrMsgLen)                         :: ErrMsg2           ! temporary Error message
    character(*), parameter                      :: RoutineName = 'ExtLd_UpdateStates'
-      
+
    ErrStat = ErrID_None
    ErrMsg  = ""
-           
-   
+
+
 end subroutine ExtLd_UpdateStates
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Routine for computing outputs, used in both loose and tight coupling.
@@ -906,11 +913,11 @@ subroutine ExtLd_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMs
    real(reki) :: magC, c0, nu, cosPhiO2
    real(reki) :: cCrossV(3)
    real(reki) :: cCrosscCrossV(3)
-   
+
    magC = c(1)*c(1) + c(2)*c(2) + c(3)*c(3)
    c0 = 2.0-0.125*magC
-   nu = 2.0/(4.0-c0)    
-   cosPhiO2 = 0.5*c0*nu    
+   nu = 2.0/(4.0-c0)
+   cosPhiO2 = 0.5*c0*nu
    cCrossV(1) = c(2)*v(3) - c(3)*v(2)
    cCrossV(2) = c(3)*v(1) - c(1)*v(3)
    cCrossV(3) = c(1)*v(2) - c(2)*v(1)
@@ -920,12 +927,12 @@ subroutine ExtLd_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMs
 
    cCrosscCrossV(1) = c(2)*cCrossV(3) - c(3)*cCrossV(2)
    cCrosscCrossV(2) = c(3)*cCrossV(1) - c(1)*cCrossV(3)
-   cCrosscCrossV(3) = c(1)*cCrossV(2) - c(2)*cCrossV(1)   
+   cCrosscCrossV(3) = c(1)*cCrossV(2) - c(2)*cCrossV(1)
 
    vrot(1) = v(1) + transpose * nu * cosPhiO2 * cCrossV(1) + 0.5 * nu * nu * cCrosscCrossV(1)
    vrot(2) = v(2) + transpose * nu * cosPhiO2 * cCrossV(2) + 0.5 * nu * nu * cCrosscCrossV(2)
-   vrot(3) = v(3) + transpose * nu * cosPhiO2 * cCrossV(3) + 0.5 * nu * nu * cCrosscCrossV(3) 
-   
+   vrot(3) = v(3) + transpose * nu * cosPhiO2 * cCrossV(3) + 0.5 * nu * nu * cCrosscCrossV(3)
+
  end subroutine apply_wm
- 
+
 END MODULE ExtLoads
