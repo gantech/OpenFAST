@@ -1669,7 +1669,6 @@ void fast::OpenFAST::checkError(const int ErrStat, const char * ErrMsg)
 
 void fast::OpenFAST::setExpLawWindSpeed(double t){
 
-    double sinOmegat = 0.1 * std::sin(10.0*t);
     for (int iTurb=0; iTurb < nTurbinesProc; iTurb++) {
         // routine sets the u-v-w wind speeds used in FAST
         int nVelPts = get_numVelPts(iTurb);
@@ -1678,7 +1677,7 @@ void fast::OpenFAST::setExpLawWindSpeed(double t){
             std::vector<double> coords(3,0.0);
             std::vector<double> tmpVel(3,0.0);
             getVelNodeCoordinates(coords, j, iTurbGlob, fast::STATE_NP1);
-            tmpVel[0] = (float) 10.0*pow((coords[2] / 90.0), 0.2) + sinOmegat; // 0.2 power law wind profile using reference 10 m/s at 90 meters + a perturbation
+            tmpVel[0] = (float) 10.0*pow((coords[2] / 90.0), 0.2); // 0.2 power law wind profile using reference 10 m/s at 90 meters
             setVelocity(tmpVel, j, iTurbGlob);
         }
     }
